@@ -1,16 +1,36 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { Users, Building2, Briefcase, FileText } from "lucide-react";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { OrgChart } from "@/components/dashboard/OrgChart";
+import { ModuleGrid } from "@/components/dashboard/ModuleGrid";
+import { RecentActivities } from "@/components/dashboard/RecentActivities";
+import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
+import { MonthStats } from "@/components/dashboard/MonthStats";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
+    <div className="mx-auto flex max-w-[1400px] flex-col gap-6 animate-fade-in">
+      {/* KPI row */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="Employés"      value="248"   trend="+12 ce mois"      icon={Users}     color="blue" />
+        <KpiCard label="Départements"  value="12"    trend="Aucun changement" trendDirection="neutral" icon={Building2} color="green" />
+        <KpiCard label="Postes Vacants" value="18"   trend="+3 ce mois"       icon={Briefcase} color="orange" />
+        <KpiCard label="Docs. Actifs"  value="1,248" trend="+84 ce mois"      icon={FileText}  color="purple" />
+      </div>
+
+      {/* Organigramme */}
+      <OrgChart />
+
+      {/* Modules grid */}
+      <ModuleGrid />
+
+      {/* Bottom: activities / alerts / stats */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <RecentActivities />
+        <AlertsPanel />
+        <MonthStats />
+      </div>
     </div>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
