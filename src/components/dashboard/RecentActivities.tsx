@@ -1,11 +1,11 @@
 import { FileText, CheckCircle2, Calendar, FileSignature, UserPlus } from "lucide-react";
 
 const activities = [
-  { icon: FileSignature, color: "text-module-blue bg-module-blue/10",   title: "Nouveau contrat signé",    sub: "Marie Martin — Développeur Senior", time: "Il y a 10 min" },
-  { icon: CheckCircle2,  color: "text-module-green bg-module-green/10", title: "Tâche terminée",           sub: "Analyse des besoins — Projet Fintech", time: "Il y a 1 h" },
-  { icon: Calendar,      color: "text-module-orange bg-module-orange/10", title: "Congé approuvé",         sub: "Pierre Durand — Congé annuel",    time: "Il y a 2 h" },
-  { icon: FileText,      color: "text-module-purple bg-module-purple/10", title: "Document ajouté",        sub: "Contrat CDI — Jean Moreau",      time: "Il y a 3 h" },
-  { icon: UserPlus,      color: "text-module-pink bg-module-pink/10",     title: "Nouvelle candidature",   sub: "Sophie Leroy — Product Manager", time: "Il y a 4 h" },
+  { icon: FileSignature, color: "text-module-blue bg-module-blue/10", title: "Structure mise à jour", sub: "Directions rafraîchies", time: "Il y a 10 min" },
+  { icon: CheckCircle2, color: "text-module-green bg-module-green/10", title: "Agent ajouté", sub: "Premier agent créé", time: "Il y a 1 h" },
+  { icon: Calendar, color: "text-module-orange bg-module-orange/10", title: "Présence activée", sub: "Suivi disponible", time: "Il y a 2 h" },
+  { icon: FileText, color: "text-module-purple bg-module-purple/10", title: "Modèles prêts", sub: "Formulaires agents", time: "Il y a 3 h" },
+  { icon: UserPlus, color: "text-module-pink bg-module-pink/10", title: "Gestion activée", sub: "Mode gestionnaire", time: "Il y a 4 h" },
 ];
 
 export function RecentActivities() {
@@ -32,3 +32,4 @@ export function RecentActivities() {
     </section>
   );
 }
+

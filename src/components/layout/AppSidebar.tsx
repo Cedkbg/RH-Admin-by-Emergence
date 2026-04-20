@@ -21,8 +21,8 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-sidebar-accent-foreground">Fintech RH</p>
-              <p className="truncate text-[11px] text-sidebar-foreground/70">Système de Gestion RH</p>
+EMERGENCE DRC
+Gestion Agents DRC
             </div>
           )}
         </div>

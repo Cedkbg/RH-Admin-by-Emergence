@@ -6,10 +6,10 @@ import { modules } from "@/data/modules";
 
 export function AppLayout() {
   const location = useLocation();
-  const current = modules.find((m) =>
-    m.path === "/" ? location.pathname === "/" : location.pathname.startsWith(m.path),
-  );
-  const title = current?.label ?? "Fintech RH";
+const current = modules.find((m) =>
+  m.path === "/" ? location.pathname === "/" : location.pathname.startsWith(m.path),
+);
+const title = current?.label ?? "EMERGENCE DRC";
 
   return (
     <SidebarProvider>
@@ -22,7 +22,7 @@ export function AppLayout() {
           </main>
           <footer className="border-t border-border bg-card px-6 py-3 text-xs text-muted-foreground">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span>© 2026 Fintech RH — Tous droits réservés</span>
+© 2024 EMERGENCE DRC — Tous droits réservés
               <span>Version 1.0.0</span>
             </div>
           </footer>

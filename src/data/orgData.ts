@@ -15,14 +15,14 @@ export interface Direction {
 }
 
 export const directions: Direction[] = [
-  { id: "tech", code: "CTO",     name: "Direction Technologie",                  managerTitle: "Manager Technologie",         color: "blue",   icon: Cpu,         agentCount: 42 },
-  { id: "prod", code: "CPO",     name: "Direction Produits",                     managerTitle: "Manager Produits",            color: "green",  icon: Package,     agentCount: 28 },
-  { id: "ops",  code: "COO",     name: "Direction Opérations",                   managerTitle: "Manager Opérations",          color: "teal",   icon: Settings2,   agentCount: 35 },
-  { id: "fin",  code: "CFO",     name: "Direction Financière",                   managerTitle: "Manager Financier",           color: "indigo", icon: TrendingUp,  agentCount: 18 },
-  { id: "risk", code: "CRO/CCO", name: "Direction Risques & Conformité",         managerTitle: "Manager Risques & Conformité", color: "orange", icon: ShieldCheck, agentCount: 22 },
-  { id: "cmo",  code: "CMO",     name: "Direction Commerciale & Marketing",      managerTitle: "Manager Commercial & Marketing", color: "yellow", icon: Megaphone,   agentCount: 31 },
-  { id: "rh",   code: "CHRO",    name: "Direction Ressources Humaines",          managerTitle: "Manager RH",                  color: "blue",   icon: Users,       agentCount: 14 },
-  { id: "leg",  code: "CLO",     name: "Direction Juridique & Affaires",         managerTitle: "Manager Juridique",           color: "gray",   icon: Scale,       agentCount: 9 },
+  { id: "tech", code: "D1", name: "Direction Technologie", managerTitle: "Gestionnaire", color: "blue", icon: Cpu, agentCount: 0 },
+  { id: "prod", code: "D2", name: "Direction Produits", managerTitle: "Gestionnaire", color: "green", icon: Package, agentCount: 0 },
+  { id: "ops", code: "D3", name: "Direction Opérations", managerTitle: "Gestionnaire", color: "teal", icon: Settings2, agentCount: 0 },
+  { id: "fin", code: "D4", name: "Direction Financière", managerTitle: "Gestionnaire", color: "indigo", icon: TrendingUp, agentCount: 0 },
+  { id: "risk", code: "D5", name: "Direction Risques", managerTitle: "Gestionnaire", color: "orange", icon: ShieldCheck, agentCount: 0 },
+  { id: "cmo", code: "D6", name: "Direction Commerciale", managerTitle: "Gestionnaire", color: "yellow", icon: Megaphone, agentCount: 0 },
+  { id: "rh", code: "D7", name: "Direction RH", managerTitle: "Gestionnaire", color: "blue", icon: Users, agentCount: 0 },
+  { id: "leg", code: "D8", name: "Direction Juridique", managerTitle: "Gestionnaire", color: "gray", icon: Scale, agentCount: 0 },
 ];
 
 export interface Employee {
@@ -34,27 +34,8 @@ export interface Employee {
   status: "actif" | "suspendu" | "depart";
   hiredAt: string;
   initials: string;
+  comment?: string; // RH notes
 }
 
-const firstNames = ["Marie", "Jean", "Sophie", "Pierre", "Aïcha", "Karim", "Léa", "Thomas", "Fatou", "Antoine", "Yasmine", "Hugo", "Camille", "Mehdi", "Inès", "Lucas", "Sarah", "Nicolas", "Amina", "Julien"];
-const lastNames = ["Martin", "Dupont", "Bernard", "Diallo", "Leroy", "Moreau", "Durand", "Traore", "Petit", "Lefevre", "Roux", "Ndiaye", "Garcia", "Faye", "Lambert", "Sylla", "Robert", "Camara", "Mercier", "Sow"];
-const roles = ["Développeur Senior", "Product Manager", "Analyste Financier", "Chargé de Conformité", "Commercial", "Chargé RH", "Juriste", "Designer UX", "Data Scientist", "Chef de Projet"];
+export const employees: Employee[] = [];
 
-function makeId(i: number) { return `emp-${String(i).padStart(4, "0")}`; }
-
-export const employees: Employee[] = Array.from({ length: 60 }, (_, i) => {
-  const fn = firstNames[i % firstNames.length];
-  const ln = lastNames[(i * 3) % lastNames.length];
-  const dir = directions[i % directions.length];
-  const statuses: Employee["status"][] = ["actif", "actif", "actif", "actif", "actif", "suspendu", "depart"];
-  return {
-    id: makeId(i + 1),
-    name: `${fn} ${ln}`,
-    role: roles[i % roles.length],
-    directionId: dir.id,
-    email: `${fn.toLowerCase()}.${ln.toLowerCase()}@fintechrh.com`,
-    status: statuses[i % statuses.length],
-    hiredAt: `202${(i % 5) + 0}-${String((i % 12) + 1).padStart(2, "0")}-15`,
-    initials: `${fn[0]}${ln[0]}`,
-  };
-});
