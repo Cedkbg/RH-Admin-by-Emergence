@@ -64,17 +64,18 @@ export function OrgChart() {
 
       <div className="overflow-x-auto scrollbar-thin">
         <div className="flex min-w-[900px] flex-col items-center gap-3 py-2">
-          <NodeBox code="DG" title="Directeur Général" className="bg-[hsl(222,47%,20%)]" />
-          <div className="h-5 w-px bg-border" />
-          <NodeBox code="DGA" title="Directeur Général Adjoint" className="bg-[hsl(222,47%,28%)]" />
-          <div className="h-5 w-px bg-border" />
-          <NodeBox code="" title="Manager Général" subtitle="Supervise l'exécution opérationnelle" className="bg-primary" />
-
-          <div className="relative h-6 w-full">
-            <div className="absolute left-1/2 top-0 h-3 w-px -translate-x-1/2 bg-border" />
-            <div className="absolute left-[6%] right-[6%] top-3 h-px bg-border" />
-          </div>
-
+<NodeBox code="DG" title="Directeur Général" className="bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg text-white" />
+  <div className="h-5 w-px bg-border" />
+  <NodeBox code="DGA" title="Directeur Général Adjoint" className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white" />
+  <div className="h-5 w-px bg-border" />
+  <NodeBox code="MAN" title="Manager Général" subtitle="Direction de l'entreprise" className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg" />
+  <div className="h-5 w-px bg-border" />
+  <NodeBox title="Secrétaire" subtitle="Assistante exécutive" className="bg-indigo-600" />
+  <div className="h-5 w-px bg-border" />
+  <div className="relative h-6 w-full">
+    <div className="absolute left-1/2 top-0 h-3 w-px -translate-x-1/2 bg-border" />
+    <div className="absolute left-[6%] right-[6%] top-3 h-px bg-border" />
+  </div>
           <div className="flex w-full justify-between gap-3 px-[2%]">
             {directions.map((d) => (
               <div key={d.id} className="flex flex-col items-center gap-0">
@@ -88,3 +89,4 @@ export function OrgChart() {
     </section>
   );
 }
+

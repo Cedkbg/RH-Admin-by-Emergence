@@ -1,0 +1,22 @@
+[
+  {
+    "id": "rh-main",
+    "username": "rhadmin",
+    "fullName": "Administrateur RH Emergence",
+    "role": "rh",
+    "pw_hash": "$2b$10$w9IH.OQZoKoaGwbZA./rk.HxrcmTTJOXpPFP4NJOHDGKpAX.952cC",
+    "pw": "rh2024!Emergence",
+    "disabled": false,
+    "created_at": "2026-04-22T06:31:58.907Z"
+  },
+  {
+    "id": "agent1",
+    "username": "agent1",
+    "fullName": "Agent 1 Joy",
+    "role": "agent",
+    "pw_hash": "$2b$10$3oeoxQE.29aXnB1b6/HqkeNdsfYHfZi7xHnsPEUpQnjKswxOq.tJS",
+    "pw": "agent123!",
+    "disabled": false,
+    "created_at": "2026-04-22T06:31:59.031Z"
+  }
+]

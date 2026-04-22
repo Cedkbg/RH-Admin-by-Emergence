@@ -20,7 +20,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
-    // Load from localStorage
+
+
     const saved = localStorage.getItem('emergence_notifications');
     if (saved) setNotifications(JSON.parse(saved));
   }, []);
@@ -45,25 +46,6 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     setNotifications(prev => prev.map(n => n.id === id ? {...n, read: true} : n));
   };
 
-  // Simulate real-time from agents
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const messages = [
-        'Demande de congé',
-        'Document soumis',
-        'Tâche terminée',
-        'Question sur salaire',
-        'Demande de formation'
-      ];
-      const agents = ['Agent A', 'Agent B', 'Nouvel agent'];
-      addNotification({
-        from: agents[Math.floor(Math.random()*agents.length)],
-        message: messages[Math.floor(Math.random()*messages.length)],
-        time: new Date().toLocaleString('fr-FR'),
-      });
-    }, 30000); // every 30s
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <NotificationContext.Provider value={{ notifications, markRead, addNotification }}>

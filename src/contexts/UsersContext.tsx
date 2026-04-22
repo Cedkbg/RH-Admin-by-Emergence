@@ -1,85 +1,105 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usersService, type SupabaseUser } from '@/services/supabase/users';
 
-interface User {
-  id: string;
-  username: string;
-  fullName: string;
-  role: 'rh' | 'agent';
-  pw: string;
-}
+type User = SupabaseUser;
 
 interface UsersContextType {
   users: User[];
   currentUser: User | null;
-  login: (username: string, password: string) => boolean;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
-  createUser: (user: Omit<User, 'id'>) => string | null;
+  createUser: (userData: { username: string; fullName: string; role: 'rh' | 'agent'; pw: string }) => Promise<string | null>;
+  toggleUserDisabled: (userId: string) => void;
+  changeUserPw: (userId: string, newPw: string) => void;
 }
 
 const UsersContext = createContext<UsersContextType | null>(null);
 
 export const UsersProvider = ({ children }: { children: ReactNode }) => {
-const [users, setUsers] = useState<User[]>([
-    {
-      id: '1',
-      username: 'jemima',
-      fullName: 'JEMIMA NYEMBWE',
-      role: 'rh',
-      pw: ''
-    }
-  ]);
+  const queryClient = useQueryClient();
+
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ['users'],
+    queryFn: usersService.list,
+  });
+
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  if (users.length > 0 && !currentUser) setCurrentUser(users[0]);
 
   useEffect(() => {
-    const savedUsers = localStorage.getItem('emergence_users');
     const savedUserId = localStorage.getItem('current_user_id');
-    if (savedUsers) {
-      const parsedUsers = JSON.parse(savedUsers);
-      setUsers(parsedUsers);
-      if (savedUserId) {
-        const user = parsedUsers.find((u: User) => u.id === savedUserId);
-        if (user) setCurrentUser(user);
+    if (savedUserId && users.length > 0) {
+      const user = users.find((u) => u.id === savedUserId);
+      if (user) {
+        setCurrentUser(user);
       }
     }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('emergence_users', JSON.stringify(users));
   }, [users]);
 
-  useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('current_user_id', currentUser.id);
-    } else {
-      localStorage.removeItem('current_user_id');
+  const login = async (username: string, password: string): Promise<boolean> => {
+    try {
+      const user = await usersService.login(username, password);
+      if (user) {
+        setCurrentUser(user);
+        localStorage.setItem('current_user_id', user.id);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
     }
-  }, [currentUser]);
-
-  const generateId = () => `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-  const login = (username: string, password: string): boolean => {
-    const user = users.find(u => u.username === username && u.pw === password);
-    if (user) {
-      setCurrentUser(user);
-      return true;
-    }
-    return false;
   };
 
   const logout = () => {
     setCurrentUser(null);
+    localStorage.removeItem('current_user_id');
   };
 
-  const createUser = (userData: Omit<User, 'id'>): string | null => {
-    if (!currentUser || currentUser.role !== 'rh') return null;
-    const newUser: User = { ...userData, id: generateId() };
-    setUsers([...users, newUser]);
-    return newUser.id;
+  const createMutation = useMutation({
+    mutationFn: (userData: { username: string; fullName: string; role: 'rh' | 'agent'; pw: string }) => usersService.create({
+      username: userData.username,
+      fullName: userData.fullName,
+      role: userData.role,
+      pw: userData.pw,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: usersService.toggleDisabled,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+
+const createUser = async (userData: { username: string; fullName: string; role: 'rh' | 'agent'; pw: string }): Promise<string | null> => {
+    // Allow first RH creation unauth if no users or no RH exists, then RH-logged only
+    const hasRH = users.some(u => u.role === 'rh');
+    if ((users.length === 0 || !hasRH) && userData.role === 'rh' || (currentUser?.role === 'rh')) {
+      try {
+        const id = await createMutation.mutateAsync(userData);
+        return id;
+      } catch {
+        return null;
+      }
+    } else {
+      return null;
+    }
+  };
+
+  const toggleUserDisabled = (userId: string) => {
+    toggleMutation.mutate(userId);
+    if (currentUser?.id === userId) logout();
+  };
+
+  const changeUserPw = () => {
+    // Stub - implémenter plus tard
   };
 
   return (
-    <UsersContext.Provider value={{ users, currentUser, login, logout, createUser }}>
+    <UsersContext.Provider value={{ users, currentUser, login, logout, createUser, toggleUserDisabled, changeUserPw }}>
       {children}
     </UsersContext.Provider>
   );

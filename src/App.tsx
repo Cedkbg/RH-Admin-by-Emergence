@@ -11,10 +11,15 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Index from "./pages/Index.tsx";
 import Admin from "./pages/Admin.tsx";
 import Register from "./pages/Register.tsx";
+import Login from "./pages/Login.tsx";
 import Organigramme from "./pages/Organigramme.tsx";
 import Employes from "./pages/Employes.tsx";
 import ModulePlaceholder from "./pages/ModulePlaceholder.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import DebugUsers from "./pages/DebugUsers.tsx";
+import SimpleAdmin from "./pages/SimpleAdmin.tsx";
+import AutoRHLogin from "./pages/AutoRHLogin.tsx";
+import { Protected } from "@/components/Protected";
 
 const queryClient = new QueryClient();
 
@@ -36,17 +41,20 @@ const App = () => (
               <Sonner />
               <BrowserRouter>
                 <Routes>
-                  <Route element={<AppLayout />}>
-                    <Route path="/" element={<Index />} />
-<Route path="/admin" element={<Admin />} />
-            <Route path="/register" element={<Register />} />
-                    <Route path="/organigramme" element={<Organigramme />} />
-                    <Route path="/employes" element={<Employes />} />
-                    {placeholderRoutes.map((path) => (
-                      <Route key={path} path={path} element={<ModulePlaceholder />} />
-                    ))}
-                  </Route>
-                  <Route path="*" element={<NotFound />} />
+<Route path="/login" element={<AutoRHLogin />} />
+  <Route path="/register" element={<Register />} />
+<Route element={<AppLayout />}>
+    <Route path="/simple-admin" element={<Protected><SimpleAdmin /></Protected>} />  
+    <Route index element={<Index />} />
+    <Route path="/admin" element={<Protected><Admin /></Protected>} />
+    <Route path="/organigramme" element={<Protected><Organigramme /></Protected>} />
+    <Route path="/employes" element={<Protected><Employes /></Protected>} />
+    {placeholderRoutes.map((path) => (
+      <Route key={path} path={path} element={<Protected><ModulePlaceholder /></Protected>} />
+    ))}
+  </Route>
+<Route path="/debug" element={<DebugUsers />} />
+  <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
             </NotificationProvider>

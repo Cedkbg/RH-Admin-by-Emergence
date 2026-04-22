@@ -1,0 +1,11 @@
+console.log('🧹 Reset LocalStorage pour Emergence App');
+console.log('Navigateur: Ouvrir F12 → Application → LocalStorage → localhost:8080 → DELETE toutes clés');
+console.log('Puis Refresh');
+console.log('');
+console.log('🆕 Nouveau RH:');
+console.log('Username: Emergence');
+console.log('Password: rh2024!Emergence');
+console.log('Route: /login → /admin');
+console.log('');
+console.log('✅ Création agent pw = emergence123!');
+console.log('F12 Console propre = OK.');

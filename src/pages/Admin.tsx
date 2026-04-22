@@ -4,11 +4,10 @@ import { directions } from "@/data/orgData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAgent } from "@/contexts/AgentContext";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -65,7 +64,7 @@ const Admin = () => {
   return (
     <div className="p-6 lg:p-8 space-y-6 lg:space-y-8 bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen">
       <div className="space-y-6">
-        {/* KPI Card */}
+
         <Card className="shadow-lg border-emerald-100">
           <CardContent className="p-8 lg:p-12">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
@@ -92,7 +91,6 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-        {/* Search */}
         <Card className="shadow-md">
           <CardContent className="p-6 lg:p-8">
             <div className="relative">
@@ -107,7 +105,6 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-        {/* Agents Grid */}
         <Card className="shadow-xl">
           <CardHeader className="pb-8">
             <div className="flex items-center gap-4">
@@ -135,9 +132,7 @@ const Admin = () => {
                           </div>
                         </div>
                         <div className="space-y-2 text-sm font-medium text-gray-700">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">{dir?.name}</Badge>
-                          </div>
+                          <Badge variant="outline" className="text-xs">{dir?.name}</Badge>
                           <div className="flex items-center gap-2">
                             <Mail className="h-4 w-4" />
                             <span>{agent.email}</span>
@@ -162,65 +157,79 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-        {/* Add Dialog */}
+        {/* FIXED DIALOG */}
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh]">
-            <ScrollArea className="h-[70vh]">
-              <DialogHeader className="mb-8">
-                <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-                  <UserPlus className="h-8 w-8" />
-                  Ajouter nouvel agent
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <Label className="font-semibold">Nom complet</Label>
-                  <Input 
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="Dupont Jean"
-                    className="h-12"
-                  />
-                </div>
-                <div className="space-y-4">
-                  <Label className="font-semibold">Email</Label>
-                  <Input 
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    placeholder="jean@emergence.cd"
-                    className="h-12"
-                  />
-                </div>
-                <div className="space-y-4">
-                  <Label className="font-semibold">Direction</Label>
-                  <Select value={formData.directionId} onValueChange={(v) => setFormData({...formData, directionId: v})}>
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {directions.map(d => (
-                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-4">
-                  <Label className="font-semibold">Poste</Label>
-                  <Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v})}>
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles.map(role => (
-                        <SelectItem key={role} value={role}>{role}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          <DialogContent className="sm:max-w-2xl">
+            
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                <UserPlus className="h-8 w-8" />
+                Ajouter nouvel agent
+              </DialogTitle>
+              <DialogDescription>
+                Remplissez les informations de l'agent
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* SCROLL FIX */}
+            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+
+              <div className="space-y-4">
+                <Label className="font-semibold">Nom complet</Label>
+                <Input 
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="Dupont Jean"
+                  className="h-12"
+                />
               </div>
-            </ScrollArea>
-            <div className="flex gap-4 p-6 border-t bg-muted/50">
+
+              <div className="space-y-4">
+                <Label className="font-semibold">Email</Label>
+                <Input 
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  placeholder="jean@emergence.cd"
+                  className="h-12"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <Label className="font-semibold">Direction</Label>
+                <Select value={formData.directionId} onValueChange={(v) => setFormData({...formData, directionId: String(v)})}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {directions.map(d => (
+                      <SelectItem key={d.id} value={String(d.id)}>
+                        {d.name ?? ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-4">
+                <Label className="font-semibold">Poste</Label>
+                <Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v})}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map(role => (
+                      <SelectItem key={role} value={role}>
+                        {role ?? ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+            </div>
+
+            <div className="flex gap-4 pt-6 border-t">
               <Button 
                 variant="outline" 
                 className="flex-1 h-14"
@@ -235,12 +244,13 @@ const Admin = () => {
                 Créer agent
               </Button>
             </div>
+
           </DialogContent>
         </Dialog>
+
       </div>
     </div>
   );
 };
 
 export default Admin;
-

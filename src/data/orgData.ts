@@ -15,6 +15,8 @@ export interface Direction {
 }
 
 export const directions: Direction[] = [
+  { id: "dg", code: "DG", name: "Direction Générale", managerTitle: "DG", color: "purple" as ModuleColor, icon: TrendingUp, agentCount: 0 },
+  { id: "dga", code: "DGA", name: "Direction Générale Adjointe", managerTitle: "DGA", color: "indigo" as ModuleColor, icon: TrendingUp, agentCount: 0 },
   { id: "tech", code: "D1", name: "Direction Technologie", managerTitle: "Gestionnaire", color: "blue", icon: Cpu, agentCount: 0 },
   { id: "prod", code: "D2", name: "Direction Produits", managerTitle: "Gestionnaire", color: "green", icon: Package, agentCount: 0 },
   { id: "ops", code: "D3", name: "Direction Opérations", managerTitle: "Gestionnaire", color: "teal", icon: Settings2, agentCount: 0 },
@@ -38,4 +40,3 @@ export interface Employee {
 }
 
 export const employees: Employee[] = [];
-

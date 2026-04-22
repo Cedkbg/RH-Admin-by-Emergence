@@ -5,6 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from "@/components/ui/input";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUsers } from "@/contexts/UsersContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ title }: AppHeaderProps) {
   const { isRH, logout } = useAuth();
+  const { currentUser } = useUsers();
   const { notifications, markRead } = useNotifications();
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -56,17 +58,13 @@ export function AppHeader({ title }: AppHeaderProps) {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
             <Bell className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
+
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-80 max-h-96 p-0">
           <div className="p-3 border-b">
             <h3 className="font-semibold">Notifications ({notifications.length})</h3>
-            <p className="text-xs text-muted-foreground">Agents temps réel</p>
+            <p className="text-xs text-muted-foreground"></p>
           </div>
           <div className="max-h-64 overflow-y-auto p-1">
             {notificationItems.length ? notificationItems : (
@@ -86,11 +84,11 @@ export function AppHeader({ title }: AppHeaderProps) {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="flex items-center gap-3 rounded-full p-1 pr-3 transition hover:bg-secondary">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-              JN
+              {currentUser ? currentUser.fullName.substring(0,1).toUpperCase() + (currentUser.fullName.split(' ')[1]?.substring(0,1) || currentUser.fullName.substring(1,2)).toUpperCase() : '??'}
             </div>
             <div className="hidden text-left sm:block">
-              <p className="text-sm font-semibold leading-tight text-foreground">JEMIMA NYEMBWE</p>
-              <p className="text-xs leading-tight text-muted-foreground">Gestionnaire RH</p>
+              <p className="text-sm font-semibold leading-tight text-foreground">{currentUser?.fullName || 'Utilisateur'}</p>
+              <p className="text-xs leading-tight text-muted-foreground">{currentUser?.role === 'rh' ? 'Gestionnaire RH' : 'Agent'}</p>
             </div>
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </Button>

@@ -22,10 +22,7 @@ const ModulePlaceholder = () => {
       </div>
       <div className="w-full rounded-xl border border-dashed border-border bg-card p-8 shadow-sm">
         <Construction className="mx-auto h-8 w-8 text-muted-foreground" />
-        <p className="mt-3 text-sm font-medium text-foreground">Module en cours de construction</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Cette section sera développée dans la prochaine version, avec backend Lovable Cloud (auth, base de données, rôles).
-        </p>
+<p className="mt-3 text-sm font-medium text-muted-foreground">Fonctionnalité en développement</p>
       </div>
     </div>
   );

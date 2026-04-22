@@ -11,7 +11,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const { currentUser } = useUsers();
+  const usersContext = useUsers();
+  const { currentUser } = usersContext;
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
@@ -19,11 +20,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [currentUser]);
 
   const login = (username: string, password: string) => {
-    return useUsers().login(username, password);
+    return usersContext.login(username, password);
   };
 
   const logout = () => {
-    useUsers().logout();
+    usersContext.logout();
   };
 
   const isRH = currentUser?.role === 'rh';

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+ import { useMemo, useState } from "react";
 import { Search, UserPlus, Mail, Filter, MessageCircle } from "lucide-react";
 import { directions } from "@/data/orgData";
 import { colorClasses } from "@/data/modules";
@@ -137,23 +137,21 @@ const { isRH } = useAuth();
           >
             Toutes ({agents.length})
           </Button>
-          {directions.map((d) => {
+{directions.map((d) => {
             const c = colorClasses[d.color];
             const count = agents.filter(e => e.directionId === d.id).length;
             return (
-              <div key={d.id} className="flex rounded-full border">
-                <Button
-                  variant={activeDir === d.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveDir(d.id)}
-                  className="gap-2 px-3 py-1.5 rounded-l-full"
-                >
-                  <d.icon className="h-3.5 w-3.5" />
-
-{d.name} ({count})
-
-                </Button>
-              </div>
+              <Button
+                key={d.id}
+                variant={activeDir === d.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveDir(d.id)}
+                className="gap-2 px-3 py-1.5 rounded-full"
+              >
+🔹
+                {d.name}
+                <span className="ml-1 text-xs opacity-75">({count})</span>
+              </Button>
             );
           })}
         </div>
@@ -201,10 +199,9 @@ const { isRH } = useAuth();
                     </td>
                     <td className="p-4">{e.role}</td>
                     <td className="p-4">
-                      <Badge className={cn("gap-1", c?.text)}>
-                        <dir.icon className="h-3 w-3" />
-{dir?.name}
-
+                        <Badge className={cn("gap-1", c?.text)}>
+                        🔹
+                        {dir?.name || 'N/A'}
                       </Badge>
                     </td>
                     <td className="p-4">

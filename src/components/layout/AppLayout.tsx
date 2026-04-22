@@ -22,8 +22,9 @@ const title = current?.label ?? "EMERGENCE DRC";
           </main>
           <footer className="border-t border-border bg-card px-6 py-3 text-xs text-muted-foreground">
             <div className="flex flex-wrap items-center justify-between gap-2">
-© 2024 EMERGENCE DRC — Tous droits réservés
+EMERGENCE DRC
               <span>Version 1.0.0</span>
+
             </div>
           </footer>
         </div>
