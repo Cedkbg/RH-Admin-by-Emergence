@@ -14,16 +14,21 @@ const SimpleAdmin = () => {
   const { agents, addAgent } = useAgent();
   const { toast } = useToast();
   const { isRH } = useAuth();
-  const [formData, setFormData] = useState({ name: '', role: '', directionId: 'tech', email: '' });
+const [formData, setFormData] = useState({ name: '', role: '', directionId: 'dg', email: '' });
 
   if (!isRH) return <div>Login RH</div>;
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.role || !formData.email) return toast({ title: 'Erreur champs', variant: 'destructive' });
-    addAgent(formData);
-    toast({ title: 'Agent ajouté!' });
-    setFormData({ name: '', role: '', directionId: 'tech', email: '' });
+    try {
+      if (!formData.name || !formData.role || !formData.email || !formData.directionId) return toast({ title: 'Erreur champs', variant: 'destructive' });
+      await addAgent(formData);
+      toast({ title: 'Agent ajouté Supabase!' });
+      setFormData({ name: '', role: '', directionId: 'dg', email: '' });
+    } catch (error) {
+      toast({ title: 'Erreur Supabase', description: 'Vérifiez table agents RLS', variant: 'destructive' });
+      console.error(error);
+    }
   };
 
   return (

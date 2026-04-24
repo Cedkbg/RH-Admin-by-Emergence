@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { UserPlus, Users, Search, Mail } from "lucide-react";
-import { directions } from "@/data/orgData";
+import { UserPlus, Users, Search, Mail, Cpu, Settings2, Package, ShieldCheck, TrendingUp } from "lucide-react";
+import { directions, techDepartments, type Department } from "@/data/orgData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -220,13 +220,39 @@ const Admin = () => {
                   <SelectContent>
                     {roles.map(role => (
                       <SelectItem key={role} value={role}>
-                        {role ?? ""}
+                        {role ?? ""} 
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
+            {/* Tech Departments Responsible Selector */}
+            <div className="space-y-4">
+              <Label className="font-semibold text-sm uppercase tracking-wide text-blue-800 flex items-center gap-2">
+                🔧 Responsables Techniques
+              </Label>
+              {techDepartments.map(dept => (
+                <div key={dept.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-3 mb-2">
+                    <dept.icon className="h-5 w-5 text-blue-600" />
+                    <span className="font-medium text-sm">{dept.name}</span>
+                  </div>
+                  <Select>
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue placeholder={`Choisir responsable ${dept.short}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map(agent => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.name} - {agent.role}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
             </div>
 
             <div className="flex gap-4 pt-6 border-t">

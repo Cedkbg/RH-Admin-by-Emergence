@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { Employee } from '@/data/orgData';
+import { agentsService, type Employee } from '@/services/supabase/agents';
 
 interface AgentContextType {
   agents: Employee[];
-  addAgent: (emp: Omit<Employee, 'id' | 'initials' | 'hiredAt' | 'status' | 'comment'>) => string;
+  addAgent: (emp: Omit<Employee, 'id' | 'initials' | 'hiredAt' | 'status' | 'comment'>) => Promise<string>;
   updateAgent: (id: string, updates: Partial<Employee>) => void;
   deleteAgent: (id: string) => void;
 }
@@ -13,42 +13,31 @@ const AgentContext = createContext<AgentContextType | null>(null);
 export const AgentProvider = ({ children }: { children: ReactNode }) => {
   const [agents, setAgents] = useState<Employee[]>([]);
 
+  const refreshAgents = async () => {
+    const newAgents = await agentsService.list();
+    setAgents(newAgents);
+  };
+
   useEffect(() => {
-    const saved = localStorage.getItem('emergence_agents');
-    if (saved) {
-      setAgents(JSON.parse(saved));
-    }
+    refreshAgents();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('emergence_agents', JSON.stringify(agents));
-  }, [agents]);
+  const addAgent = async (empData: Omit<Employee, 'id' | 'initials' | 'hiredAt' | 'status'>): Promise<string> => {
+    const id = await agentsService.create(empData);
+    await refreshAgents();
+    return id;
+  };
 
-  const generateId = () => `agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-  const addAgent = (empData: Omit<Employee, 'id' | 'initials' | 'hiredAt' | 'status'>): string => {
-    const dir = directions.find(d => d.id === empData.directionId);
-    const nameParts = empData.name.trim().split(' ');
-    const initials = (nameParts[0] ? nameParts[0][0] : '') + (nameParts[1] ? nameParts[1][0] : '');
-    const newAgent: Employee = {
-      id: generateId(),
-      ...empData,
-      initials: initials.toUpperCase(),
-      hiredAt: new Date().toISOString().split('T')[0],
-      status: 'actif' as const,
-      comment: '',
-    };
-    const newAgents = [...agents, newAgent];
+  const updateAgent = async (id: string, updates: Partial<Employee>) => {
+    // TODO: Supabase update
+    const newAgents = agents.map(a => a.id === id ? {...a, ...updates} : a);
     setAgents(newAgents);
-    return newAgent.id;
   };
 
-  const updateAgent = (id: string, updates: Partial<Employee>) => {
-    setAgents(agents.map(a => a.id === id ? {...a, ...updates} : a));
-  };
-
-  const deleteAgent = (id: string) => {
-    setAgents(agents.filter(a => a.id !== id));
+  const deleteAgent = async (id: string) => {
+    // TODO: Supabase delete
+    const newAgents = agents.filter(a => a.id !== id);
+    setAgents(newAgents);
   };
 
   return (
@@ -65,4 +54,3 @@ export const useAgent = () => {
   }
   return context;
 };
-
