@@ -11,17 +11,23 @@ import Auth from "./pages/Auth";
 import Organigramme from "./pages/Organigramme";
 import Employes from "./pages/Employes";
 import Admin from "./pages/Admin";
-import ModulePlaceholder from "./pages/ModulePlaceholder";
 import NotFound from "./pages/NotFound";
+import Recrutement from "./pages/modules/Recrutement";
+import Taches from "./pages/modules/Taches";
+import Performance from "./pages/modules/Performance";
+import Formation from "./pages/modules/Formation";
+import Paie from "./pages/modules/Paie";
+import Presence from "./pages/modules/Presence";
+import Documents from "./pages/modules/Documents";
+import Juridique from "./pages/modules/Juridique";
+import Communication from "./pages/modules/Communication";
+import Talents from "./pages/modules/Talents";
+import BienEtre from "./pages/modules/BienEtre";
+import Rapports from "./pages/modules/Rapports";
+import Securite from "./pages/modules/Securite";
+import Parametres from "./pages/modules/Parametres";
 
 const queryClient = new QueryClient();
-
-const placeholderRoutes = [
-  "/recrutement", "/taches", "/performance", "/formation",
-  "/paie", "/presence", "/documents", "/juridique",
-  "/communication", "/talents", "/bien-etre", "/rapports",
-  "/securite", "/parametres",
-];
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -36,10 +42,21 @@ const App = () => (
               <Route index element={<Index />} />
               <Route path="/organigramme" element={<Organigramme />} />
               <Route path="/employes" element={<Employes />} />
+              <Route path="/recrutement" element={<Recrutement />} />
+              <Route path="/taches" element={<Taches />} />
+              <Route path="/performance" element={<Performance />} />
+              <Route path="/formation" element={<Formation />} />
+              <Route path="/paie" element={<Paie />} />
+              <Route path="/presence" element={<Presence />} />
+              <Route path="/documents" element={<Documents />} />
+              <Route path="/juridique" element={<Juridique />} />
+              <Route path="/communication" element={<Communication />} />
+              <Route path="/talents" element={<Talents />} />
+              <Route path="/bien-etre" element={<BienEtre />} />
+              <Route path="/rapports" element={<Rapports />} />
+              <Route path="/securite" element={<Securite />} />
+              <Route path="/parametres" element={<Parametres />} />
               <Route path="/admin" element={<Protected adminOnly><Admin /></Protected>} />
-              {placeholderRoutes.map((path) => (
-                <Route key={path} path={path} element={<ModulePlaceholder />} />
-              ))}
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
