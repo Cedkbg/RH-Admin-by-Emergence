@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { BarChart3, Users, Briefcase, GraduationCap, Wallet, Calendar } from "lucide-react";
+import { BarChart3, Users, Briefcase, GraduationCap, Wallet, Calendar, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const Rapports = () => {
   const [stats, setStats] = useState({

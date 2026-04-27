@@ -45,6 +45,10 @@ const BienEtre = () => {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 animate-fade-in">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+      </Button>
+
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Bien-être au travail</h1>
         <p className="text-sm text-muted-foreground">Votre avis est anonyme et aide à améliorer la QVT.</p>
