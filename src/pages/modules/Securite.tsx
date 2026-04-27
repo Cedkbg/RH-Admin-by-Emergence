@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
-import { Shield, AlertTriangle } from "lucide-react";
+import { Shield, AlertTriangle, ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface Log { id: string; actor_id: string | null; action: string; entity: string | null; entity_id: string | null; created_at: string; }
 
 const Securite = () => {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [logs, setLogs] = useState<Log[]>([]);
 
   useEffect(() => {
@@ -19,6 +22,9 @@ const Securite = () => {
   if (!isAdmin) {
     return (
       <div className="mx-auto max-w-2xl py-16 text-center">
+        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+        </Button>
         <Shield className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
         <h1 className="text-2xl font-bold">Sécurité & Accès</h1>
         <p className="mt-2 text-sm text-muted-foreground">Réservé à l'Admin RH.</p>
@@ -28,6 +34,9 @@ const Securite = () => {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 animate-fade-in">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+      </Button>
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Sécurité & Accès</h1>
         <p className="text-sm text-muted-foreground">Journal des actions sensibles ({logs.length}).</p>
