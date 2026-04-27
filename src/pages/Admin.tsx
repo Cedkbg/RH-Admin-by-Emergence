@@ -143,10 +143,227 @@ const Admin = () => {
   );
 
   return (
+<<<<<<< HEAD
     <div className="mx-auto max-w-5xl space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Administration</h1>
         <p className="text-sm text-muted-foreground">Validation des comptes et gestion des rôles.</p>
+=======
+    <div className="p-6 lg:p-8 space-y-6 lg:space-y-8 bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen">
+      <div className="space-y-6">
+
+        <Card className="shadow-lg border-emerald-100">
+          <CardContent className="p-8 lg:p-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+              <div>
+                <div className="text-4xl lg:text-5xl font-bold text-emerald-600">{agents.length}</div>
+                <p className="text-lg text-muted-foreground mt-2">Agents actifs</p>
+              </div>
+              <div>
+                <div className="text-4xl lg:text-5xl font-bold text-blue-600">{directions.length}</div>
+                <p className="text-lg text-muted-foreground mt-2">Directions</p>
+              </div>
+              <div>
+                <div className="text-4xl lg:text-5xl font-bold text-gray-600">0</div>
+                <p className="text-lg text-muted-foreground mt-2">En attente</p>
+              </div>
+            </div>
+            <Button 
+              onClick={() => setAddOpen(true)} 
+              className="mt-8 w-full lg:w-auto h-14 px-12 font-semibold shadow-lg hover:shadow-emerald-300 rounded-xl"
+            >
+              <UserPlus className="w-5 h-5 mr-2" />
+              Ajouter agent
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-md">
+          <CardContent className="p-6 lg:p-8">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <Input 
+                placeholder="Rechercher agents..." 
+                className="h-12 pl-12 pr-4 lg:pl-14 rounded-xl shadow-sm" 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-xl">
+          <CardHeader className="pb-8">
+            <div className="flex items-center gap-4">
+              <Users className="h-10 w-10 text-emerald-600" />
+              <CardTitle className="text-3xl font-bold">Agents ({filteredAgents.length})</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pb-12">
+            {filteredAgents.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredAgents.map((agent) => {
+                  const dir = directions.find(d => d.id === agent.directionId);
+                  return (
+                    <Card key={agent.id} className="hover:shadow-lg hover:border-emerald-300 transition-all group border">
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center text-lg font-bold text-white shadow-lg">
+                            {agent.name.split(' ').slice(0,2).map(n => n[0]).join('').toUpperCase()}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-xl">{agent.name}</h3>
+                            <Badge className="mt-1 px-4 py-1 font-semibold bg-emerald-100 text-emerald-800">
+                              {agent.role}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="space-y-2 text-sm font-medium text-gray-700">
+                          <Badge variant="outline" className="text-xs">{dir?.name}</Badge>
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4" />
+                            <span>{agent.email}</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-24 space-y-6">
+                <Users className="h-32 w-32 mx-auto text-gray-400 mb-8" />
+                <h3 className="text-4xl font-bold text-gray-600 mb-4">Aucun agent</h3>
+                <p className="text-xl text-gray-500 mb-8 max-w-md mx-auto">Ajoutez le premier agent</p>
+                <Button onClick={() => setAddOpen(true)} className="h-14 px-12 shadow-lg">
+                  <UserPlus className="w-5 h-5 mr-2" />
+                  Premier agent
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* DIALOG SCROLLABLE */}
+        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 gap-0 flex flex-col">
+            
+            {/* Header fixe */}
+            <DialogHeader className="p-6 pb-4 shrink-0">
+              <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                <UserPlus className="h-8 w-8" />
+                Ajouter nouvel agent
+              </DialogTitle>
+              <DialogDescription>
+                Remplissez les informations de l'agent
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Contenu scrollable */}
+            <div className="px-6 pb-4 space-y-6 overflow-y-auto">
+
+              <div className="space-y-4">
+                <Label className="font-semibold">Nom complet</Label>
+                <Input 
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="Dupont Jean"
+                  className="h-12"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <Label className="font-semibold">Email</Label>
+                <Input 
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  placeholder="jean@emergence.cd"
+                  className="h-12"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <Label className="font-semibold">Direction</Label>
+                <Select value={formData.directionId} onValueChange={(v) => setFormData({...formData, directionId: String(v)})}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                <SelectContent className="max-h-[240px] overflow-y-auto">
+                    {directions.map(d => (
+                      <SelectItem key={d.id} value={String(d.id)}>
+                        {d.name ?? ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-4">
+                <Label className="font-semibold">Poste</Label>
+                <Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v})}>
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[240px] overflow-y-auto">
+                    {roles.map(role => (
+                      <SelectItem key={role} value={role}>
+                        {role ?? ""} 
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Tech Departments Responsible Selector */}
+              <div className="space-y-4">
+                <Label className="font-semibold text-sm uppercase tracking-wide text-blue-800 flex items-center gap-2">
+                  🔧 Responsables Techniques
+                </Label>
+                {techDepartments.map(dept => (
+                  <div key={dept.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <dept.icon className="h-5 w-5 text-blue-600" />
+                      <span className="font-medium text-sm">{dept.name}</span>
+                    </div>
+                    <Select>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue placeholder={`Choisir responsable ${dept.short}`} />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[240px] overflow-y-auto">
+                        {agents.map(agent => (
+                          <SelectItem key={agent.id} value={agent.id}>
+                            {agent.name} - {agent.role}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer fixe */}
+            <div className="flex gap-4 p-6 pt-4 border-t shrink-0 bg-white">
+              <Button 
+                variant="outline" 
+                className="flex-1 h-14"
+                onClick={() => setAddOpen(false)}
+              >
+                Annuler
+              </Button>
+              <Button 
+                className="flex-1 h-14 bg-emerald-600 hover:bg-emerald-700"
+                onClick={handleAddAgent}
+              >
+                Créer agent
+              </Button>
+            </div>
+
+          </DialogContent>
+        </Dialog>
+
+>>>>>>> 07b8eab ( file the login)
       </div>
 
       <Tabs defaultValue="pending">

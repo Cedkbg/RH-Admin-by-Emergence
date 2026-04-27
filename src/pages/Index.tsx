@@ -6,6 +6,7 @@ import { ModuleGrid } from "@/components/dashboard/ModuleGrid";
 import { RecentActivities } from "@/components/dashboard/RecentActivities";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { MonthStats } from "@/components/dashboard/MonthStats";
+<<<<<<< HEAD
 import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
@@ -20,6 +21,15 @@ const Index = () => {
       setStats({ employees: empCount ?? 0, directions: dirCount ?? 0 });
     })();
   }, []);
+=======
+import { useAgent } from "@/contexts/AgentContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { directions } from "@/data/orgData";
+
+const Index = () => {
+  const { isAuthenticated } = useAuth();
+  const { agents } = useAgent();
+>>>>>>> 07b8eab ( file the login)
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 animate-fade-in">
