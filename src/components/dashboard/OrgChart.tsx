@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { User } from "lucide-react";
+import { User, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { colorClasses } from "@/data/modules";
 import { iconForCode, colorForCode } from "@/data/orgData";
@@ -12,36 +12,54 @@ interface DirectionRow {
   manager_name: string | null;
 }
 
-function NodeBox({ code, title, subtitle, className }: { code?: string; title: string; subtitle?: string; className?: string }) {
+function TopNode({
+  code,
+  title,
+  subtitle,
+  className,
+  icon: Icon = User,
+}: {
+  code?: string;
+  title: string;
+  subtitle?: string;
+  className?: string;
+  icon?: typeof User;
+}) {
   return (
-    <div className={cn("flex min-w-[160px] md:min-w-[180px] items-center gap-3 rounded-lg px-4 py-3 text-primary-foreground shadow-md", className)}>
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15">
-        <User className="h-4 w-4" />
+    <div
+      className={cn(
+        "flex min-w-[260px] items-center gap-3 rounded-xl px-5 py-3 text-white shadow-md",
+        className
+      )}
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
+        <Icon className="h-4 w-4" />
       </div>
-      <div className="min-w-0 text-left">
+      <div className="min-w-0 text-left flex-1">
         {code && <p className="text-sm font-bold leading-tight">{code}</p>}
-        <p className="truncate text-xs leading-tight opacity-90">{title}</p>
-        {subtitle && <p className="truncate text-[11px] leading-tight opacity-75">{subtitle}</p>}
+        <p className="truncate text-sm leading-tight">{title}</p>
+        {subtitle && <p className="truncate text-[11px] leading-tight opacity-80">{subtitle}</p>}
       </div>
     </div>
   );
 }
 
-function DirectionCard({ d }: { d: DirectionRow }) {
+function DirectionColumn({ d }: { d: DirectionRow }) {
   const code = d.code || "";
   const Icon = iconForCode(code);
   const color = colorForCode(code);
   const c = colorClasses[color];
+
   return (
-    <div className="flex w-[120px] md:w-[140px] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-      <div className={cn("flex flex-col items-center gap-1 px-2 py-3 text-primary-foreground", c.bg)}>
+    <div className="flex w-[120px] flex-col rounded-lg overflow-hidden border border-border bg-card shadow-sm">
+      <div className={cn("flex flex-col items-center justify-center gap-1.5 px-2 py-4 text-white min-h-[120px]", c.bg)}>
         <Icon className="h-5 w-5" />
-        <p className="text-center text-[11px] md:text-xs font-semibold leading-tight">{d.name}</p>
+        <p className="text-center text-[11px] font-semibold leading-tight px-1">{d.name}</p>
         {code && <p className="text-[10px] font-medium opacity-90">({code})</p>}
       </div>
-      <div className="px-2 py-2 text-center">
+      <div className="px-2 py-3 text-center bg-card border-t">
         <p className="text-[11px] font-medium leading-tight text-foreground">
-          {d.manager_name || "—"}
+          {d.manager_name || `Manager ${d.name.replace(/^Direction\s+/i, "")}`}
         </p>
       </div>
     </div>
@@ -59,26 +77,76 @@ export function OrgChart() {
       .then(({ data }) => setDirections(data || []));
   }, []);
 
+  const dg = directions.find((d) => d.code === "DG");
+  const dga = directions.find((d) => d.code === "DGA");
+  const others = directions.filter((d) => d.code !== "DG" && d.code !== "DGA");
+
   return (
-    <section className="rounded-xl border border-border bg-card p-4 md:p-5 shadow-sm">
-      <h2 className="mb-4 text-base font-semibold text-foreground">Organigramme de l'entreprise</h2>
+    <section className="rounded-xl border border-border bg-card p-4 md:p-6 shadow-sm">
+      <h2 className="mb-6 text-base font-semibold text-foreground">Organigramme de l'entreprise</h2>
 
       {directions.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
-          Aucune direction enregistrée. L'administrateur peut en ajouter depuis la page Organigramme.
+          Aucune direction enregistrée.
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3 py-6 mx-auto max-w-4xl px-4">
-          <NodeBox code="DG" title="Direction Générale" className="bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg" />
-          <div className="h-6 w-px bg-gray-300" />
-          <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {directions.filter((d) => d.code !== "DG").map((d) => (
-              <div key={d.id} className="flex flex-col items-center gap-1">
-                <div className="h-2 w-px bg-gray-300" />
-                <DirectionCard d={d} />
+        <div className="flex flex-col items-center gap-0 py-4 overflow-x-auto">
+          {/* DG */}
+          <TopNode
+            code={dg?.code || "DG"}
+            title={dg?.name || "Directeur Général"}
+            className="bg-slate-800"
+          />
+
+          {/* Connector */}
+          <div className="h-6 w-px bg-border" />
+
+          {/* DGA */}
+          <TopNode
+            code={dga?.code || "DGA"}
+            title={dga?.name || "Directeur Général Adjoint"}
+            className="bg-slate-700"
+          />
+
+          {/* Connector */}
+          <div className="h-6 w-px bg-border" />
+
+          {/* Manager Général */}
+          <TopNode
+            title="Manager Général"
+            subtitle="Supervise l'exécution opérationnelle"
+            className="bg-slate-600"
+            icon={UserCog}
+          />
+
+          {/* Vertical line down */}
+          <div className="h-6 w-px bg-border" />
+
+          {/* Horizontal connector spanning directions */}
+          {others.length > 0 && (
+            <div className="relative w-full max-w-[1200px] px-4">
+              {/* Horizontal line */}
+              <div
+                className="absolute left-0 right-0 top-0 mx-auto h-px bg-border"
+                style={{
+                  width: `calc(100% / ${others.length} * ${others.length - 1})`,
+                  marginLeft: `calc(100% / ${others.length} / 2)`,
+                  marginRight: `calc(100% / ${others.length} / 2)`,
+                }}
+              />
+              <div
+                className="grid gap-3"
+                style={{ gridTemplateColumns: `repeat(${others.length}, minmax(0, 1fr))` }}
+              >
+                {others.map((d) => (
+                  <div key={d.id} className="flex flex-col items-center">
+                    <div className="h-6 w-px bg-border" />
+                    <DirectionColumn d={d} />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </section>
