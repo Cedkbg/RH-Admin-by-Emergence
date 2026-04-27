@@ -133,6 +133,38 @@ const Organigramme = () => {
 
       <OrgChart />
 
+      {/* Opérationnel : modules par direction (dépliable) */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Opérationnel par direction</h2>
+        {visible.map((d) => {
+          const code = d.code || "";
+          const Icon = iconForCode(code);
+          const color = colorForCode(code);
+          const moduleIds = DIRECTION_MODULES[code] || [];
+          const departments: DepartmentItem[] = moduleIds
+            .map((mid) => modules.find((m) => m.id === mid))
+            .filter((m): m is NonNullable<typeof m> => !!m)
+            .map((m) => ({
+              id: m.id,
+              name: m.label,
+              short: m.shortDescription,
+              moduleId: m.path.replace(/^\//, ""),
+              agentCount: 0,
+              icon: m.icon,
+            }));
+          if (departments.length === 0) return null;
+          return (
+            <DirectionDepartments
+              key={d.id}
+              title={`${d.name}${d.code ? ` (${d.code})` : ""}`}
+              departments={departments}
+              icon={Icon}
+              colorClass={colorTextMap[color] || "text-blue-600"}
+            />
+          );
+        })}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {visible.map((d) => {
           const code = d.code || "";
