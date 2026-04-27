@@ -134,45 +134,19 @@ const Organigramme = () => {
 
       <OrgChart />
 
-      {/* Opérationnel : modules par direction (dépliable) */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Opérationnel par direction</h2>
-        {visible.map((d) => {
-          const code = d.code || "";
-          const Icon = iconForCode(code);
-          const color = colorForCode(code);
-          const moduleIds = DIRECTION_MODULES[code] || [];
-          const departments: DepartmentItem[] = moduleIds
-            .map((mid) => modules.find((m) => m.id === mid))
-            .filter((m): m is NonNullable<typeof m> => !!m)
-            .map((m) => ({
-              id: m.id,
-              name: m.label,
-              short: m.shortDescription,
-              moduleId: m.path.replace(/^\//, ""),
-              agentCount: 0,
-              icon: m.icon,
-            }));
-          if (departments.length === 0) return null;
-          return (
-            <DirectionDepartments
-              key={d.id}
-              title={`${d.name}${d.code ? ` (${d.code})` : ""}`}
-              departments={departments}
-              icon={Icon}
-              colorClass={colorTextMap[color] || "text-blue-600"}
-            />
-          );
-        })}
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {visible.map((d) => {
           const code = d.code || "";
           const Icon = iconForCode(code);
-          const c = colorClasses[colorForCode(code)];
+          const color = colorForCode(code);
+          const c = colorClasses[color];
+          const moduleIds = DIRECTION_MODULES[code] || [];
+          const directionModules = moduleIds
+            .map((mid) => modules.find((m) => m.id === mid))
+            .filter((m): m is NonNullable<typeof m> => !!m);
+          const isExpanded = expandedId === d.id;
           return (
-            <div key={d.id} className="relative p-5 bg-card rounded-xl border shadow-sm hover:shadow-md transition group">
+            <div key={d.id} className="relative p-5 bg-card rounded-xl border shadow-sm hover:shadow-md transition group flex flex-col">
               <div className="flex items-center gap-3 mb-3">
                 <div className={cn("p-3 rounded-xl text-primary-foreground", c.bg)}>
                   <Icon className="h-5 w-5" />
@@ -183,7 +157,41 @@ const Organigramme = () => {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground mb-2">{d.manager_name || "—"}</p>
-              {d.description && <p className="text-xs text-muted-foreground line-clamp-2">{d.description}</p>}
+              {d.description && <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{d.description}</p>}
+
+              {directionModules.length > 0 && (
+                <div className="mt-auto pt-3 border-t">
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : d.id)}
+                    className={cn(
+                      "w-full flex items-center justify-between text-xs font-semibold rounded-lg px-3 py-2 transition",
+                      c.bg,
+                      "text-primary-foreground hover:opacity-90"
+                    )}
+                  >
+                    <span>Opérationnel ({directionModules.length})</span>
+                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                  {isExpanded && (
+                    <div className="mt-2 space-y-1 animate-fade-in">
+                      {directionModules.map((m) => {
+                        const MIcon = m.icon;
+                        return (
+                          <Link
+                            key={m.id}
+                            to={m.path}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-muted transition"
+                          >
+                            <MIcon className={cn("h-3.5 w-3.5", colorTextMap[color] || "text-blue-600")} />
+                            <span className="truncate">{m.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {isAdmin && (
                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(d)}>
