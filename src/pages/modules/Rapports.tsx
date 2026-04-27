@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
 const Rapports = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     employees: 0, directions: 0, jobs: 0, trainings: 0, leaves: 0, payroll: 0,
   });
