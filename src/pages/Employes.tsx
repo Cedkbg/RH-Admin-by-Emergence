@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
 interface DirectionRow { id: string; name: string; code: string | null }
+interface DepartmentRow { id: string; name: string; direction_id: string }
 interface EmployeeRow {
   id: string;
   matricule: string | null;
@@ -21,9 +22,18 @@ interface EmployeeRow {
   phone: string | null;
   position: string | null;
   direction_id: string | null;
+  department_id: string | null;
+  contract_type: string | null;
+  gender: string | null;
   status: "active" | "suspended" | "departed";
   hire_date: string | null;
 }
+
+const POSITION_SUGGESTIONS = [
+  "Directeur", "Manager", "Secrétaire", "Assistant(e)", "Chef de service",
+  "Analyste", "Chargé(e) de mission", "Comptable", "Développeur", "Technicien",
+  "Agent administratif", "Coordinateur", "Stagiaire", "Consultant",
+];
 
 const statusLabel: Record<EmployeeRow["status"], string> = {
   active: "Actif", suspended: "Suspendu", departed: "Départ",
@@ -31,7 +41,8 @@ const statusLabel: Record<EmployeeRow["status"], string> = {
 
 const blankForm = {
   matricule: "", first_name: "", last_name: "", email: "", phone: "",
-  position: "", direction_id: "", status: "active" as EmployeeRow["status"], hire_date: "",
+  position: "", direction_id: "", department_id: "", contract_type: "CDI",
+  gender: "", status: "active" as EmployeeRow["status"], hire_date: "",
 };
 
 const Employes = () => {
