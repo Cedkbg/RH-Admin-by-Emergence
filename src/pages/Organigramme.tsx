@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { OrgChart } from "@/components/dashboard/OrgChart";
+import { DirectionDepartments, type DepartmentItem } from "@/components/dashboard/DirectionDepartments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,8 +13,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { iconForCode, colorForCode } from "@/data/orgData";
-import { colorClasses } from "@/data/modules";
+import { colorClasses, modules } from "@/data/modules";
 import { useSearchParams } from "react-router-dom";
+
+// Map each direction (by code) to its operational modules
+const DIRECTION_MODULES: Record<string, string[]> = {
+  DG:  ["dashboard", "reports", "communication"],
+  DGA: ["dashboard", "tasks", "reports"],
+  D1:  ["security", "settings", "documents"],
+  D2:  ["tasks", "performance", "talents"],
+  D3:  ["attendance", "tasks", "documents"],
+  D4:  ["payroll", "reports"],
+  D5:  ["legal", "security", "documents"],
+  D6:  ["recruitment", "communication", "performance"],
+  D7:  ["employees", "recruitment", "training", "attendance", "payroll", "performance", "talents", "wellbeing"],
+  D8:  ["legal", "documents"],
+};
+
+const colorTextMap: Record<string, string> = {
+  blue: "text-blue-600", purple: "text-purple-600", green: "text-green-600",
+  orange: "text-orange-600", red: "text-red-600", yellow: "text-amber-600",
+  pink: "text-pink-600", teal: "text-teal-600", indigo: "text-indigo-600", gray: "text-gray-600",
+};
 
 interface DirectionRow {
   id: string;
@@ -111,6 +132,38 @@ const Organigramme = () => {
       </div>
 
       <OrgChart />
+
+      {/* Opérationnel : modules par direction (dépliable) */}
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Opérationnel par direction</h2>
+        {visible.map((d) => {
+          const code = d.code || "";
+          const Icon = iconForCode(code);
+          const color = colorForCode(code);
+          const moduleIds = DIRECTION_MODULES[code] || [];
+          const departments: DepartmentItem[] = moduleIds
+            .map((mid) => modules.find((m) => m.id === mid))
+            .filter((m): m is NonNullable<typeof m> => !!m)
+            .map((m) => ({
+              id: m.id,
+              name: m.label,
+              short: m.shortDescription,
+              moduleId: m.path.replace(/^\//, ""),
+              agentCount: 0,
+              icon: m.icon,
+            }));
+          if (departments.length === 0) return null;
+          return (
+            <DirectionDepartments
+              key={d.id}
+              title={`${d.name}${d.code ? ` (${d.code})` : ""}`}
+              departments={departments}
+              icon={Icon}
+              colorClass={colorTextMap[color] || "text-blue-600"}
+            />
+          );
+        })}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {visible.map((d) => {
