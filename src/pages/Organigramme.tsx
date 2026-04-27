@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { OrgChart } from "@/components/dashboard/OrgChart";
+import { DirectionDepartments, type DepartmentItem } from "@/components/dashboard/DirectionDepartments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,8 +13,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { iconForCode, colorForCode } from "@/data/orgData";
-import { colorClasses } from "@/data/modules";
+import { colorClasses, modules } from "@/data/modules";
 import { useSearchParams } from "react-router-dom";
+
+// Map each direction (by code) to its operational modules
+const DIRECTION_MODULES: Record<string, string[]> = {
+  DG:  ["dashboard", "reports", "communication"],
+  DGA: ["dashboard", "tasks", "reports"],
+  D1:  ["security", "settings", "documents"],
+  D2:  ["tasks", "performance", "talents"],
+  D3:  ["attendance", "tasks", "documents"],
+  D4:  ["payroll", "reports"],
+  D5:  ["legal", "security", "documents"],
+  D6:  ["recruitment", "communication", "performance"],
+  D7:  ["employees", "recruitment", "training", "attendance", "payroll", "performance", "talents", "wellbeing"],
+  D8:  ["legal", "documents"],
+};
+
+const colorTextMap: Record<string, string> = {
+  blue: "text-blue-600", purple: "text-purple-600", green: "text-green-600",
+  orange: "text-orange-600", red: "text-red-600", yellow: "text-amber-600",
+  pink: "text-pink-600", teal: "text-teal-600", indigo: "text-indigo-600", gray: "text-gray-600",
+};
 
 interface DirectionRow {
   id: string;
