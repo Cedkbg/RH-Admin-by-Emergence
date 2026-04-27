@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Maximize2, Minus, Plus, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { colorClasses } from "@/data/modules";
 import { iconForCode, colorForCode } from "@/data/orgData";
@@ -50,8 +50,6 @@ function DirectionCard({ d }: { d: DirectionRow }) {
 
 export function OrgChart() {
   const [directions, setDirections] = useState<DirectionRow[]>([]);
-  const [zoom, setZoom] = useState(1);
-  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     supabase
@@ -61,50 +59,25 @@ export function OrgChart() {
       .then(({ data }) => setDirections(data || []));
   }, []);
 
-  const zoomIn = () => setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2)));
-  const zoomOut = () => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)));
-  const toggleFullscreen = async () => {
-    const el = sectionRef.current;
-    if (!el) return;
-    if (!document.fullscreenElement) {
-      await el.requestFullscreen?.().catch(() => {});
-    } else {
-      await document.exitFullscreen?.().catch(() => {});
-    }
-  };
-
   return (
-    <section ref={sectionRef} className="rounded-xl border border-border bg-card p-4 md:p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold text-foreground">Organigramme de l'entreprise</h2>
-        <div className="flex items-center gap-1 text-muted-foreground">
-          <button type="button" onClick={zoomIn} title="Zoomer" className="flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-secondary"><Plus className="h-3.5 w-3.5" /></button>
-          <button type="button" onClick={zoomOut} title="Dézoomer" className="flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-secondary"><Minus className="h-3.5 w-3.5" /></button>
-          <button type="button" onClick={toggleFullscreen} title="Plein écran" className="flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-secondary"><Maximize2 className="h-3.5 w-3.5" /></button>
-          <span className="ml-2 text-xs tabular-nums">{Math.round(zoom * 100)}%</span>
-        </div>
-      </div>
+    <section className="rounded-xl border border-border bg-card p-4 md:p-5 shadow-sm">
+      <h2 className="mb-4 text-base font-semibold text-foreground">Organigramme de l'entreprise</h2>
 
       {directions.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
           Aucune direction enregistrée. L'administrateur peut en ajouter depuis la page Organigramme.
         </div>
       ) : (
-        <div className="overflow-auto">
-          <div
-            className="flex flex-col items-center gap-3 py-6 mx-auto max-w-4xl px-4 transition-transform"
-            style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
-          >
-            <NodeBox code="DG" title="Direction Générale" className="bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg" />
-            <div className="h-6 w-px bg-gray-300" />
-            <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {directions.filter((d) => d.code !== "DG").map((d) => (
-                <div key={d.id} className="flex flex-col items-center gap-1">
-                  <div className="h-2 w-px bg-gray-300" />
-                  <DirectionCard d={d} />
-                </div>
-              ))}
-            </div>
+        <div className="flex flex-col items-center gap-3 py-6 mx-auto max-w-4xl px-4">
+          <NodeBox code="DG" title="Direction Générale" className="bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg" />
+          <div className="h-6 w-px bg-gray-300" />
+          <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {directions.filter((d) => d.code !== "DG").map((d) => (
+              <div key={d.id} className="flex flex-col items-center gap-1">
+                <div className="h-2 w-px bg-gray-300" />
+                <DirectionCard d={d} />
+              </div>
+            ))}
           </div>
         </div>
       )}
