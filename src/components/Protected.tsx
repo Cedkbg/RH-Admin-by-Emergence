@@ -1,8 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate, useLocation } from "react-router-dom";
 import { ReactNode } from "react";
-import { Clock, ShieldX, LogOut, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 export const Protected = ({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) => {
   const { session, loading } = useAuth();
