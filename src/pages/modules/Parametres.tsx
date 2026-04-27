@@ -9,7 +9,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-const KEYS = {
+interface SettingDef { label: string; default: string; textarea?: boolean }
+const KEYS: Record<string, SettingDef> = {
   company_name: { label: "Nom de l'entreprise", default: "EMERGENCE DRC" },
   company_address: { label: "Adresse", default: "" },
   company_phone: { label: "Téléphone", default: "" },
