@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.is_secretary_or_admin(uuid) FROM PUBLIC, anon, authenticated;

@@ -59,6 +59,51 @@ export type Database = {
         }
         Relationships: []
       }
+      appointments: {
+        Row: {
+          attendees: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_minutes: number | null
+          for_who: string | null
+          id: string
+          location: string | null
+          scheduled_at: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attendees?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          for_who?: string | null
+          id?: string
+          location?: string | null
+          scheduled_at: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attendees?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          for_who?: string | null
+          id?: string
+          location?: string | null
+          scheduled_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           check_in: string | null
@@ -177,6 +222,48 @@ export type Database = {
           },
         ]
       }
+      contacts: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          full_name: string
+          id: string
+          notes: string | null
+          organization: string | null
+          phone: string | null
+          position: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          notes?: string | null
+          organization?: string | null
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          notes?: string | null
+          organization?: string | null
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       departments: {
         Row: {
           code: string | null
@@ -285,10 +372,13 @@ export type Database = {
       }
       employees: {
         Row: {
+          contract_type: string | null
           created_at: string
+          department_id: string | null
           direction_id: string | null
           email: string | null
           first_name: string
+          gender: string | null
           hire_date: string | null
           id: string
           last_name: string
@@ -299,10 +389,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          contract_type?: string | null
           created_at?: string
+          department_id?: string | null
           direction_id?: string | null
           email?: string | null
           first_name: string
+          gender?: string | null
           hire_date?: string | null
           id?: string
           last_name: string
@@ -313,10 +406,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          contract_type?: string | null
           created_at?: string
+          department_id?: string | null
           direction_id?: string | null
           email?: string | null
           first_name?: string
+          gender?: string | null
           hire_date?: string | null
           id?: string
           last_name?: string
@@ -459,6 +555,90 @@ export type Database = {
           status?: string
           title?: string
           type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mail_register: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          direction: string
+          id: string
+          mail_date: string
+          notes: string | null
+          recipient: string | null
+          reference: string | null
+          sender: string | null
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          id?: string
+          mail_date?: string
+          notes?: string | null
+          recipient?: string | null
+          reference?: string | null
+          sender?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          id?: string
+          mail_date?: string
+          notes?: string | null
+          recipient?: string | null
+          reference?: string | null
+          sender?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      meeting_minutes: {
+        Row: {
+          agenda: string | null
+          attendees: string | null
+          created_at: string
+          created_by: string | null
+          decisions: string | null
+          id: string
+          meeting_date: string
+          next_steps: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          agenda?: string | null
+          attendees?: string | null
+          created_at?: string
+          created_by?: string | null
+          decisions?: string | null
+          id?: string
+          meeting_date?: string
+          next_steps?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          agenda?: string | null
+          attendees?: string | null
+          created_at?: string
+          created_by?: string | null
+          decisions?: string | null
+          id?: string
+          meeting_date?: string
+          next_steps?: string | null
+          title?: string
           updated_at?: string
         }
         Relationships: []
@@ -764,9 +944,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_secretary_or_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "employee"
+      app_role: "admin" | "employee" | "secretaire"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -894,7 +1075,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "employee"],
+      app_role: ["admin", "employee", "secretaire"],
     },
   },
 } as const

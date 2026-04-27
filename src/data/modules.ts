@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Network, Users, Briefcase, ClipboardCheck,
   GraduationCap, Wallet, Calendar, FileText, Scale,
   MessageSquare, Sparkles, HeartHandshake, BarChart3, Shield,
-  Settings, type LucideIcon
+  Settings, NotebookPen, type LucideIcon
 } from "lucide-react";
 
 export type ModuleColor =
@@ -34,6 +34,7 @@ export const modules: AppModule[] = [
   { id: "talents", label: "Gestion des talents", path: "/talents", icon: Sparkles, color: "pink", shortDescription: "Identifiez et développez les talents" },
   { id: "wellbeing", label: "Bien-être (QVT)", path: "/bien-etre", icon: HeartHandshake, color: "red", shortDescription: "Engagement et qualité de vie au travail" },
   { id: "reports", label: "Rapports & Analyses", path: "/rapports", icon: BarChart3, color: "blue", shortDescription: "Tableaux de bord et Analytics" },
+  { id: "secretariat", label: "Secrétariat", path: "/secretariat", icon: NotebookPen, color: "teal", shortDescription: "Agenda, courrier, PV et contacts" },
   { id: "security", label: "Sécurité & Accès", path: "/securite", icon: Shield, color: "gray", shortDescription: "Rôles, accès et logs" },
   { id: "settings", label: "Paramètres", path: "/parametres", icon: Settings, color: "gray", shortDescription: "Configuration du système" },
 ];

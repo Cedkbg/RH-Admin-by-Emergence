@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
 interface DirectionRow { id: string; name: string; code: string | null }
+interface DepartmentRow { id: string; name: string; direction_id: string }
 interface EmployeeRow {
   id: string;
   matricule: string | null;
@@ -21,9 +22,18 @@ interface EmployeeRow {
   phone: string | null;
   position: string | null;
   direction_id: string | null;
+  department_id: string | null;
+  contract_type: string | null;
+  gender: string | null;
   status: "active" | "suspended" | "departed";
   hire_date: string | null;
 }
+
+const POSITION_SUGGESTIONS = [
+  "Directeur", "Manager", "Secrétaire", "Assistant(e)", "Chef de service",
+  "Analyste", "Chargé(e) de mission", "Comptable", "Développeur", "Technicien",
+  "Agent administratif", "Coordinateur", "Stagiaire", "Consultant",
+];
 
 const statusLabel: Record<EmployeeRow["status"], string> = {
   active: "Actif", suspended: "Suspendu", departed: "Départ",
@@ -31,7 +41,8 @@ const statusLabel: Record<EmployeeRow["status"], string> = {
 
 const blankForm = {
   matricule: "", first_name: "", last_name: "", email: "", phone: "",
-  position: "", direction_id: "", status: "active" as EmployeeRow["status"], hire_date: "",
+  position: "", direction_id: "", department_id: "", contract_type: "CDI",
+  gender: "", status: "active" as EmployeeRow["status"], hire_date: "",
 };
 
 const Employes = () => {
@@ -39,6 +50,7 @@ const Employes = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [directions, setDirections] = useState<DirectionRow[]>([]);
+  const [departments, setDepartments] = useState<DepartmentRow[]>([]);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [query, setQuery] = useState(params.get("q") || "");
   const [activeDir, setActiveDir] = useState<string | "all">("all");
@@ -51,15 +63,22 @@ const Employes = () => {
   useEffect(() => { setQuery(params.get("q") || ""); }, [params]);
 
   const refresh = async () => {
-    const [d, e] = await Promise.all([
+    const [d, dep, e] = await Promise.all([
       supabase.from("directions").select("id,name,code").order("code"),
+      supabase.from("departments").select("id,name,direction_id").order("name"),
       supabase.from("employees").select("*").order("created_at", { ascending: false }),
     ]);
     setDirections(d.data || []);
+    setDepartments((dep.data as DepartmentRow[]) || []);
     setEmployees((e.data as EmployeeRow[]) || []);
   };
 
   useEffect(() => { refresh(); }, []);
+
+  const filteredDepartments = useMemo(
+    () => departments.filter((d) => !form.direction_id || d.direction_id === form.direction_id),
+    [departments, form.direction_id]
+  );
 
   const filtered = useMemo(() => employees.filter((e) => {
     const okDir = activeDir === "all" || e.direction_id === activeDir;
@@ -79,7 +98,9 @@ const Employes = () => {
     setForm({
       matricule: e.matricule ?? "", first_name: e.first_name, last_name: e.last_name,
       email: e.email ?? "", phone: e.phone ?? "", position: e.position ?? "",
-      direction_id: e.direction_id ?? "", status: e.status, hire_date: e.hire_date ?? "",
+      direction_id: e.direction_id ?? "", department_id: e.department_id ?? "",
+      contract_type: e.contract_type ?? "CDI", gender: e.gender ?? "",
+      status: e.status, hire_date: e.hire_date ?? "",
     });
     setOpen(true);
   };
