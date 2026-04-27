@@ -14,6 +14,7 @@ interface Survey { id: string; mood_score: number | null; comments: string | nul
 const moodIcons = [Frown, Frown, Meh, Smile, Smile];
 
 const BienEtre = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState<Survey[]>([]);
   const [score, setScore] = useState<number | null>(null);
   const [comments, setComments] = useState("");
