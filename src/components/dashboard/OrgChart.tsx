@@ -69,19 +69,37 @@ function DirectionColumn({ d }: { d: DirectionRow }) {
   const Icon = iconForCode(code);
   const color = colorForCode(code);
   const c = colorClasses[color];
+  const departments = departmentsFor(code);
 
   return (
-    <div className="flex w-[120px] flex-col rounded-lg overflow-hidden border border-border bg-card shadow-sm">
-      <div className={cn("flex flex-col items-center justify-center gap-1.5 px-2 py-4 text-white min-h-[120px]", c.bg)}>
+    <div className="flex w-[132px] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+      <div className={cn("flex min-h-[118px] flex-col items-center justify-center gap-1.5 px-2 py-4 text-primary-foreground", c.bg)}>
         <Icon className="h-5 w-5" />
         <p className="text-center text-[11px] font-semibold leading-tight px-1">{d.name}</p>
         {code && <p className="text-[10px] font-medium opacity-90">({code})</p>}
       </div>
-      <div className="px-2 py-3 text-center bg-card border-t">
+      <div className="px-2 py-3 text-center bg-card border-t border-border">
         <p className="text-[11px] font-medium leading-tight text-foreground">
           {d.manager_name || `Manager ${d.name.replace(/^Direction\s+/i, "")}`}
         </p>
       </div>
+      {departments.length > 0 && (
+        <div className="space-y-1 border-t border-border bg-muted/35 p-2">
+          {departments.map((dept) => {
+            const DeptIcon = dept.icon;
+            return (
+              <Link
+                key={dept.id}
+                to={dept.path}
+                className="flex min-h-8 items-center gap-1.5 rounded-md bg-card px-2 py-1 text-[10px] font-medium leading-tight text-foreground shadow-sm transition hover:bg-muted"
+              >
+                <DeptIcon className={cn("h-3 w-3 shrink-0", colorClasses[dept.color].text)} />
+                <span className="line-clamp-2">{dept.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
