@@ -53,6 +53,7 @@ const Organigramme = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ code: "", name: "", manager_name: "", description: "" });
   const [loading, setLoading] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const refresh = async () => {
     const { data } = await supabase.from("directions").select("*").order("code");
