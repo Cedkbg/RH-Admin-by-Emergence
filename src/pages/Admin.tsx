@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { Shield, ShieldOff } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Shield, ShieldOff, Check, X, Clock, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,6 +11,7 @@ interface ProfileRow {
   id: string;
   full_name: string | null;
   email: string | null;
+  approval_status: "pending" | "approved" | "rejected";
   created_at: string;
 }
 
@@ -25,12 +27,23 @@ const Admin = () => {
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id,role").eq("role", "admin"),
     ]);
-    setProfiles(profs || []);
+    setProfiles((profs as ProfileRow[]) || []);
     setAdminIds(new Set((roles || []).map((r: any) => r.user_id)));
     setLoading(false);
   };
 
   useEffect(() => { refresh(); }, []);
+
+  const pending = useMemo(() => profiles.filter((p) => p.approval_status === "pending"), [profiles]);
+  const approved = useMemo(() => profiles.filter((p) => p.approval_status === "approved"), [profiles]);
+  const rejected = useMemo(() => profiles.filter((p) => p.approval_status === "rejected"), [profiles]);
+
+  const setStatus = async (userId: string, status: "approved" | "rejected" | "pending") => {
+    const { error } = await supabase.from("profiles").update({ approval_status: status }).eq("id", userId);
+    if (error) { toast.error(error.message); return; }
+    toast.success(status === "approved" ? "Compte approuvé" : status === "rejected" ? "Compte refusé" : "Statut réinitialisé");
+    refresh();
+  };
 
   const toggleAdmin = async (userId: string) => {
     if (userId === user?.id) {
@@ -50,66 +63,120 @@ const Admin = () => {
     refresh();
   };
 
+  const renderRow = (p: ProfileRow, mode: "pending" | "approved" | "rejected") => {
+    const isAdminUser = adminIds.has(p.id);
+    const isMe = p.id === user?.id;
+    return (
+      <tr key={p.id} className="border-b hover:bg-muted/50">
+        <td className="p-4">
+          <div className="font-medium">{p.full_name || "—"}</div>
+          <div className="text-xs text-muted-foreground">
+            Inscrit le {new Date(p.created_at).toLocaleDateString("fr-FR")}
+          </div>
+        </td>
+        <td className="p-4 text-sm">{p.email}</td>
+        <td className="p-4">
+          {isAdminUser
+            ? <Badge>Admin RH</Badge>
+            : <Badge variant="secondary">Employé</Badge>}
+          {isMe && <Badge variant="outline" className="ml-2">Vous</Badge>}
+        </td>
+        <td className="p-4 text-right space-x-1">
+          {mode === "pending" && (
+            <>
+              <Button size="sm" onClick={() => setStatus(p.id, "approved")}>
+                <Check className="mr-1 h-4 w-4" /> Approuver
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setStatus(p.id, "rejected")}>
+                <X className="mr-1 h-4 w-4" /> Refuser
+              </Button>
+            </>
+          )}
+          {mode === "approved" && !isMe && (
+            <>
+              <Button
+                size="sm"
+                variant={isAdminUser ? "outline" : "default"}
+                onClick={() => toggleAdmin(p.id)}
+              >
+                {isAdminUser
+                  ? <><ShieldOff className="mr-1 h-4 w-4" /> Retirer admin</>
+                  : <><Shield className="mr-1 h-4 w-4" /> Promouvoir admin</>}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setStatus(p.id, "rejected")}>
+                <X className="mr-1 h-4 w-4" /> Bloquer
+              </Button>
+            </>
+          )}
+          {mode === "rejected" && (
+            <Button size="sm" variant="outline" onClick={() => setStatus(p.id, "pending")}>
+              <RotateCcw className="mr-1 h-4 w-4" /> Réexaminer
+            </Button>
+          )}
+        </td>
+      </tr>
+    );
+  };
+
+  const Table = ({ rows, mode, emptyText }: { rows: ProfileRow[]; mode: "pending" | "approved" | "rejected"; emptyText: string }) => (
+    <section className="rounded-xl border bg-card shadow-sm overflow-hidden mt-4">
+      {loading ? (
+        <div className="p-12 text-center text-muted-foreground">Chargement…</div>
+      ) : (
+        <table className="w-full">
+          <thead>
+            <tr className="border-b bg-secondary/40 text-left text-xs uppercase text-muted-foreground">
+              <th className="p-4">Utilisateur</th>
+              <th className="p-4">Email</th>
+              <th className="p-4">Rôle</th>
+              <th className="p-4 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={4} className="p-12 text-center text-muted-foreground">{emptyText}</td></tr>
+            ) : rows.map((p) => renderRow(p, mode))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+
   return (
-    <div className="mx-auto max-w-4xl space-y-6 animate-fade-in">
+    <div className="mx-auto max-w-5xl space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Administration</h1>
-        <p className="text-sm text-muted-foreground">Gérez les comptes utilisateurs et leurs rôles.</p>
+        <p className="text-sm text-muted-foreground">Validation des comptes et gestion des rôles.</p>
       </div>
 
-      <section className="rounded-xl border bg-card shadow-sm overflow-hidden">
-        <div className="border-b p-4">
-          <h2 className="font-semibold">Utilisateurs ({profiles.length})</h2>
-        </div>
-        {loading ? (
-          <div className="p-12 text-center text-muted-foreground">Chargement…</div>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-secondary/40 text-left text-xs uppercase text-muted-foreground">
-                <th className="p-4">Utilisateur</th>
-                <th className="p-4">Email</th>
-                <th className="p-4">Rôle</th>
-                <th className="p-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {profiles.map((p) => {
-                const isAdminUser = adminIds.has(p.id);
-                const isMe = p.id === user?.id;
-                return (
-                  <tr key={p.id} className="border-b hover:bg-muted/50">
-                    <td className="p-4">
-                      <div className="font-medium">{p.full_name || "—"}</div>
-                      <div className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString("fr-FR")}</div>
-                    </td>
-                    <td className="p-4 text-sm">{p.email}</td>
-                    <td className="p-4">
-                      {isAdminUser
-                        ? <Badge>Admin RH</Badge>
-                        : <Badge variant="secondary">Employé</Badge>}
-                      {isMe && <Badge variant="outline" className="ml-2">Vous</Badge>}
-                    </td>
-                    <td className="p-4 text-right">
-                      <Button
-                        size="sm"
-                        variant={isAdminUser ? "outline" : "default"}
-                        disabled={isMe}
-                        onClick={() => toggleAdmin(p.id)}
-                      >
-                        {isAdminUser ? <><ShieldOff className="mr-1 h-4 w-4" /> Retirer admin</> : <><Shield className="mr-1 h-4 w-4" /> Promouvoir admin</>}
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {profiles.length === 0 && (
-                <tr><td colSpan={4} className="p-12 text-center text-muted-foreground">Aucun utilisateur.</td></tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </section>
+      <Tabs defaultValue="pending">
+        <TabsList>
+          <TabsTrigger value="pending" className="relative">
+            <Clock className="mr-2 h-4 w-4" /> En attente
+            {pending.length > 0 && (
+              <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">
+                {pending.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="approved">
+            <Check className="mr-2 h-4 w-4" /> Approuvés ({approved.length})
+          </TabsTrigger>
+          <TabsTrigger value="rejected">
+            <X className="mr-2 h-4 w-4" /> Refusés ({rejected.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pending">
+          <Table rows={pending} mode="pending" emptyText="Aucun compte en attente d'approbation." />
+        </TabsContent>
+        <TabsContent value="approved">
+          <Table rows={approved} mode="approved" emptyText="Aucun compte approuvé." />
+        </TabsContent>
+        <TabsContent value="rejected">
+          <Table rows={rejected} mode="rejected" emptyText="Aucun compte refusé." />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
