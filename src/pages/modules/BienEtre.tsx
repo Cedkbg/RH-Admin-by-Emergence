@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { HeartHandshake, Smile, Frown, Meh } from "lucide-react";
+import { HeartHandshake, Smile, Frown, Meh, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -7,12 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 interface Survey { id: string; mood_score: number | null; comments: string | null; submitted_at: string; }
 
 const moodIcons = [Frown, Frown, Meh, Smile, Smile];
 
 const BienEtre = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState<Survey[]>([]);
   const [score, setScore] = useState<number | null>(null);
   const [comments, setComments] = useState("");
@@ -43,6 +45,10 @@ const BienEtre = () => {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 animate-fade-in">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+      </Button>
+
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Bien-être au travail</h1>
         <p className="text-sm text-muted-foreground">Votre avis est anonyme et aide à améliorer la QVT.</p>

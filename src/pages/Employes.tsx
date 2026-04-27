@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, UserPlus, Mail, Trash2, Filter, Pencil } from "lucide-react";
+import { Search, UserPlus, Mail, Trash2, Filter, Pencil, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 interface DirectionRow { id: string; name: string; code: string | null }
 interface EmployeeRow {
@@ -37,6 +37,7 @@ const blankForm = {
 const Employes = () => {
   const { isAdmin } = useAuth();
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const [directions, setDirections] = useState<DirectionRow[]>([]);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [query, setQuery] = useState(params.get("q") || "");
@@ -118,6 +119,10 @@ const Employes = () => {
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 animate-fade-in">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+      </Button>
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Agents</h1>

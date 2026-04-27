@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Shield, ShieldOff, Check, X, Clock, RotateCcw } from "lucide-react";
+import { Shield, ShieldOff, Check, X, Clock, RotateCcw, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface ProfileRow {
   id: string;
@@ -17,6 +18,7 @@ interface ProfileRow {
 
 const Admin = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -144,6 +146,10 @@ const Admin = () => {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 animate-fade-in">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+      </Button>
+
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Administration</h1>
         <p className="text-sm text-muted-foreground">Validation des comptes et gestion des rôles.</p>

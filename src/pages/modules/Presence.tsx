@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ClipboardList, Plus } from "lucide-react";
+import { CalendarDays, ClipboardList, Plus, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,7 @@ import { TextField, SelectField, AreaField, FormGrid, cleanForm } from "@/lib/fo
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface AttRow { id: string; employee_id: string; date: string; check_in: string | null; check_out: string | null; status: string; }
 interface LeaveRow { id: string; employee_id: string; leave_type: string; start_date: string; end_date: string; reason: string | null; status: string; }
@@ -15,6 +16,7 @@ interface Emp { id: string; first_name: string; last_name: string; }
 
 const Presence = () => {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState<Emp[]>([]);
   const [attendance, setAttendance] = useState<AttRow[]>([]);
   const [leaves, setLeaves] = useState<LeaveRow[]>([]);
@@ -67,6 +69,10 @@ const Presence = () => {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 animate-fade-in">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+      </Button>
+
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Présence & Congés</h1>
         <p className="text-sm text-muted-foreground">Pointage quotidien et gestion des demandes de congés.</p>

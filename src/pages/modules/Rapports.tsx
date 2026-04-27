@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { BarChart3, Users, Briefcase, GraduationCap, Wallet, Calendar } from "lucide-react";
+import { BarChart3, Users, Briefcase, GraduationCap, Wallet, Calendar, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const Rapports = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     employees: 0, directions: 0, jobs: 0, trainings: 0, leaves: 0, payroll: 0,
   });
@@ -35,6 +38,10 @@ const Rapports = () => {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 animate-fade-in">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+      </Button>
+
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Rapports & Analyses</h1>
         <p className="text-sm text-muted-foreground">Indicateurs clés de l'organisation.</p>

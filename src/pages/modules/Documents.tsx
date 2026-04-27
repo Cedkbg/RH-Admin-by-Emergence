@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Upload, FileText, Download, Trash2 } from "lucide-react";
+import { Upload, FileText, Download, Trash2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,11 +8,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface Doc { id: string; title: string; category: string | null; file_url: string | null; created_at: string; }
 
 const Documents = () => {
   const { isAdmin, user } = useAuth();
+  const navigate = useNavigate();
   const [docs, setDocs] = useState<Doc[]>([]);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -59,6 +61,10 @@ const Documents = () => {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 animate-fade-in">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+      </Button>
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
