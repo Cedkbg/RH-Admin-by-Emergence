@@ -1,50 +1,43 @@
+import { useEffect, useState } from "react";
 import { Users, Building2, Briefcase, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { OrgChart } from "@/components/dashboard/OrgChart";
 import { ModuleGrid } from "@/components/dashboard/ModuleGrid";
 import { RecentActivities } from "@/components/dashboard/RecentActivities";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { MonthStats } from "@/components/dashboard/MonthStats";
-import { useAgent } from "@/contexts/AgentContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { useUsers } from "@/contexts/UsersContext";
-import { useEffect } from "react";
-import { directions } from "@/data/orgData";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
-  const { isAuthenticated, login } = useAuth();
-  const { agents } = useAgent();
-  const { users } = useUsers();
+  const [stats, setStats] = useState({ employees: 0, directions: 0 });
 
-  // Auto-login RH Emergence (no password)
   useEffect(() => {
-    if (!isAuthenticated && users.length > 0) {
-      const rhUser = users.find(u => u.role === 'rh');
-      if (rhUser) {
-        login(rhUser.username, rhUser.pw);
-      }
-    }
-  }, [isAuthenticated, login, users]);
+    (async () => {
+      const [{ count: empCount }, { count: dirCount }] = await Promise.all([
+        supabase.from("employees").select("*", { count: "exact", head: true }),
+        supabase.from("directions").select("*", { count: "exact", head: true }),
+      ]);
+      setStats({ employees: empCount ?? 0, directions: dirCount ?? 0 });
+    })();
+  }, []);
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 animate-fade-in">
-      {/* KPI row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Agents" value={agents.length.toString()} trend="0" icon={Users} color="blue" />
-        <KpiCard label="Directions" value={directions.length.toString()} trend="Stable" trendDirection="neutral" icon={Building2} color="green" />
-        <KpiCard label="Postes Vacants" value="0" trend="0" icon={Briefcase} color="orange" />
-        <KpiCard label="Documents" value="0" trend="0" icon={FileText} color="purple" />
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Tableau de bord</h1>
+        <p className="text-sm text-muted-foreground">EMERGENCE DRC — Système de Gestion RH</p>
       </div>
 
-      {/* Organigramme */}
-      <OrgChart />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="Agents" value={stats.employees.toString()} icon={Users} color="blue" />
+        <KpiCard label="Directions" value={stats.directions.toString()} icon={Building2} color="green" />
+        <KpiCard label="Postes vacants" value="0" icon={Briefcase} color="orange" />
+        <KpiCard label="Documents" value="0" icon={FileText} color="purple" />
+      </div>
 
-      {/* Modules grid */}
+      <OrgChart />
       <ModuleGrid />
 
-      {/* Bottom: activities / alerts / stats */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <RecentActivities />
         <AlertsPanel />
@@ -55,4 +48,3 @@ const Index = () => {
 };
 
 export default Index;
-

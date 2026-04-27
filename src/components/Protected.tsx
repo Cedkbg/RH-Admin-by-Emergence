@@ -1,16 +1,26 @@
-import { useAuth } from '@/contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
-import { ReactNode } from 'react';
+import { useAuth } from "@/contexts/AuthContext";
+import { Navigate, useLocation } from "react-router-dom";
+import { ReactNode } from "react";
 
-interface ProtectedProps {
-  children: ReactNode;
-}
+export const Protected = ({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) => {
+  const { session, isAdmin, loading } = useAuth();
+  const location = useLocation();
 
-export const Protected = ({ children }: ProtectedProps) => {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center text-muted-foreground">
+        Chargement…
+      </div>
+    );
   }
+
+  if (!session) {
+    return <Navigate to="/auth" replace state={{ from: location }} />;
+  }
+
+  if (adminOnly && !isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
   return <>{children}</>;
 };
-

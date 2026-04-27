@@ -1,72 +1,99 @@
- import { useMemo, useState } from "react";
-import { Search, UserPlus, Mail, Filter, MessageCircle } from "lucide-react";
-import { directions } from "@/data/orgData";
-import { colorClasses } from "@/data/modules";
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useEffect, useMemo, useState } from "react";
+import { Search, UserPlus, Mail, Trash2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAgent } from "@/contexts/AgentContext";
-import type { Employee } from "@/data/orgData";
+import { cn } from "@/lib/utils";
 
-const statusBadge: Record<Employee["status"], string> = {
-  actif: "bg-success/10 text-success",
-  suspendu: "bg-warning/10 text-warning",
-  depart: "bg-destructive/10 text-destructive",
-};
-const statusLabel: Record<Employee["status"], string> = {
-  actif: "Actif", suspendu: "Suspendu", depart: "Départ",
+interface DirectionRow { id: string; name: string; code: string | null }
+interface EmployeeRow {
+  id: string;
+  matricule: string | null;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  position: string | null;
+  direction_id: string | null;
+  status: "active" | "suspended" | "departed";
+  hire_date: string | null;
+}
+
+const statusLabel: Record<EmployeeRow["status"], string> = {
+  active: "Actif", suspended: "Suspendu", departed: "Départ",
 };
 
 const Employes = () => {
-  const { toast } = useToast();
-
-const { isRH } = useAuth();
-
-  const { agents, addAgent } = useAgent();
+  const { isAdmin } = useAuth();
+  const [directions, setDirections] = useState<DirectionRow[]>([]);
+  const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [query, setQuery] = useState("");
   const [activeDir, setActiveDir] = useState<string | "all">("all");
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: '', role: '', directionId: '', email: '' });
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    matricule: "", first_name: "", last_name: "", email: "", phone: "",
+    position: "", direction_id: "", status: "active" as EmployeeRow["status"], hire_date: "",
+  });
 
-  const filtered = useMemo(() => {
-    return agents.filter((e) => {
-      const matchDir = activeDir === "all" || e.directionId === activeDir;
-      const matchQ = query === "" ||
-        e.name.toLowerCase().includes(query.toLowerCase()) ||
-        e.role.toLowerCase().includes(query.toLowerCase()) ||
-        e.email.toLowerCase().includes(query.toLowerCase());
-      return matchDir && matchQ;
-    });
-  }, [query, activeDir, agents]);
-
-  const handleAddClick = () => {
-    if (!isRH) {
-      toast({
-        title: "Accès RH requis",
-        description: "Connectez-vous comme gestionnaire RH.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setOpen(true);
+  const refresh = async () => {
+    const [d, e] = await Promise.all([
+      supabase.from("directions").select("id,name,code").order("code"),
+      supabase.from("employees").select("*").order("created_at", { ascending: false }),
+    ]);
+    setDirections(d.data || []);
+    setEmployees((e.data as EmployeeRow[]) || []);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name || !formData.role || !formData.directionId || !formData.email) {
-      toast({ title: "Erreur", description: "Tous champs requis.", variant: "destructive" });
-      return;
-    }
-    addAgent(formData);
-    toast({ title: "Agent ajouté" });
+  useEffect(() => { refresh(); }, []);
+
+  const filtered = useMemo(() => employees.filter((e) => {
+    const okDir = activeDir === "all" || e.direction_id === activeDir;
+    const q = query.toLowerCase();
+    const okQ = !q ||
+      e.first_name.toLowerCase().includes(q) ||
+      e.last_name.toLowerCase().includes(q) ||
+      (e.email || "").toLowerCase().includes(q) ||
+      (e.position || "").toLowerCase().includes(q) ||
+      (e.matricule || "").toLowerCase().includes(q);
+    return okDir && okQ;
+  }), [employees, query, activeDir]);
+
+  const handleCreate = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!form.first_name || !form.last_name) { toast.error("Prénom et nom requis"); return; }
+    setLoading(true);
+    const { error } = await supabase.from("employees").insert({
+      matricule: form.matricule || null,
+      first_name: form.first_name,
+      last_name: form.last_name,
+      email: form.email || null,
+      phone: form.phone || null,
+      position: form.position || null,
+      direction_id: form.direction_id || null,
+      status: form.status,
+      hire_date: form.hire_date || null,
+    });
+    setLoading(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Agent ajouté");
     setOpen(false);
-    setFormData({ name: '', role: '', directionId: '', email: '' });
+    setForm({ matricule: "", first_name: "", last_name: "", email: "", phone: "", position: "", direction_id: "", status: "active", hire_date: "" });
+    refresh();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Supprimer cet agent ?")) return;
+    const { error } = await supabase.from("employees").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Agent supprimé");
+    refresh();
   };
 
   return (
@@ -75,98 +102,41 @@ const { isRH } = useAuth();
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Agents</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {filtered.length} / {agents.length} · Gestion RH
+            {filtered.length} / {employees.length} agent{employees.length > 1 ? "s" : ""}
           </p>
         </div>
-        {/* Add button moved to Admin - RH monopoly */}
-        <Badge variant="secondary">Admin RH uniquement</Badge>
+        {isAdmin ? (
+          <Button onClick={() => setOpen(true)}>
+            <UserPlus className="mr-2 h-4 w-4" /> Ajouter un agent
+          </Button>
+        ) : (
+          <Badge variant="secondary">Ajout réservé à l'Admin RH</Badge>
+        )}
       </div>
 
-      {/* Add Dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Ajouter agent</DialogTitle>
-            <DialogDescription>Nouvel agent Emergence DRC.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label>Nom complet</Label>
-              <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-            </div>
-            <div>
-              <Label>Poste</Label>
-              <Input value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} />
-            </div>
-            <div>
-              <Label>Direction</Label>
-              <Select value={formData.directionId} onValueChange={(v) => setFormData({ ...formData, directionId: v })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Direction" />
-                </SelectTrigger>
-                <SelectContent>
-                  {directions.map(d => (
-                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Email</Label>
-              <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-            </div>
-            <DialogFooter>
-              <Button type="submit">Ajouter</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Filters */}
       <section className="rounded-xl border bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
-          <Filter className="h-3.5 w-3.5" />
-          Direction
+          <Filter className="h-3.5 w-3.5" /> Direction
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button 
-            variant={activeDir === "all" ? "default" : "outline"} 
-            size="sm" 
-            onClick={() => setActiveDir("all")}
-            className="rounded-full"
-          >
-            Toutes ({agents.length})
+          <Button variant={activeDir === "all" ? "default" : "outline"} size="sm" className="rounded-full" onClick={() => setActiveDir("all")}>
+            Toutes ({employees.length})
           </Button>
-{directions.map((d) => {
-            const c = colorClasses[d.color];
-            const count = agents.filter(e => e.directionId === d.id).length;
+          {directions.map((d) => {
+            const count = employees.filter((e) => e.direction_id === d.id).length;
             return (
-              <Button
-                key={d.id}
-                variant={activeDir === d.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveDir(d.id)}
-                className="gap-2 px-3 py-1.5 rounded-full"
-              >
-🔹
-                {d.name}
-                <span className="ml-1 text-xs opacity-75">({count})</span>
+              <Button key={d.id} variant={activeDir === d.id ? "default" : "outline"} size="sm" className="rounded-full" onClick={() => setActiveDir(d.id)}>
+                {d.name} <span className="ml-1 text-xs opacity-75">({count})</span>
               </Button>
             );
           })}
         </div>
       </section>
 
-      {/* Table */}
       <section className="rounded-xl border bg-card shadow-sm overflow-hidden">
         <div className="flex items-center gap-3 border-b p-4">
           <Search className="h-4 w-4 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Nom, poste, email..."
-            className="flex-1 h-10 bg-secondary pl-0"
-          />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Nom, poste, email, matricule…" className="flex-1 h-10 bg-secondary pl-0" />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -176,55 +146,53 @@ const { isRH } = useAuth();
                 <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Poste</th>
                 <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Direction</th>
                 <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Statut</th>
-                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Commentaire RH</th>
                 <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Contact</th>
+                {isAdmin && <th className="p-4" />}
               </tr>
             </thead>
             <tbody>
               {filtered.map((e) => {
-                const dir = directions.find((d) => d.id === e.directionId);
-                const c = colorClasses[dir?.color];
+                const dir = directions.find((d) => d.id === e.direction_id);
+                const initials = `${e.first_name[0] ?? ""}${e.last_name[0] ?? ""}`.toUpperCase();
                 return (
                   <tr key={e.id} className="border-b hover:bg-muted/50">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className={cn("h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold", c?.bg || "bg-muted")}>
-                          {e.initials}
+                        <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                          {initials}
                         </div>
                         <div>
-                          <p className="font-semibold">{e.name}</p>
-                          <p className="text-xs text-muted-foreground">{e.id}</p>
+                          <p className="font-semibold">{e.first_name} {e.last_name}</p>
+                          <p className="text-xs text-muted-foreground">{e.matricule || "—"}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="p-4">{e.role}</td>
+                    <td className="p-4">{e.position || "—"}</td>
+                    <td className="p-4">{dir?.name || "—"}</td>
                     <td className="p-4">
-                        <Badge className={cn("gap-1", c?.text)}>
-                        🔹
-                        {dir?.name || 'N/A'}
-                      </Badge>
+                      <Badge variant={e.status === "active" ? "default" : "secondary"}>{statusLabel[e.status]}</Badge>
                     </td>
                     <td className="p-4">
-                      <Badge variant={e.status === "actif" ? "default" : "secondary"}>{statusLabel[e.status]}</Badge>
+                      {e.email ? (
+                        <a href={`mailto:${e.email}`} className="flex items-center gap-1 text-xs text-primary hover:underline">
+                          <Mail className="h-3.5 w-3.5" /> {e.email}
+                        </a>
+                      ) : "—"}
                     </td>
-                    <td className="p-4 max-w-md">
-                      <span className="text-xs text-muted-foreground line-clamp-2" title={e.comment || 'Aucun'}>
-                        {e.comment || 'Aucun commentaire RH'}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <a href={`mailto:${e.email}`} className="flex items-center gap-1 text-xs text-primary hover:underline">
-                        <Mail className="h-3.5 w-3.5" />
-                        {e.email}
-                      </a>
-                    </td>
+                    {isAdmin && (
+                      <td className="p-4">
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(e.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-muted-foreground">
-                    Liste agents vide. RH ajoute depuis admin.
+                  <td colSpan={isAdmin ? 6 : 5} className="p-12 text-center text-muted-foreground">
+                    Aucun agent. {isAdmin ? "Cliquez sur \"Ajouter un agent\"." : "L'admin RH peut en ajouter."}
                   </td>
                 </tr>
               )}
@@ -232,9 +200,52 @@ const { isRH } = useAuth();
           </table>
         </div>
       </section>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Nouvel agent</DialogTitle>
+            <DialogDescription>Renseignez les informations de l'agent.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Matricule</Label><Input value={form.matricule} onChange={(e) => setForm({ ...form, matricule: e.target.value })} /></div>
+              <div><Label>Date d'embauche</Label><Input type="date" value={form.hire_date} onChange={(e) => setForm({ ...form, hire_date: e.target.value })} /></div>
+              <div><Label>Prénom *</Label><Input required value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} /></div>
+              <div><Label>Nom *</Label><Input required value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} /></div>
+              <div><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+              <div><Label>Téléphone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+              <div className="col-span-2"><Label>Poste</Label><Input value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} /></div>
+              <div>
+                <Label>Direction</Label>
+                <Select value={form.direction_id} onValueChange={(v) => setForm({ ...form, direction_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    {directions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Statut</Label>
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as EmployeeRow["status"] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Actif</SelectItem>
+                    <SelectItem value="suspended">Suspendu</SelectItem>
+                    <SelectItem value="departed">Départ</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
+              <Button type="submit" disabled={loading}>{loading ? "…" : "Ajouter"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default Employes;
-
