@@ -14,6 +14,7 @@ interface Doc { id: string; title: string; category: string | null; file_url: st
 
 const Documents = () => {
   const { isAdmin, user } = useAuth();
+  const navigate = useNavigate();
   const [docs, setDocs] = useState<Doc[]>([]);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -60,6 +61,10 @@ const Documents = () => {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 animate-fade-in">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+      </Button>
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Documents</h1>
