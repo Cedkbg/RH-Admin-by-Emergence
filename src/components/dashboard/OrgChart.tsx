@@ -72,12 +72,16 @@ function DirectionColumn({ d }: { d: DirectionRow }) {
   const departments = departmentsFor(code);
 
   return (
-    <div className="flex w-[132px] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-      <div className={cn("flex min-h-[118px] flex-col items-center justify-center gap-1.5 px-2 py-4 text-primary-foreground", c.bg)}>
+    <div className="flex w-[132px] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm hover:shadow-md transition">
+      <Link
+        to={code ? `/direction/${code}` : "#"}
+        className={cn("flex min-h-[118px] flex-col items-center justify-center gap-1.5 px-2 py-4 text-primary-foreground hover:opacity-90 transition", c.bg)}
+        aria-label={`Ouvrir ${d.name}`}
+      >
         <Icon className="h-5 w-5" />
         <p className="text-center text-[11px] font-semibold leading-tight px-1">{d.name}</p>
         {code && <p className="text-[10px] font-medium opacity-90">({code})</p>}
-      </div>
+      </Link>
       <div className="px-2 py-3 text-center bg-card border-t border-border">
         <p className="text-[11px] font-medium leading-tight text-foreground">
           {d.manager_name || `Manager ${d.name.replace(/^Direction\s+/i, "")}`}
