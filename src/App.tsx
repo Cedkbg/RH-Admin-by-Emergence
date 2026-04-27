@@ -28,6 +28,7 @@ import BienEtre from "./pages/modules/BienEtre";
 import Rapports from "./pages/modules/Rapports";
 import Securite from "./pages/modules/Securite";
 import Parametres from "./pages/modules/Parametres";
+import Secretariat from "./pages/modules/Secretariat";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="/bien-etre" element={<BienEtre />} />
               <Route path="/rapports" element={<Rapports />} />
               <Route path="/securite" element={<Securite />} />
+              <Route path="/secretariat" element={<Secretariat />} />
               <Route path="/parametres" element={<Parametres />} />
               <Route path="/admin" element={<Protected adminOnly><Admin /></Protected>} />
             </Route>
