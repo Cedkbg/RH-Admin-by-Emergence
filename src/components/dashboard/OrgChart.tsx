@@ -112,7 +112,19 @@ export function OrgChart() {
       .from("directions")
       .select("id,code,name,manager_name")
       .order("code", { ascending: true })
-      .then(({ data }) => setDirections(data || []));
+      .then(({ data }) => {
+        const rows = data || [];
+        const completed = directionTemplates.map((template) => {
+          const existing = rows.find((row) => row.code === template.code);
+          return existing || {
+            id: template.code,
+            code: template.code,
+            name: template.name,
+            manager_name: null,
+          };
+        });
+        setDirections(completed);
+      });
   }, []);
 
   const dg = directions.find((d) => d.code === "DG");
@@ -128,7 +140,7 @@ export function OrgChart() {
           Aucune direction enregistrée.
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-0 py-4 overflow-x-auto">
+        <div className="flex flex-col items-center gap-0 overflow-x-auto py-4">
           {/* DG */}
           <TopNode
             code={dg?.code || "DG"}
@@ -162,7 +174,7 @@ export function OrgChart() {
 
           {/* Horizontal connector spanning directions */}
           {others.length > 0 && (
-            <div className="relative w-full max-w-[1200px] px-4">
+            <div className="relative w-full min-w-max px-4">
               {/* Horizontal line */}
               <div
                 className="absolute left-0 right-0 top-0 mx-auto h-px bg-border"
