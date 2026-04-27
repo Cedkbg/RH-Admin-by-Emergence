@@ -147,15 +147,19 @@ const Organigramme = () => {
           const isExpanded = expandedId === d.id;
           return (
             <div key={d.id} className="relative p-5 bg-card rounded-xl border shadow-sm hover:shadow-md transition group flex flex-col">
-              <div className="flex items-center gap-3 mb-3">
+              <Link
+                to={code ? `/direction/${code}` : "#"}
+                className="flex items-center gap-3 mb-3 hover:opacity-80 transition"
+                aria-label={`Ouvrir la direction ${d.name}`}
+              >
                 <div className={cn("p-3 rounded-xl text-primary-foreground", c.bg)}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-semibold truncate">{d.name}</h3>
+                  <h3 className="font-semibold truncate hover:underline">{d.name}</h3>
                   {d.code && <p className="text-xs font-mono text-muted-foreground">{d.code}</p>}
                 </div>
-              </div>
+              </Link>
               <p className="text-sm text-muted-foreground mb-2">{d.manager_name || "—"}</p>
               {d.description && <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{d.description}</p>}
 

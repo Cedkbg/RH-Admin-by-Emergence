@@ -177,6 +177,47 @@ export type Database = {
           },
         ]
       }
+      departments: {
+        Row: {
+          code: string | null
+          created_at: string
+          description: string | null
+          direction_id: string
+          id: string
+          manager_name: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          direction_id: string
+          id?: string
+          manager_name?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          direction_id?: string
+          id?: string
+          manager_name?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_direction_id_fkey"
+            columns: ["direction_id"]
+            isOneToOne: false
+            referencedRelation: "directions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       directions: {
         Row: {
           code: string | null

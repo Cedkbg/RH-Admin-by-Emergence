@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Organigramme from "./pages/Organigramme";
+import DirectionDetail from "./pages/DirectionDetail";
 import Employes from "./pages/Employes";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -43,6 +44,7 @@ const App = () => (
             <Route element={<Protected><AppLayout /></Protected>}>
               <Route index element={<Index />} />
               <Route path="/organigramme" element={<Organigramme />} />
+              <Route path="/direction/:code" element={<DirectionDetail />} />
               <Route path="/employes" element={<Employes />} />
               <Route path="/recrutement" element={<Recrutement />} />
               <Route path="/taches" element={<Taches />} />
