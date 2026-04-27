@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ClipboardList, Plus } from "lucide-react";
+import { CalendarDays, ClipboardList, Plus, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,7 @@ import { TextField, SelectField, AreaField, FormGrid, cleanForm } from "@/lib/fo
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface AttRow { id: string; employee_id: string; date: string; check_in: string | null; check_out: string | null; status: string; }
 interface LeaveRow { id: string; employee_id: string; leave_type: string; start_date: string; end_date: string; reason: string | null; status: string; }
