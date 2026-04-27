@@ -6,10 +6,12 @@ interface AuthContextValue {
   session: Session | null;
   user: User | null;
   isAdmin: boolean;
+  approvalStatus: "pending" | "approved" | "rejected" | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  refreshApproval: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -18,41 +20,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [approvalStatus, setApprovalStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check role separately to avoid recursion / blocking auth callback
-  const refreshRole = async (uid: string | undefined) => {
+  const refreshUserData = async (uid: string | undefined) => {
     if (!uid) {
       setIsAdmin(false);
+      setApprovalStatus(null);
       return;
     }
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", uid)
-      .eq("role", "admin")
-      .maybeSingle();
-    setIsAdmin(!!data);
+    const [{ data: roleData }, { data: profileData }] = await Promise.all([
+      supabase.from("user_roles").select("role").eq("user_id", uid).eq("role", "admin").maybeSingle(),
+      supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
+    ]);
+    setIsAdmin(!!roleData);
+    setApprovalStatus((profileData?.approval_status as any) ?? "pending");
   };
 
   useEffect(() => {
-    // 1) Set up listener BEFORE getSession
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
-      // Defer Supabase calls to avoid deadlocks
-      setTimeout(() => refreshRole(newSession?.user?.id), 0);
+      setTimeout(() => refreshUserData(newSession?.user?.id), 0);
     });
 
-    // 2) Then fetch existing session
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      refreshRole(data.session?.user?.id).finally(() => setLoading(false));
+      refreshUserData(data.session?.user?.id).finally(() => setLoading(false));
     });
 
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  const refreshApproval = async () => { await refreshUserData(user?.id); };
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
