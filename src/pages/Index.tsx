@@ -6,30 +6,27 @@ import { ModuleGrid } from "@/components/dashboard/ModuleGrid";
 import { RecentActivities } from "@/components/dashboard/RecentActivities";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { MonthStats } from "@/components/dashboard/MonthStats";
-<<<<<<< HEAD
 import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
-  const [stats, setStats] = useState({ employees: 0, directions: 0 });
+  const [stats, setStats] = useState({ employees: 0, directions: 0, jobs: 0, documents: 0 });
 
   useEffect(() => {
     (async () => {
-      const [{ count: empCount }, { count: dirCount }] = await Promise.all([
+      const [emp, dir, jobs, docs] = await Promise.all([
         supabase.from("employees").select("*", { count: "exact", head: true }),
         supabase.from("directions").select("*", { count: "exact", head: true }),
+        supabase.from("job_offers").select("*", { count: "exact", head: true }).eq("status", "open"),
+        supabase.from("documents").select("*", { count: "exact", head: true }),
       ]);
-      setStats({ employees: empCount ?? 0, directions: dirCount ?? 0 });
+      setStats({
+        employees: emp.count ?? 0,
+        directions: dir.count ?? 0,
+        jobs: jobs.count ?? 0,
+        documents: docs.count ?? 0,
+      });
     })();
   }, []);
-=======
-import { useAgent } from "@/contexts/AgentContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { directions } from "@/data/orgData";
-
-const Index = () => {
-  const { isAuthenticated } = useAuth();
-  const { agents } = useAgent();
->>>>>>> 07b8eab ( file the login)
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 animate-fade-in">
@@ -41,8 +38,8 @@ const Index = () => {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Agents" value={stats.employees.toString()} icon={Users} color="blue" />
         <KpiCard label="Directions" value={stats.directions.toString()} icon={Building2} color="green" />
-        <KpiCard label="Postes vacants" value="0" icon={Briefcase} color="orange" />
-        <KpiCard label="Documents" value="0" icon={FileText} color="purple" />
+        <KpiCard label="Postes vacants" value={stats.jobs.toString()} icon={Briefcase} color="orange" />
+        <KpiCard label="Documents" value={stats.documents.toString()} icon={FileText} color="purple" />
       </div>
 
       <OrgChart />
