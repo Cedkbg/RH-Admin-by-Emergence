@@ -16,6 +16,7 @@ interface Emp { id: string; first_name: string; last_name: string; }
 
 const Presence = () => {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [employees, setEmployees] = useState<Emp[]>([]);
   const [attendance, setAttendance] = useState<AttRow[]>([]);
   const [leaves, setLeaves] = useState<LeaveRow[]>([]);
@@ -68,6 +69,10 @@ const Presence = () => {
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 animate-fade-in">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+      </Button>
+
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Présence & Congés</h1>
         <p className="text-sm text-muted-foreground">Pointage quotidien et gestion des demandes de congés.</p>
