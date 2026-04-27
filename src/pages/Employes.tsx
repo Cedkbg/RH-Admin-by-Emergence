@@ -37,6 +37,7 @@ const blankForm = {
 const Employes = () => {
   const { isAdmin } = useAuth();
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const [directions, setDirections] = useState<DirectionRow[]>([]);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [query, setQuery] = useState(params.get("q") || "");
@@ -118,6 +119,10 @@ const Employes = () => {
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 animate-fade-in">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+      </Button>
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Agents</h1>
