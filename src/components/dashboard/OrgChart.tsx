@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { User, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { colorClasses } from "@/data/modules";
-import { iconForCode, colorForCode } from "@/data/orgData";
+import { colorClasses, modules } from "@/data/modules";
+import { directionTemplates, iconForCode, colorForCode } from "@/data/orgData";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DirectionRow {
@@ -10,6 +11,25 @@ interface DirectionRow {
   code: string | null;
   name: string;
   manager_name: string | null;
+}
+
+const DIRECTION_DEPARTMENTS: Record<string, string[]> = {
+  DG: ["dashboard", "reports", "communication"],
+  DGA: ["dashboard", "tasks", "reports"],
+  D1: ["security", "settings", "documents"],
+  D2: ["tasks", "performance", "talents"],
+  D3: ["attendance", "tasks", "documents"],
+  D4: ["payroll", "reports"],
+  D5: ["legal", "security", "documents"],
+  D6: ["recruitment", "communication", "performance"],
+  D7: ["employees", "recruitment", "training", "attendance", "payroll", "performance", "talents", "wellbeing"],
+  D8: ["legal", "documents"],
+};
+
+function departmentsFor(code: string) {
+  return (DIRECTION_DEPARTMENTS[code] || [])
+    .map((id) => modules.find((m) => m.id === id))
+    .filter((m): m is NonNullable<typeof m> => Boolean(m));
 }
 
 function TopNode({
