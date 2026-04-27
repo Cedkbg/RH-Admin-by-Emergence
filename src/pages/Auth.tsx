@@ -17,10 +17,27 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
 
   useEffect(() => {
     if (session) navigate("/", { replace: true });
   }, [session, navigate]);
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Email de réinitialisation envoyé. Vérifiez votre boîte mail.");
+      setForgotOpen(false);
+    }
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +89,35 @@ export default function Auth() {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Connexion…" : "Se connecter"}
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => { setForgotEmail(email); setForgotOpen(true); }}
+                  className="text-sm text-primary hover:underline w-full text-center"
+                >
+                  Mot de passe oublié ?
+                </button>
               </form>
+
+              {forgotOpen && (
+                <form onSubmit={handleForgot} className="space-y-3 mt-4 p-4 border rounded-md bg-muted/30">
+                  <p className="text-sm font-medium">Réinitialiser le mot de passe</p>
+                  <Input
+                    type="email"
+                    placeholder="Votre email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button type="submit" size="sm" disabled={loading} className="flex-1">
+                      {loading ? "Envoi…" : "Envoyer le lien"}
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setForgotOpen(false)}>
+                      Annuler
+                    </Button>
+                  </div>
+                </form>
+              )}
             </TabsContent>
 
             <TabsContent value="signup">
