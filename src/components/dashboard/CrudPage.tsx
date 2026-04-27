@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { Plus, Search, Trash2, Pencil } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export interface ColumnDef<T> {
   key: keyof T | string;
@@ -35,6 +36,7 @@ export function CrudPage<T extends { id: string }>({
   renderForm, defaultForm, validate, prepare,
 }: CrudPageProps<T>) {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [rows, setRows] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -97,6 +99,10 @@ export function CrudPage<T extends { id: string }>({
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 animate-fade-in">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+      </Button>
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
