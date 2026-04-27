@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, UserPlus, Mail, Trash2, Filter } from "lucide-react";
+import { Search, UserPlus, Mail, Trash2, Filter, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { cn } from "@/lib/utils";
+import { useSearchParams } from "react-router-dom";
 
 interface DirectionRow { id: string; name: string; code: string | null }
 interface EmployeeRow {
@@ -29,18 +29,25 @@ const statusLabel: Record<EmployeeRow["status"], string> = {
   active: "Actif", suspended: "Suspendu", departed: "Départ",
 };
 
+const blankForm = {
+  matricule: "", first_name: "", last_name: "", email: "", phone: "",
+  position: "", direction_id: "", status: "active" as EmployeeRow["status"], hire_date: "",
+};
+
 const Employes = () => {
   const { isAdmin } = useAuth();
+  const [params] = useSearchParams();
   const [directions, setDirections] = useState<DirectionRow[]>([]);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(params.get("q") || "");
   const [activeDir, setActiveDir] = useState<string | "all">("all");
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({
-    matricule: "", first_name: "", last_name: "", email: "", phone: "",
-    position: "", direction_id: "", status: "active" as EmployeeRow["status"], hire_date: "",
-  });
+  const [form, setForm] = useState(blankForm);
+
+  // Sync query when URL ?q changes (header search)
+  useEffect(() => { setQuery(params.get("q") || ""); }, [params]);
 
   const refresh = async () => {
     const [d, e] = await Promise.all([
@@ -65,11 +72,22 @@ const Employes = () => {
     return okDir && okQ;
   }), [employees, query, activeDir]);
 
-  const handleCreate = async (ev: React.FormEvent) => {
+  const openCreate = () => { setEditingId(null); setForm(blankForm); setOpen(true); };
+  const openEdit = (e: EmployeeRow) => {
+    setEditingId(e.id);
+    setForm({
+      matricule: e.matricule ?? "", first_name: e.first_name, last_name: e.last_name,
+      email: e.email ?? "", phone: e.phone ?? "", position: e.position ?? "",
+      direction_id: e.direction_id ?? "", status: e.status, hire_date: e.hire_date ?? "",
+    });
+    setOpen(true);
+  };
+
+  const handleSave = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!form.first_name || !form.last_name) { toast.error("Prénom et nom requis"); return; }
     setLoading(true);
-    const { error } = await supabase.from("employees").insert({
+    const payload = {
       matricule: form.matricule || null,
       first_name: form.first_name,
       last_name: form.last_name,
@@ -79,12 +97,14 @@ const Employes = () => {
       direction_id: form.direction_id || null,
       status: form.status,
       hire_date: form.hire_date || null,
-    });
+    };
+    const { error } = editingId
+      ? await supabase.from("employees").update(payload).eq("id", editingId)
+      : await supabase.from("employees").insert(payload);
     setLoading(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Agent ajouté");
+    toast.success(editingId ? "Agent modifié" : "Agent ajouté");
     setOpen(false);
-    setForm({ matricule: "", first_name: "", last_name: "", email: "", phone: "", position: "", direction_id: "", status: "active", hire_date: "" });
     refresh();
   };
 
@@ -106,7 +126,7 @@ const Employes = () => {
           </p>
         </div>
         {isAdmin ? (
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={openCreate}>
             <UserPlus className="mr-2 h-4 w-4" /> Ajouter un agent
           </Button>
         ) : (
@@ -181,9 +201,14 @@ const Employes = () => {
                     </td>
                     {isAdmin && (
                       <td className="p-4">
-                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(e.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(e)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(e.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -192,7 +217,9 @@ const Employes = () => {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={isAdmin ? 6 : 5} className="p-12 text-center text-muted-foreground">
-                    Aucun agent. {isAdmin ? "Cliquez sur \"Ajouter un agent\"." : "L'admin RH peut en ajouter."}
+                    {employees.length === 0
+                      ? (isAdmin ? 'Aucun agent. Cliquez sur "Ajouter un agent".' : "L'admin RH peut en ajouter.")
+                      : "Aucun résultat."}
                   </td>
                 </tr>
               )}
@@ -204,10 +231,10 @@ const Employes = () => {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Nouvel agent</DialogTitle>
-            <DialogDescription>Renseignez les informations de l'agent.</DialogDescription>
+            <DialogTitle>{editingId ? "Modifier l'agent" : "Nouvel agent"}</DialogTitle>
+            <DialogDescription>{editingId ? "Mettez à jour les informations." : "Renseignez les informations de l'agent."}</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-3">
+          <form onSubmit={handleSave} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Matricule</Label><Input value={form.matricule} onChange={(e) => setForm({ ...form, matricule: e.target.value })} /></div>
               <div><Label>Date d'embauche</Label><Input type="date" value={form.hire_date} onChange={(e) => setForm({ ...form, hire_date: e.target.value })} /></div>
@@ -239,7 +266,7 @@ const Employes = () => {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={loading}>{loading ? "…" : "Ajouter"}</Button>
+              <Button type="submit" disabled={loading}>{loading ? "…" : (editingId ? "Enregistrer" : "Ajouter")}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

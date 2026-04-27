@@ -1,0 +1,188 @@
+import { useEffect, useMemo, useState } from "react";
+import { CalendarDays, ClipboardList, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TextField, SelectField, AreaField, FormGrid, cleanForm } from "@/lib/forms";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+
+interface AttRow { id: string; employee_id: string; date: string; check_in: string | null; check_out: string | null; status: string; }
+interface LeaveRow { id: string; employee_id: string; leave_type: string; start_date: string; end_date: string; reason: string | null; status: string; }
+interface Emp { id: string; first_name: string; last_name: string; }
+
+const Presence = () => {
+  const { isAdmin } = useAuth();
+  const [employees, setEmployees] = useState<Emp[]>([]);
+  const [attendance, setAttendance] = useState<AttRow[]>([]);
+  const [leaves, setLeaves] = useState<LeaveRow[]>([]);
+  const [openAtt, setOpenAtt] = useState(false);
+  const [openLeave, setOpenLeave] = useState(false);
+  const [att, setAtt] = useState<any>({ employee_id: "", date: new Date().toISOString().slice(0, 10), check_in: "", check_out: "", status: "present" });
+  const [leave, setLeave] = useState<any>({ employee_id: "", leave_type: "paid", start_date: "", end_date: "", reason: "", status: "pending" });
+
+  const refresh = async () => {
+    const [e, a, l] = await Promise.all([
+      supabase.from("employees").select("id,first_name,last_name").order("last_name"),
+      supabase.from("attendance").select("*").order("date", { ascending: false }).limit(200),
+      supabase.from("leave_requests").select("*").order("created_at", { ascending: false }),
+    ]);
+    setEmployees((e.data as Emp[]) || []);
+    setAttendance((a.data as AttRow[]) || []);
+    setLeaves((l.data as LeaveRow[]) || []);
+  };
+  useEffect(() => { refresh(); }, []);
+
+  const empName = (id: string) => {
+    const e = employees.find((x) => x.id === id);
+    return e ? `${e.first_name} ${e.last_name}` : "—";
+  };
+
+  const addAtt = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!att.employee_id) { toast.error("Agent requis"); return; }
+    const { error } = await supabase.from("attendance").insert(cleanForm(att));
+    if (error) { toast.error(error.message); return; }
+    toast.success("Pointage enregistré");
+    setOpenAtt(false); refresh();
+  };
+
+  const addLeave = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!leave.employee_id || !leave.start_date || !leave.end_date) { toast.error("Champs requis manquants"); return; }
+    const { error } = await supabase.from("leave_requests").insert(cleanForm(leave));
+    if (error) { toast.error(error.message); return; }
+    toast.success("Demande créée");
+    setOpenLeave(false); refresh();
+  };
+
+  const updateLeaveStatus = async (id: string, status: string) => {
+    const { error } = await supabase.from("leave_requests").update({ status }).eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(status === "approved" ? "Approuvée" : "Refusée");
+    refresh();
+  };
+
+  return (
+    <div className="mx-auto max-w-[1400px] space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Présence & Congés</h1>
+        <p className="text-sm text-muted-foreground">Pointage quotidien et gestion des demandes de congés.</p>
+      </div>
+
+      <Tabs defaultValue="attendance">
+        <TabsList>
+          <TabsTrigger value="attendance"><ClipboardList className="mr-2 h-4 w-4" /> Pointage</TabsTrigger>
+          <TabsTrigger value="leaves"><CalendarDays className="mr-2 h-4 w-4" /> Congés</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="attendance" className="mt-4">
+          <div className="mb-3 flex justify-between">
+            <Badge variant="secondary">{attendance.length} pointage(s)</Badge>
+            {isAdmin && <Button onClick={() => setOpenAtt(true)}><Plus className="mr-2 h-4 w-4" /> Pointage</Button>}
+          </div>
+          <section className="rounded-xl border bg-card shadow-sm overflow-hidden">
+            <table className="w-full">
+              <thead><tr className="border-b bg-secondary/40 text-left text-xs uppercase text-muted-foreground">
+                <th className="p-4">Date</th><th className="p-4">Agent</th><th className="p-4">Entrée</th><th className="p-4">Sortie</th><th className="p-4">Statut</th>
+              </tr></thead>
+              <tbody>
+                {attendance.length === 0 ? (
+                  <tr><td colSpan={5} className="p-12 text-center text-muted-foreground">Aucun pointage.</td></tr>
+                ) : attendance.map((a) => (
+                  <tr key={a.id} className="border-b hover:bg-muted/50 text-sm">
+                    <td className="p-4">{new Date(a.date).toLocaleDateString("fr-FR")}</td>
+                    <td className="p-4 font-semibold">{empName(a.employee_id)}</td>
+                    <td className="p-4">{a.check_in || "—"}</td>
+                    <td className="p-4">{a.check_out || "—"}</td>
+                    <td className="p-4"><Badge variant={a.status === "present" ? "default" : "secondary"}>{a.status}</Badge></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        </TabsContent>
+
+        <TabsContent value="leaves" className="mt-4">
+          <div className="mb-3 flex justify-between">
+            <Badge variant="secondary">{leaves.length} demande(s)</Badge>
+            {isAdmin && <Button onClick={() => setOpenLeave(true)}><Plus className="mr-2 h-4 w-4" /> Demande</Button>}
+          </div>
+          <section className="rounded-xl border bg-card shadow-sm overflow-hidden">
+            <table className="w-full">
+              <thead><tr className="border-b bg-secondary/40 text-left text-xs uppercase text-muted-foreground">
+                <th className="p-4">Agent</th><th className="p-4">Type</th><th className="p-4">Du</th><th className="p-4">Au</th><th className="p-4">Statut</th>
+                {isAdmin && <th className="p-4">Action</th>}
+              </tr></thead>
+              <tbody>
+                {leaves.length === 0 ? (
+                  <tr><td colSpan={6} className="p-12 text-center text-muted-foreground">Aucune demande.</td></tr>
+                ) : leaves.map((l) => (
+                  <tr key={l.id} className="border-b hover:bg-muted/50 text-sm">
+                    <td className="p-4 font-semibold">{empName(l.employee_id)}</td>
+                    <td className="p-4">{l.leave_type}</td>
+                    <td className="p-4">{new Date(l.start_date).toLocaleDateString("fr-FR")}</td>
+                    <td className="p-4">{new Date(l.end_date).toLocaleDateString("fr-FR")}</td>
+                    <td className="p-4">
+                      <Badge variant={l.status === "approved" ? "default" : l.status === "rejected" ? "destructive" : "outline"}>
+                        {l.status === "pending" ? "En attente" : l.status === "approved" ? "Approuvée" : "Refusée"}
+                      </Badge>
+                    </td>
+                    {isAdmin && (
+                      <td className="p-4 space-x-1">
+                        {l.status === "pending" && <>
+                          <Button size="sm" variant="default" onClick={() => updateLeaveStatus(l.id, "approved")}>Approuver</Button>
+                          <Button size="sm" variant="outline" onClick={() => updateLeaveStatus(l.id, "rejected")}>Refuser</Button>
+                        </>}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={openAtt} onOpenChange={setOpenAtt}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Nouveau pointage</DialogTitle><DialogDescription>Enregistrer une présence.</DialogDescription></DialogHeader>
+          <form onSubmit={addAtt} className="space-y-3">
+            <FormGrid>
+              <SelectField label="Agent *" value={att.employee_id} onChange={(v) => setAtt({ ...att, employee_id: v })}
+                options={employees.map((e) => ({ value: e.id, label: `${e.first_name} ${e.last_name}` }))} span={2} />
+              <TextField label="Date" value={att.date} onChange={(v) => setAtt({ ...att, date: v })} type="date" span={2} />
+              <TextField label="Entrée" value={att.check_in} onChange={(v) => setAtt({ ...att, check_in: v })} type="time" />
+              <TextField label="Sortie" value={att.check_out} onChange={(v) => setAtt({ ...att, check_out: v })} type="time" />
+              <SelectField label="Statut" value={att.status} onChange={(v) => setAtt({ ...att, status: v })}
+                options={[{ value: "present", label: "Présent" }, { value: "absent", label: "Absent" }, { value: "late", label: "En retard" }]} span={2} />
+            </FormGrid>
+            <DialogFooter><Button variant="outline" type="button" onClick={() => setOpenAtt(false)}>Annuler</Button><Button type="submit">Enregistrer</Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={openLeave} onOpenChange={setOpenLeave}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Demande de congé</DialogTitle><DialogDescription>Saisir une demande pour un agent.</DialogDescription></DialogHeader>
+          <form onSubmit={addLeave} className="space-y-3">
+            <FormGrid>
+              <SelectField label="Agent *" value={leave.employee_id} onChange={(v) => setLeave({ ...leave, employee_id: v })}
+                options={employees.map((e) => ({ value: e.id, label: `${e.first_name} ${e.last_name}` }))} span={2} />
+              <SelectField label="Type" value={leave.leave_type} onChange={(v) => setLeave({ ...leave, leave_type: v })}
+                options={[{ value: "paid", label: "Payé" }, { value: "unpaid", label: "Non payé" }, { value: "sick", label: "Maladie" }, { value: "maternity", label: "Maternité" }]} span={2} />
+              <TextField label="Du *" value={leave.start_date} onChange={(v) => setLeave({ ...leave, start_date: v })} type="date" required />
+              <TextField label="Au *" value={leave.end_date} onChange={(v) => setLeave({ ...leave, end_date: v })} type="date" required />
+              <AreaField label="Motif" value={leave.reason} onChange={(v) => setLeave({ ...leave, reason: v })} />
+            </FormGrid>
+            <DialogFooter><Button variant="outline" type="button" onClick={() => setOpenLeave(false)}>Annuler</Button><Button type="submit">Créer</Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Presence;

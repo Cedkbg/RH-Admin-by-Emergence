@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 
 interface AppHeaderProps {
   title: string;
@@ -14,6 +15,7 @@ interface AppHeaderProps {
 export function AppHeader({ title }: AppHeaderProps) {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
+  const [q, setQ] = useState("");
 
   const initials = (user?.user_metadata?.full_name || user?.email || "?")
     .split(" ")
@@ -22,15 +24,27 @@ export function AppHeader({ title }: AppHeaderProps) {
     .join("")
     .toUpperCase();
 
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const term = q.trim();
+    if (!term) return;
+    navigate(`/employes?q=${encodeURIComponent(term)}`);
+  };
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card/80 px-4 backdrop-blur-md md:px-6">
       <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
       <h1 className="hidden text-lg font-semibold text-foreground md:block">{title}</h1>
 
-      <div className="relative ml-auto hidden max-w-sm flex-1 md:block">
+      <form onSubmit={submitSearch} className="relative ml-auto hidden max-w-sm flex-1 md:block">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Rechercher..." className="h-10 rounded-full border-border bg-secondary pl-10 text-sm" />
-      </div>
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Rechercher un agent…"
+          className="h-10 rounded-full border-border bg-secondary pl-10 text-sm"
+        />
+      </form>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

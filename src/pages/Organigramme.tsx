@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { OrgChart } from "@/components/dashboard/OrgChart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { iconForCode, colorForCode } from "@/data/orgData";
 import { colorClasses } from "@/data/modules";
+import { useSearchParams } from "react-router-dom";
 
 interface DirectionRow {
   id: string;
@@ -24,8 +25,11 @@ interface DirectionRow {
 
 const Organigramme = () => {
   const { isAdmin } = useAuth();
+  const [params] = useSearchParams();
+  const queryFilter = (params.get("q") || "").toLowerCase();
   const [directions, setDirections] = useState<DirectionRow[]>([]);
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ code: "", name: "", manager_name: "", description: "" });
   const [loading, setLoading] = useState(false);
 
@@ -36,21 +40,40 @@ const Organigramme = () => {
 
   useEffect(() => { refresh(); }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const openCreate = () => {
+    setEditingId(null);
+    setForm({ code: "", name: "", manager_name: "", description: "" });
+    setOpen(true);
+  };
+
+  const openEdit = (d: DirectionRow) => {
+    setEditingId(d.id);
+    setForm({
+      code: d.code ?? "",
+      name: d.name,
+      manager_name: d.manager_name ?? "",
+      description: d.description ?? "",
+    });
+    setOpen(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name) { toast.error("Le nom est obligatoire"); return; }
     setLoading(true);
-    const { error } = await supabase.from("directions").insert({
+    const payload = {
       code: form.code || null,
       name: form.name,
       manager_name: form.manager_name || null,
       description: form.description || null,
-    });
+    };
+    const { error } = editingId
+      ? await supabase.from("directions").update(payload).eq("id", editingId)
+      : await supabase.from("directions").insert(payload);
     setLoading(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Direction créée");
+    toast.success(editingId ? "Direction modifiée" : "Direction créée");
     setOpen(false);
-    setForm({ code: "", name: "", manager_name: "", description: "" });
     refresh();
   };
 
@@ -62,17 +85,24 @@ const Organigramme = () => {
     refresh();
   };
 
+  const visible = queryFilter
+    ? directions.filter((d) =>
+        [d.name, d.code, d.manager_name, d.description].some((v) => (v || "").toLowerCase().includes(queryFilter))
+      )
+    : directions;
+
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Organigramme EMERGENCE DRC</h1>
           <p className="text-sm text-muted-foreground">
-            {directions.length} direction{directions.length > 1 ? "s" : ""}
+            {visible.length} / {directions.length} direction{directions.length > 1 ? "s" : ""}
+            {queryFilter && <span className="ml-2 italic">— filtre : « {queryFilter} »</span>}
           </p>
         </div>
         {isAdmin ? (
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" /> Ajouter une direction
           </Button>
         ) : (
@@ -83,7 +113,7 @@ const Organigramme = () => {
       <OrgChart />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {directions.map((d) => {
+        {visible.map((d) => {
           const code = d.code || "";
           const Icon = iconForCode(code);
           const c = colorClasses[colorForCode(code)];
@@ -101,21 +131,23 @@ const Organigramme = () => {
               <p className="text-sm text-muted-foreground mb-2">{d.manager_name || "—"}</p>
               {d.description && <p className="text-xs text-muted-foreground line-clamp-2">{d.description}</p>}
               {isAdmin && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100"
-                  onClick={() => handleDelete(d.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(d)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(d.id)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               )}
             </div>
           );
         })}
-        {directions.length === 0 && (
+        {visible.length === 0 && (
           <div className="col-span-full p-12 text-center text-muted-foreground border-2 border-dashed rounded-xl">
-            Aucune direction. {isAdmin ? "Cliquez sur \"Ajouter une direction\"." : "L'admin RH peut en créer."}
+            {directions.length === 0
+              ? (isAdmin ? 'Aucune direction. Cliquez sur "Ajouter une direction".' : "L'admin RH peut en créer.")
+              : "Aucun résultat pour ce filtre."}
           </div>
         )}
       </div>
@@ -123,10 +155,10 @@ const Organigramme = () => {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nouvelle direction</DialogTitle>
-            <DialogDescription>Ajoutez un département à l'organisation.</DialogDescription>
+            <DialogTitle>{editingId ? "Modifier la direction" : "Nouvelle direction"}</DialogTitle>
+            <DialogDescription>{editingId ? "Mettez à jour les informations." : "Ajoutez un département à l'organisation."}</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4">
+          <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-1">
                 <Label>Code</Label>
@@ -147,7 +179,7 @@ const Organigramme = () => {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={loading}>{loading ? "…" : "Créer"}</Button>
+              <Button type="submit" disabled={loading}>{loading ? "…" : (editingId ? "Enregistrer" : "Créer")}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
