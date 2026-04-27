@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Protected } from "@/components/Protected";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Organigramme from "./pages/Organigramme";
 import Employes from "./pages/Employes";
 import Admin from "./pages/Admin";
@@ -38,6 +39,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route element={<Protected><AppLayout /></Protected>}>
               <Route index element={<Index />} />
               <Route path="/organigramme" element={<Organigramme />} />
