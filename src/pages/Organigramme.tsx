@@ -107,11 +107,14 @@ const Organigramme = () => {
     refresh();
   };
 
+  // DG, DGA et le Manager Général restent dans l'arborescence (OrgChart) mais sont retirés de la grille listée.
+  const HIDDEN_FROM_LIST = new Set(["DG", "DGA"]);
+  const baseList = directions.filter((d) => !HIDDEN_FROM_LIST.has((d.code || "").toUpperCase()));
   const visible = queryFilter
-    ? directions.filter((d) =>
+    ? baseList.filter((d) =>
         [d.name, d.code, d.manager_name, d.description].some((v) => (v || "").toLowerCase().includes(queryFilter))
       )
-    : directions;
+    : baseList;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
@@ -119,7 +122,7 @@ const Organigramme = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Organigramme EMERGENCE DRC</h1>
           <p className="text-sm text-muted-foreground">
-            {visible.length} / {directions.length} direction{directions.length > 1 ? "s" : ""}
+            {visible.length} / {baseList.length} direction{baseList.length > 1 ? "s" : ""}
             {queryFilter && <span className="ml-2 italic">— filtre : « {queryFilter} »</span>}
           </p>
         </div>

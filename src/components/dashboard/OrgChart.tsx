@@ -38,20 +38,17 @@ function TopNode({
   subtitle,
   className,
   icon: Icon = User,
+  to,
 }: {
   code?: string;
   title: string;
   subtitle?: string;
   className?: string;
   icon?: typeof User;
+  to?: string;
 }) {
-  return (
-    <div
-      className={cn(
-        "flex min-w-[260px] items-center gap-3 rounded-xl px-5 py-3 text-white shadow-md",
-        className
-      )}
-    >
+  const inner = (
+    <>
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
         <Icon className="h-4 w-4" />
       </div>
@@ -60,8 +57,17 @@ function TopNode({
         <p className="truncate text-sm leading-tight">{title}</p>
         {subtitle && <p className="truncate text-[11px] leading-tight opacity-80">{subtitle}</p>}
       </div>
-    </div>
+    </>
   );
+  const classes = cn(
+    "flex min-w-[260px] items-center gap-3 rounded-xl px-5 py-3 text-white shadow-md transition",
+    to && "hover:opacity-90 cursor-pointer",
+    className,
+  );
+  if (to) {
+    return <Link to={to} className={classes} aria-label={`Ouvrir ${title}`}>{inner}</Link>;
+  }
+  return <div className={classes}>{inner}</div>;
 }
 
 function DirectionColumn({ d }: { d: DirectionRow }) {
@@ -150,6 +156,7 @@ export function OrgChart() {
             code={dg?.code || "DG"}
             title={dg?.name || "Directeur Général"}
             className="bg-slate-800"
+            to="/direction/DG"
           />
 
           <div className="h-6 w-px bg-border" />
@@ -159,6 +166,7 @@ export function OrgChart() {
             code={dga?.code || "DGA"}
             title={dga?.name || "Directeur Général Adjoint"}
             className="bg-slate-700"
+            to="/direction/DGA"
           />
 
           <div className="h-6 w-px bg-border" />
@@ -186,6 +194,7 @@ export function OrgChart() {
                 subtitle="Supervise l'exécution opérationnelle"
                 className="bg-slate-600"
                 icon={UserCog}
+                to="/manager"
               />
             </div>
 
