@@ -29,6 +29,7 @@ import Rapports from "./pages/modules/Rapports";
 import Securite from "./pages/modules/Securite";
 import Parametres from "./pages/modules/Parametres";
 import Secretariat from "./pages/modules/Secretariat";
+import Assistant from "./pages/modules/Assistant";
 
 const queryClient = new QueryClient();
 
