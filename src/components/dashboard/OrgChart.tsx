@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { User, UserCog } from "lucide-react";
+import { User, UserCog, Briefcase, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { colorClasses, modules } from "@/data/modules";
 import { directionTemplates, iconForCode, colorForCode } from "@/data/orgData";
