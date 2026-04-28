@@ -152,7 +152,6 @@ export function OrgChart() {
             className="bg-slate-800"
           />
 
-          {/* Connector */}
           <div className="h-6 w-px bg-border" />
 
           {/* DGA */}
@@ -162,20 +161,16 @@ export function OrgChart() {
             className="bg-slate-700"
           />
 
-          {/* Connector */}
           <div className="h-6 w-px bg-border" />
 
-          {/* Manager Général + Assistant (gauche) + Secrétaire (droite) */}
-          <div className="relative flex items-start justify-center gap-8">
-            {/* Assistant de Direction - bas gauche */}
+          {/* Manager + Assistant + Secrétariat — stack en mobile, en ligne en md+ */}
+          <div className="flex flex-col md:flex-row items-center md:items-start justify-center gap-3 md:gap-8 w-full">
             <Link
               to="/assistant"
-              className="mt-12 flex min-w-[180px] items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-white shadow-md hover:opacity-90 transition relative"
+              className="order-2 md:order-1 md:mt-12 flex min-w-[180px] items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-white shadow-md hover:opacity-90 transition relative"
             >
-              {/* Ligne reliant Assistant au Manager (à droite) */}
-              <span className="absolute right-0 top-1/2 h-px w-8 bg-border translate-x-full" />
-              {/* Ligne reliant Assistant au DGA (vers le haut-droit) */}
-              <span className="absolute right-0 top-0 h-12 w-px bg-border translate-x-8 -translate-y-12" />
+              <span className="hidden md:block absolute right-0 top-1/2 h-px w-8 bg-border translate-x-full" />
+              <span className="hidden md:block absolute right-0 top-0 h-12 w-px bg-border translate-x-8 -translate-y-12" />
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20">
                 <Briefcase className="h-4 w-4" />
               </div>
@@ -185,20 +180,21 @@ export function OrgChart() {
               </div>
             </Link>
 
-            <TopNode
-              title="Manager Général"
-              subtitle="Supervise l'exécution opérationnelle"
-              className="bg-slate-600"
-              icon={UserCog}
-            />
+            <div className="order-1 md:order-2">
+              <TopNode
+                title="Manager Général"
+                subtitle="Supervise l'exécution opérationnelle"
+                className="bg-slate-600"
+                icon={UserCog}
+              />
+            </div>
 
-            {/* Secrétaire - bas droite */}
             <Link
               to="/secretariat"
-              className="mt-12 flex min-w-[180px] items-center gap-2 rounded-xl bg-pink-600 px-4 py-2.5 text-white shadow-md hover:opacity-90 transition relative"
+              className="order-3 md:mt-12 flex min-w-[180px] items-center gap-2 rounded-xl bg-pink-600 px-4 py-2.5 text-white shadow-md hover:opacity-90 transition relative"
             >
-              <span className="absolute left-0 top-1/2 h-px w-8 bg-border -translate-x-full" />
-              <span className="absolute left-0 top-0 h-12 w-px bg-border -translate-x-8 -translate-y-12" />
+              <span className="hidden md:block absolute left-0 top-1/2 h-px w-8 bg-border -translate-x-full" />
+              <span className="hidden md:block absolute left-0 top-0 h-12 w-px bg-border -translate-x-8 -translate-y-12" />
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20">
                 <ClipboardList className="h-4 w-4" />
               </div>
@@ -209,28 +205,15 @@ export function OrgChart() {
             </Link>
           </div>
 
-          {/* Vertical line down */}
           <div className="h-6 w-px bg-border" />
 
-          {/* Horizontal connector spanning directions */}
+          {/* Directions — grille responsive */}
           {others.length > 0 && (
-            <div className="relative w-full min-w-max px-4">
-              {/* Horizontal line */}
-              <div
-                className="absolute left-0 right-0 top-0 mx-auto h-px bg-border"
-                style={{
-                  width: `calc(100% / ${others.length} * ${others.length - 1})`,
-                  marginLeft: `calc(100% / ${others.length} / 2)`,
-                  marginRight: `calc(100% / ${others.length} / 2)`,
-                }}
-              />
-              <div
-                className="grid gap-3"
-                style={{ gridTemplateColumns: `repeat(${others.length}, minmax(0, 1fr))` }}
-              >
+            <div className="w-full px-2">
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 justify-items-center">
                 {others.map((d) => (
                   <div key={d.id} className="flex flex-col items-center">
-                    <div className="h-6 w-px bg-border" />
+                    <div className="h-4 w-px bg-border" />
                     <DirectionColumn d={d} />
                   </div>
                 ))}
