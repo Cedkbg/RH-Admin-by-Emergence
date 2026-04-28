@@ -83,6 +83,15 @@ const Employes = () => {
 
   useEffect(() => { refresh(); }, []);
 
+  // Auto-ouverture du formulaire via ?new=1&direction=...
+  useEffect(() => {
+    if (params.get("new") === "1" && isAdmin) {
+      setEditingId(null);
+      setForm({ ...blankForm, direction_id: params.get("direction") || "" });
+      setOpen(true);
+    }
+  }, [params, isAdmin]);
+
   const filteredDepartments = useMemo(
     () => departments.filter((d) => !form.direction_id || d.direction_id === form.direction_id),
     [departments, form.direction_id]
