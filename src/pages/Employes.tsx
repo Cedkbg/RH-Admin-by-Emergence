@@ -215,13 +215,13 @@ const Employes = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b bg-secondary/40">
-                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Agent</th>
-                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Poste</th>
-                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Direction</th>
-                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Contrat</th>
-                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Statut</th>
-                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Contact</th>
-                {isAdmin && <th className="p-4" />}
+                <th className="p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Agent</th>
+                <th className="hidden sm:table-cell p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Poste</th>
+                <th className="hidden md:table-cell p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Direction</th>
+                <th className="hidden lg:table-cell p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Contrat</th>
+                <th className="p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Statut</th>
+                <th className="hidden lg:table-cell p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Contact</th>
+                {isAdmin && <th className="p-3 md:p-4" />}
               </tr>
             </thead>
             <tbody>
