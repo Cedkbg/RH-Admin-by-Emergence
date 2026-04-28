@@ -314,11 +314,13 @@ export default function DirectionDetail() {
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <h2 className="text-lg font-semibold">Agents de la direction ({employees.length})</h2>
           <div className="flex gap-2">
-            <Button size="sm" asChild>
-              <Link to={`/employes?direction=${direction.id}&new=1`}>
-                <UserPlus className="mr-2 h-4 w-4" />Ajouter un agent
-              </Link>
-            </Button>
+            {["D7", "DG", "DGA"].includes(upperCode) && (
+              <Button size="sm" asChild>
+                <Link to={`/employes?direction=${direction.id}&new=1`}>
+                  <UserPlus className="mr-2 h-4 w-4" />Ajouter un agent
+                </Link>
+              </Button>
+            )}
             <Button size="sm" variant="outline" asChild>
               <Link to="/employes"><Users className="mr-2 h-4 w-4" />Gérer</Link>
             </Button>
@@ -328,13 +330,15 @@ export default function DirectionDetail() {
         {employees.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-lg">
             Aucun agent rattaché à cette direction.
-            <div className="mt-3">
-              <Button size="sm" asChild>
-                <Link to={`/employes?direction=${direction.id}&new=1`}>
-                  <UserPlus className="mr-2 h-4 w-4" />Ajouter le premier agent
-                </Link>
-              </Button>
-            </div>
+            {["D7", "DG", "DGA"].includes(upperCode) && (
+              <div className="mt-3">
+                <Button size="sm" asChild>
+                  <Link to={`/employes?direction=${direction.id}&new=1`}>
+                    <UserPlus className="mr-2 h-4 w-4" />Ajouter le premier agent
+                  </Link>
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
