@@ -165,13 +165,49 @@ export function OrgChart() {
           {/* Connector */}
           <div className="h-6 w-px bg-border" />
 
-          {/* Manager Général */}
-          <TopNode
-            title="Manager Général"
-            subtitle="Supervise l'exécution opérationnelle"
-            className="bg-slate-600"
-            icon={UserCog}
-          />
+          {/* Manager Général + Assistant (gauche) + Secrétaire (droite) */}
+          <div className="relative flex items-start justify-center gap-8">
+            {/* Assistant de Direction - bas gauche */}
+            <Link
+              to="/assistant"
+              className="mt-12 flex min-w-[180px] items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-white shadow-md hover:opacity-90 transition relative"
+            >
+              {/* Ligne reliant Assistant au Manager (à droite) */}
+              <span className="absolute right-0 top-1/2 h-px w-8 bg-border translate-x-full" />
+              {/* Ligne reliant Assistant au DGA (vers le haut-droit) */}
+              <span className="absolute right-0 top-0 h-12 w-px bg-border translate-x-8 -translate-y-12" />
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20">
+                <Briefcase className="h-4 w-4" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold leading-tight">Assistant de Direction</p>
+                <p className="text-[10px] opacity-80">Bras droit du Manager</p>
+              </div>
+            </Link>
+
+            <TopNode
+              title="Manager Général"
+              subtitle="Supervise l'exécution opérationnelle"
+              className="bg-slate-600"
+              icon={UserCog}
+            />
+
+            {/* Secrétaire - bas droite */}
+            <Link
+              to="/secretariat"
+              className="mt-12 flex min-w-[180px] items-center gap-2 rounded-xl bg-pink-600 px-4 py-2.5 text-white shadow-md hover:opacity-90 transition relative"
+            >
+              <span className="absolute left-0 top-1/2 h-px w-8 bg-border -translate-x-full" />
+              <span className="absolute left-0 top-0 h-12 w-px bg-border -translate-x-8 -translate-y-12" />
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20">
+                <ClipboardList className="h-4 w-4" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold leading-tight">Secrétariat</p>
+                <p className="text-[10px] opacity-80">Agenda, courrier, PV</p>
+              </div>
+            </Link>
+          </div>
 
           {/* Vertical line down */}
           <div className="h-6 w-px bg-border" />
