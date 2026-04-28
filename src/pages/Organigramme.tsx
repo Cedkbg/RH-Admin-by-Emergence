@@ -122,7 +122,7 @@ const Organigramme = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Organigramme EMERGENCE DRC</h1>
           <p className="text-sm text-muted-foreground">
-            {visible.length} / {directions.length} direction{directions.length > 1 ? "s" : ""}
+            {visible.length} / {baseList.length} direction{baseList.length > 1 ? "s" : ""}
             {queryFilter && <span className="ml-2 italic">— filtre : « {queryFilter} »</span>}
           </p>
         </div>
