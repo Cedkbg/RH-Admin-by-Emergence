@@ -85,12 +85,12 @@ const Employes = () => {
 
   // Auto-ouverture du formulaire via ?new=1&direction=...
   useEffect(() => {
-    if (params.get("new") === "1" && isAdmin) {
+    if (params.get("new") === "1") {
       setEditingId(null);
       setForm({ ...blankForm, direction_id: params.get("direction") || "" });
       setOpen(true);
     }
-  }, [params, isAdmin]);
+  }, [params]);
 
   const filteredDepartments = useMemo(
     () => departments.filter((d) => !form.direction_id || d.direction_id === form.direction_id),
@@ -178,13 +178,9 @@ const Employes = () => {
             {filtered.length} / {employees.length} agent{employees.length > 1 ? "s" : ""}
           </p>
         </div>
-        {isAdmin ? (
-          <Button onClick={openCreate}>
-            <UserPlus className="mr-2 h-4 w-4" /> Ajouter un agent
-          </Button>
-        ) : (
-          <Badge variant="secondary">Ajout réservé à l'Admin RH</Badge>
-        )}
+        <Button onClick={openCreate}>
+          <UserPlus className="mr-2 h-4 w-4" /> Ajouter un agent
+        </Button>
       </div>
 
       <section className="rounded-xl border bg-card p-4 shadow-sm">
