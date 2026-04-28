@@ -156,6 +156,7 @@ export function OrgChart() {
             code={dg?.code || "DG"}
             title={dg?.name || "Directeur Général"}
             className="bg-slate-800"
+            to="/direction/DG"
           />
 
           <div className="h-6 w-px bg-border" />
@@ -165,6 +166,7 @@ export function OrgChart() {
             code={dga?.code || "DGA"}
             title={dga?.name || "Directeur Général Adjoint"}
             className="bg-slate-700"
+            to="/direction/DGA"
           />
 
           <div className="h-6 w-px bg-border" />
@@ -192,6 +194,7 @@ export function OrgChart() {
                 subtitle="Supervise l'exécution opérationnelle"
                 className="bg-slate-600"
                 icon={UserCog}
+                to="/manager"
               />
             </div>
 
