@@ -3,9 +3,11 @@ import { Search, UserPlus, Mail, Trash2, Filter, Pencil, ArrowLeft } from "lucid
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,11 +22,15 @@ interface EmployeeRow {
   last_name: string;
   email: string | null;
   phone: string | null;
+  address: string | null;
+  birth_date: string | null;
   position: string | null;
   direction_id: string | null;
   department_id: string | null;
   contract_type: string | null;
   gender: string | null;
+  base_salary: number | null;
+  manager_id: string | null;
   status: "active" | "suspended" | "departed";
   hire_date: string | null;
 }
@@ -35,14 +41,17 @@ const POSITION_SUGGESTIONS = [
   "Agent administratif", "Coordinateur", "Stagiaire", "Consultant",
 ];
 
+const CONTRACT_TYPES = ["CDI", "CDD", "Stage", "Alternance", "Freelance", "Intérim"];
+
 const statusLabel: Record<EmployeeRow["status"], string> = {
   active: "Actif", suspended: "Suspendu", departed: "Départ",
 };
 
 const blankForm = {
-  matricule: "", first_name: "", last_name: "", email: "", phone: "",
-  position: "", direction_id: "", department_id: "", contract_type: "CDI",
-  gender: "", status: "active" as EmployeeRow["status"], hire_date: "",
+  first_name: "", last_name: "", email: "", phone: "", address: "",
+  birth_date: "", position: "", direction_id: "", department_id: "",
+  contract_type: "CDI", gender: "", base_salary: "", manager_id: "",
+  status: "active" as EmployeeRow["status"], hire_date: "",
 };
 
 const Employes = () => {
@@ -59,7 +68,6 @@ const Employes = () => {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState(blankForm);
 
-  // Sync query when URL ?q changes (header search)
   useEffect(() => { setQuery(params.get("q") || ""); }, [params]);
 
   const refresh = async () => {
@@ -96,10 +104,12 @@ const Employes = () => {
   const openEdit = (e: EmployeeRow) => {
     setEditingId(e.id);
     setForm({
-      matricule: e.matricule ?? "", first_name: e.first_name, last_name: e.last_name,
-      email: e.email ?? "", phone: e.phone ?? "", position: e.position ?? "",
+      first_name: e.first_name, last_name: e.last_name,
+      email: e.email ?? "", phone: e.phone ?? "", address: e.address ?? "",
+      birth_date: e.birth_date ?? "", position: e.position ?? "",
       direction_id: e.direction_id ?? "", department_id: e.department_id ?? "",
       contract_type: e.contract_type ?? "CDI", gender: e.gender ?? "",
+      base_salary: e.base_salary?.toString() ?? "", manager_id: e.manager_id ?? "",
       status: e.status, hire_date: e.hire_date ?? "",
     });
     setOpen(true);
@@ -110,13 +120,19 @@ const Employes = () => {
     if (!form.first_name || !form.last_name) { toast.error("Prénom et nom requis"); return; }
     setLoading(true);
     const payload = {
-      matricule: form.matricule || null,
       first_name: form.first_name,
       last_name: form.last_name,
       email: form.email || null,
       phone: form.phone || null,
+      address: form.address || null,
+      birth_date: form.birth_date || null,
       position: form.position || null,
       direction_id: form.direction_id || null,
+      department_id: form.department_id || null,
+      contract_type: form.contract_type || null,
+      gender: form.gender || null,
+      base_salary: form.base_salary ? Number(form.base_salary) : 0,
+      manager_id: form.manager_id || null,
       status: form.status,
       hire_date: form.hire_date || null,
     };
@@ -125,7 +141,7 @@ const Employes = () => {
       : await supabase.from("employees").insert(payload);
     setLoading(false);
     if (error) { toast.error(error.message); return; }
-    toast.success(editingId ? "Agent modifié" : "Agent ajouté");
+    toast.success(editingId ? "Agent modifié" : "Agent ajouté (matricule auto-généré)");
     setOpen(false);
     refresh();
   };
@@ -137,6 +153,8 @@ const Employes = () => {
     toast.success("Agent supprimé");
     refresh();
   };
+
+  const managerOptions = employees.filter((e) => e.id !== editingId);
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 animate-fade-in">
@@ -191,6 +209,7 @@ const Employes = () => {
                 <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Agent</th>
                 <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Poste</th>
                 <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Direction</th>
+                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Contrat</th>
                 <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Statut</th>
                 <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Contact</th>
                 {isAdmin && <th className="p-4" />}
@@ -215,6 +234,7 @@ const Employes = () => {
                     </td>
                     <td className="p-4">{e.position || "—"}</td>
                     <td className="p-4">{dir?.name || "—"}</td>
+                    <td className="p-4"><Badge variant="outline">{e.contract_type || "—"}</Badge></td>
                     <td className="p-4">
                       <Badge variant={e.status === "active" ? "default" : "secondary"}>{statusLabel[e.status]}</Badge>
                     </td>
@@ -242,7 +262,7 @@ const Employes = () => {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={isAdmin ? 6 : 5} className="p-12 text-center text-muted-foreground">
+                  <td colSpan={isAdmin ? 7 : 6} className="p-12 text-center text-muted-foreground">
                     {employees.length === 0
                       ? (isAdmin ? 'Aucun agent. Cliquez sur "Ajouter un agent".' : "L'admin RH peut en ajouter.")
                       : "Aucun résultat."}
@@ -255,41 +275,112 @@ const Employes = () => {
       </section>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Modifier l'agent" : "Nouvel agent"}</DialogTitle>
-            <DialogDescription>{editingId ? "Mettez à jour les informations." : "Renseignez les informations de l'agent."}</DialogDescription>
+            <DialogDescription>
+              {editingId ? "Mettez à jour les informations." : "Le matricule sera généré automatiquement."}
+            </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSave} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Matricule</Label><Input value={form.matricule} onChange={(e) => setForm({ ...form, matricule: e.target.value })} /></div>
-              <div><Label>Date d'embauche</Label><Input type="date" value={form.hire_date} onChange={(e) => setForm({ ...form, hire_date: e.target.value })} /></div>
-              <div><Label>Prénom *</Label><Input required value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} /></div>
-              <div><Label>Nom *</Label><Input required value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} /></div>
-              <div><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-              <div><Label>Téléphone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-              <div className="col-span-2"><Label>Poste</Label><Input value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} /></div>
-              <div>
-                <Label>Direction</Label>
-                <Select value={form.direction_id} onValueChange={(v) => setForm({ ...form, direction_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                  <SelectContent>
-                    {directions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Statut</Label>
-                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as EmployeeRow["status"] })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Actif</SelectItem>
-                    <SelectItem value="suspended">Suspendu</SelectItem>
-                    <SelectItem value="departed">Départ</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+          <form onSubmit={handleSave} className="space-y-4">
+            <Tabs defaultValue="identite">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="identite">Identité</TabsTrigger>
+                <TabsTrigger value="poste">Poste & Contrat</TabsTrigger>
+                <TabsTrigger value="contact">Contact</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="identite" className="space-y-3 mt-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Prénom *</Label><Input required value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} /></div>
+                  <div><Label>Nom *</Label><Input required value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} /></div>
+                  <div>
+                    <Label>Genre</Label>
+                    <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
+                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="M">Masculin</SelectItem>
+                        <SelectItem value="F">Féminin</SelectItem>
+                        <SelectItem value="A">Autre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Date de naissance</Label><Input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} /></div>
+                  <div className="col-span-2"><Label>Adresse</Label><Textarea rows={2} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="poste" className="space-y-3 mt-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Direction</Label>
+                    <Select value={form.direction_id} onValueChange={(v) => setForm({ ...form, direction_id: v, department_id: "" })}>
+                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>
+                        {directions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Département</Label>
+                    <Select value={form.department_id} onValueChange={(v) => setForm({ ...form, department_id: v })} disabled={!form.direction_id}>
+                      <SelectTrigger><SelectValue placeholder={form.direction_id ? "—" : "Choisir direction"} /></SelectTrigger>
+                      <SelectContent>
+                        {filteredDepartments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Poste</Label>
+                    <Input list="positions" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} placeholder="Saisir ou choisir" />
+                    <datalist id="positions">
+                      {POSITION_SUGGESTIONS.map((p) => <option key={p} value={p} />)}
+                    </datalist>
+                  </div>
+                  <div>
+                    <Label>Type de contrat</Label>
+                    <Select value={form.contract_type} onValueChange={(v) => setForm({ ...form, contract_type: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CONTRACT_TYPES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Date d'embauche</Label><Input type="date" value={form.hire_date} onChange={(e) => setForm({ ...form, hire_date: e.target.value })} /></div>
+                  <div><Label>Salaire de base (FCFA)</Label><Input type="number" min="0" value={form.base_salary} onChange={(e) => setForm({ ...form, base_salary: e.target.value })} /></div>
+                  <div>
+                    <Label>Statut</Label>
+                    <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as EmployeeRow["status"] })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Actif</SelectItem>
+                        <SelectItem value="suspended">Suspendu</SelectItem>
+                        <SelectItem value="departed">Départ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Manager direct</Label>
+                    <Select value={form.manager_id} onValueChange={(v) => setForm({ ...form, manager_id: v })}>
+                      <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
+                      <SelectContent>
+                        {managerOptions.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>{m.first_name} {m.last_name} — {m.position || "—"}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="contact" className="space-y-3 mt-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+                  <div><Label>Téléphone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+                </div>
+              </TabsContent>
+            </Tabs>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
               <Button type="submit" disabled={loading}>{loading ? "…" : (editingId ? "Enregistrer" : "Ajouter")}</Button>
