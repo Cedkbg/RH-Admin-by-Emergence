@@ -83,6 +83,15 @@ const Employes = () => {
 
   useEffect(() => { refresh(); }, []);
 
+  // Auto-ouverture du formulaire via ?new=1&direction=...
+  useEffect(() => {
+    if (params.get("new") === "1" && isAdmin) {
+      setEditingId(null);
+      setForm({ ...blankForm, direction_id: params.get("direction") || "" });
+      setOpen(true);
+    }
+  }, [params, isAdmin]);
+
   const filteredDepartments = useMemo(
     () => departments.filter((d) => !form.direction_id || d.direction_id === form.direction_id),
     [departments, form.direction_id]
@@ -206,13 +215,13 @@ const Employes = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b bg-secondary/40">
-                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Agent</th>
-                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Poste</th>
-                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Direction</th>
-                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Contrat</th>
-                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Statut</th>
-                <th className="p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Contact</th>
-                {isAdmin && <th className="p-4" />}
+                <th className="p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Agent</th>
+                <th className="hidden sm:table-cell p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Poste</th>
+                <th className="hidden md:table-cell p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Direction</th>
+                <th className="hidden lg:table-cell p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Contrat</th>
+                <th className="p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Statut</th>
+                <th className="hidden lg:table-cell p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Contact</th>
+                {isAdmin && <th className="p-3 md:p-4" />}
               </tr>
             </thead>
             <tbody>
@@ -221,24 +230,25 @@ const Employes = () => {
                 const initials = `${e.first_name[0] ?? ""}${e.last_name[0] ?? ""}`.toUpperCase();
                 return (
                   <tr key={e.id} className="border-b hover:bg-muted/50">
-                    <td className="p-4">
+                    <td className="p-3 md:p-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                        <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
                           {initials}
                         </div>
-                        <div>
-                          <p className="font-semibold">{e.first_name} {e.last_name}</p>
-                          <p className="text-xs text-muted-foreground">{e.matricule || "—"}</p>
+                        <div className="min-w-0">
+                          <p className="font-semibold truncate">{e.first_name} {e.last_name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{e.matricule || "—"}</p>
+                          <p className="sm:hidden text-xs text-muted-foreground truncate">{e.position || "—"}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="p-4">{e.position || "—"}</td>
-                    <td className="p-4">{dir?.name || "—"}</td>
-                    <td className="p-4"><Badge variant="outline">{e.contract_type || "—"}</Badge></td>
-                    <td className="p-4">
+                    <td className="hidden sm:table-cell p-3 md:p-4">{e.position || "—"}</td>
+                    <td className="hidden md:table-cell p-3 md:p-4">{dir?.name || "—"}</td>
+                    <td className="hidden lg:table-cell p-3 md:p-4"><Badge variant="outline">{e.contract_type || "—"}</Badge></td>
+                    <td className="p-3 md:p-4">
                       <Badge variant={e.status === "active" ? "default" : "secondary"}>{statusLabel[e.status]}</Badge>
                     </td>
-                    <td className="p-4">
+                    <td className="hidden lg:table-cell p-3 md:p-4">
                       {e.email ? (
                         <a href={`mailto:${e.email}`} className="flex items-center gap-1 text-xs text-primary hover:underline">
                           <Mail className="h-3.5 w-3.5" /> {e.email}
@@ -246,7 +256,7 @@ const Employes = () => {
                       ) : "—"}
                     </td>
                     {isAdmin && (
-                      <td className="p-4">
+                      <td className="p-3 md:p-4">
                         <div className="flex justify-end gap-1">
                           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(e)}>
                             <Pencil className="h-3.5 w-3.5" />

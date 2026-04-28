@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Plus, Pencil, Trash2, ChevronDown, ChevronUp,
-  Users, Building2, Briefcase, UserCheck,
+  Users, Building2, Briefcase, UserCheck, UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -311,24 +311,37 @@ export default function DirectionDetail() {
 
       {/* Agents */}
       <Card className="p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <h2 className="text-lg font-semibold">Agents de la direction ({employees.length})</h2>
-          <Button size="sm" variant="outline" asChild>
-            <Link to="/employes"><Users className="mr-2 h-4 w-4" />Gérer</Link>
-          </Button>
+          <div className="flex gap-2">
+            {isAdmin && (
+              <Button size="sm" asChild>
+                <Link to={`/employes?direction=${direction.id}&new=1`}>
+                  <UserPlus className="mr-2 h-4 w-4" />Ajouter un agent
+                </Link>
+              </Button>
+            )}
+            <Button size="sm" variant="outline" asChild>
+              <Link to="/employes"><Users className="mr-2 h-4 w-4" />Gérer</Link>
+            </Button>
+          </div>
         </div>
 
         {employees.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground border-2 border-dashed rounded-lg">
             Aucun agent rattaché à cette direction.
             {isAdmin && (
-              <div className="mt-2">
-                <Link to="/employes" className="text-primary underline">Ajouter un agent</Link>
+              <div className="mt-3">
+                <Button size="sm" asChild>
+                  <Link to={`/employes?direction=${direction.id}&new=1`}>
+                    <UserPlus className="mr-2 h-4 w-4" />Ajouter le premier agent
+                  </Link>
+                </Button>
               </div>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {employees.map((e) => (
               <div key={e.id} className="p-3 border rounded-lg bg-card">
                 <div className="flex items-center justify-between gap-2">
