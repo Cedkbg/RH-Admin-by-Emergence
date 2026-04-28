@@ -230,24 +230,25 @@ const Employes = () => {
                 const initials = `${e.first_name[0] ?? ""}${e.last_name[0] ?? ""}`.toUpperCase();
                 return (
                   <tr key={e.id} className="border-b hover:bg-muted/50">
-                    <td className="p-4">
+                    <td className="p-3 md:p-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                        <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
                           {initials}
                         </div>
-                        <div>
-                          <p className="font-semibold">{e.first_name} {e.last_name}</p>
-                          <p className="text-xs text-muted-foreground">{e.matricule || "—"}</p>
+                        <div className="min-w-0">
+                          <p className="font-semibold truncate">{e.first_name} {e.last_name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{e.matricule || "—"}</p>
+                          <p className="sm:hidden text-xs text-muted-foreground truncate">{e.position || "—"}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="p-4">{e.position || "—"}</td>
-                    <td className="p-4">{dir?.name || "—"}</td>
-                    <td className="p-4"><Badge variant="outline">{e.contract_type || "—"}</Badge></td>
-                    <td className="p-4">
+                    <td className="hidden sm:table-cell p-3 md:p-4">{e.position || "—"}</td>
+                    <td className="hidden md:table-cell p-3 md:p-4">{dir?.name || "—"}</td>
+                    <td className="hidden lg:table-cell p-3 md:p-4"><Badge variant="outline">{e.contract_type || "—"}</Badge></td>
+                    <td className="p-3 md:p-4">
                       <Badge variant={e.status === "active" ? "default" : "secondary"}>{statusLabel[e.status]}</Badge>
                     </td>
-                    <td className="p-4">
+                    <td className="hidden lg:table-cell p-3 md:p-4">
                       {e.email ? (
                         <a href={`mailto:${e.email}`} className="flex items-center gap-1 text-xs text-primary hover:underline">
                           <Mail className="h-3.5 w-3.5" /> {e.email}
@@ -255,7 +256,7 @@ const Employes = () => {
                       ) : "—"}
                     </td>
                     {isAdmin && (
-                      <td className="p-4">
+                      <td className="p-3 md:p-4">
                         <div className="flex justify-end gap-1">
                           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(e)}>
                             <Pencil className="h-3.5 w-3.5" />
