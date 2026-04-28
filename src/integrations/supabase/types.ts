@@ -104,6 +104,48 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_records: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string
+          related_direction: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          related_direction?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          related_direction?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           check_in: string | null
@@ -372,6 +414,9 @@ export type Database = {
       }
       employees: {
         Row: {
+          address: string | null
+          base_salary: number | null
+          birth_date: string | null
           contract_type: string | null
           created_at: string
           department_id: string | null
@@ -382,6 +427,7 @@ export type Database = {
           hire_date: string | null
           id: string
           last_name: string
+          manager_id: string | null
           matricule: string | null
           phone: string | null
           position: string | null
@@ -389,6 +435,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
+          base_salary?: number | null
+          birth_date?: string | null
           contract_type?: string | null
           created_at?: string
           department_id?: string | null
@@ -399,6 +448,7 @@ export type Database = {
           hire_date?: string | null
           id?: string
           last_name: string
+          manager_id?: string | null
           matricule?: string | null
           phone?: string | null
           position?: string | null
@@ -406,6 +456,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
+          base_salary?: number | null
+          birth_date?: string | null
           contract_type?: string | null
           created_at?: string
           department_id?: string | null
@@ -416,6 +469,7 @@ export type Database = {
           hire_date?: string | null
           id?: string
           last_name?: string
+          manager_id?: string | null
           matricule?: string | null
           phone?: string | null
           position?: string | null
