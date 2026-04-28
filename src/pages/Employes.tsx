@@ -369,8 +369,10 @@ const Employes = () => {
                     <Label>Manager direct</Label>
                     <Select value={form.manager_id} onValueChange={(v) => setForm({ ...form, manager_id: v })}>
                       <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
-                      <SelectContent>
-                        {managerOptions.map((m) => (
+                      <SelectContent className="max-h-72 overflow-y-auto">
+                        {managerOptions.length === 0 ? (
+                          <div className="px-2 py-3 text-xs text-muted-foreground">Aucun manager disponible</div>
+                        ) : managerOptions.map((m) => (
                           <SelectItem key={m.id} value={m.id}>{m.first_name} {m.last_name} — {m.position || "—"}</SelectItem>
                         ))}
                       </SelectContent>
