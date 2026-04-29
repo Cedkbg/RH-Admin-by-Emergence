@@ -71,8 +71,13 @@ export function AppHeader({ title }: AppHeaderProps) {
               {initials}
             </div>
             <div className="hidden text-left sm:block">
-              <p className="text-sm font-semibold leading-tight text-foreground">
+              <p className="text-sm font-semibold leading-tight text-foreground flex items-center gap-2">
                 {user?.user_metadata?.full_name || user?.email}
+                {roleLabel && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    {roleLabel}
+                  </Badge>
+                )}
               </p>
               <p className="text-xs leading-tight text-muted-foreground truncate max-w-[220px]">
                 {user?.email}
@@ -80,10 +85,17 @@ export function AppHeader({ title }: AppHeaderProps) {
             </div>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className="flex items-center gap-2">
-            Mon compte
-            {isAdmin && <Badge variant="secondary">Admin</Badge>}
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              Mon compte
+              {isAdmin && <Badge variant="secondary">Admin</Badge>}
+            </div>
+            {roleLabel && (
+              <span className="text-xs font-normal text-muted-foreground">
+                Statut : {roleLabel}
+              </span>
+            )}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={async () => { await signOut(); navigate("/auth"); }}>
