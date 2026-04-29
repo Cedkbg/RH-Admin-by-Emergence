@@ -28,6 +28,18 @@ export default function Onboarding() {
 
   useEffect(() => {
     (async () => {
+      // Si la configuration est déjà faite OU qu'un admin existe, rediriger vers la connexion
+      const [{ data: cfg }, { count: adminCount }] = await Promise.all([
+        supabase.from("app_settings").select("value").eq("key", "company_onboarded").maybeSingle(),
+        supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin"),
+      ]);
+      const v: any = cfg?.value;
+      const done = v === true || (typeof v === "object" && v?.value === true);
+      if (done || (adminCount ?? 0) > 0) {
+        navigate("/auth", { replace: true });
+        return;
+      }
+
       const { data: settings } = await supabase
         .from("app_settings")
         .select("key,value")
@@ -45,7 +57,7 @@ export default function Onboarding() {
         email: map.company_email || "",
       });
     })();
-  }, []);
+  }, [navigate]);
 
   const saveCompany = async (e: React.FormEvent) => {
     e.preventDefault();
