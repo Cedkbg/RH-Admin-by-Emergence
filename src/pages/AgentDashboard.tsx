@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, Users, QrCode, CalendarDays, Mail } from "lucide-react";
+import { Building2, Users, QrCode, CalendarDays, Mail, ChevronDown, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -14,6 +15,8 @@ const AgentDashboard = () => {
   const [me, setMe] = useState<Employee | null>(null);
   const [direction, setDirection] = useState<Direction | null>(null);
   const [colleagues, setColleagues] = useState<Employee[]>([]);
+  const [allDirections, setAllDirections] = useState<Direction[]>([]);
+  const [showAllDirections, setShowAllDirections] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,6 +28,12 @@ const AgentDashboard = () => {
         .ilike("email", user.email!)
         .maybeSingle();
       setMe(emp as Employee | null);
+
+      const { data: allDirs } = await supabase
+        .from("directions")
+        .select("id, name, code, manager_name, description")
+        .order("code");
+      setAllDirections((allDirs as Direction[]) || []);
 
       if (emp?.direction_id) {
         const [{ data: dir }, { data: cols }] = await Promise.all([
@@ -85,6 +94,50 @@ const AgentDashboard = () => {
           </div>
         </section>
       )}
+
+      <Collapsible open={showAllDirections} onOpenChange={setShowAllDirections}>
+        <section className="rounded-xl border bg-card shadow-sm overflow-hidden">
+          <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+            <div className="flex items-center gap-2">
+              <Network className="h-4 w-4 text-primary" />
+              <h2 className="font-semibold text-sm">Toutes les directions</h2>
+              <Badge variant="secondary" className="ml-1">{allDirections.length}</Badge>
+            </div>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showAllDirections ? "rotate-180" : ""}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <ul className="divide-y border-t">
+              {allDirections.map((d) => (
+                <li key={d.id} className="flex items-center justify-between gap-3 p-3 hover:bg-muted/30">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <Building2 className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate flex items-center gap-2">
+                        {d.name}
+                        {d.code && <Badge variant="outline" className="text-[10px]">{d.code}</Badge>}
+                        {d.id === direction?.id && <Badge className="text-[10px]">Ma direction</Badge>}
+                      </p>
+                      {d.manager_name && (
+                        <p className="text-xs text-muted-foreground truncate">Resp. {d.manager_name}</p>
+                      )}
+                    </div>
+                  </div>
+                  {d.code && (
+                    <Button asChild size="sm" variant="ghost">
+                      <Link to={`/direction/${d.code}`}>Voir</Link>
+                    </Button>
+                  )}
+                </li>
+              ))}
+              {allDirections.length === 0 && (
+                <li className="p-6 text-center text-sm text-muted-foreground">Aucune direction.</li>
+              )}
+            </ul>
+          </CollapsibleContent>
+        </section>
+      </Collapsible>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link to="/presence/scan" className="group rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
