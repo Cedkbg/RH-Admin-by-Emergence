@@ -7,15 +7,33 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 interface AppHeaderProps {
   title: string;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Administrateur",
+  dg: "Directeur Général",
+  dga: "Directeur Général Adjoint",
+  manager: "Manager",
+  rh: "Ressources Humaines",
+  secretaire: "Secrétaire",
+  assistant_direction: "Assistant de Direction",
+  employee: "Agent",
+};
+
+const ROLE_PRIORITY = ["admin", "dg", "dga", "rh", "manager", "assistant_direction", "secretaire", "employee"];
+
 export function AppHeader({ title }: AppHeaderProps) {
   const { user, isAdmin, signOut } = useAuth();
+  const { roles } = useUserRoles();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
+
+  const primaryRole = ROLE_PRIORITY.find((r) => roles.includes(r));
+  const roleLabel = primaryRole ? ROLE_LABELS[primaryRole] : null;
 
   const initials = (user?.user_metadata?.full_name || user?.email || "?")
     .split(" ")
@@ -53,8 +71,13 @@ export function AppHeader({ title }: AppHeaderProps) {
               {initials}
             </div>
             <div className="hidden text-left sm:block">
-              <p className="text-sm font-semibold leading-tight text-foreground">
+              <p className="text-sm font-semibold leading-tight text-foreground flex items-center gap-2">
                 {user?.user_metadata?.full_name || user?.email}
+                {roleLabel && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    {roleLabel}
+                  </Badge>
+                )}
               </p>
               <p className="text-xs leading-tight text-muted-foreground truncate max-w-[220px]">
                 {user?.email}
@@ -62,10 +85,17 @@ export function AppHeader({ title }: AppHeaderProps) {
             </div>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className="flex items-center gap-2">
-            Mon compte
-            {isAdmin && <Badge variant="secondary">Admin</Badge>}
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              Mon compte
+              {isAdmin && <Badge variant="secondary">Admin</Badge>}
+            </div>
+            {roleLabel && (
+              <span className="text-xs font-normal text-muted-foreground">
+                Statut : {roleLabel}
+              </span>
+            )}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={async () => { await signOut(); navigate("/auth"); }}>
