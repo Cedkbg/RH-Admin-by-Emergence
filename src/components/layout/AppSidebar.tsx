@@ -88,7 +88,7 @@ export function AppSidebar() {
             // Cacher complètement les modules terrain pour le cabinet exécutif (DG/DGA/Secrétaire)
             if (isExecutiveOnly && FIELD_ONLY_PATHS.has(m.path)) return null;
             const active = m.path === "/" ? location.pathname === "/" : location.pathname.startsWith(m.path);
-            const restricted = RESTRICTED_PATHS.has(m.path) && !hasOpsAccess;
+            const restricted = RESTRICTED_PATHS.has(m.path) && !hasOpsAccess && !(isAgentOnly && AGENT_ALLOWED_PATHS.has(m.path));
             return (
               <SidebarMenuItem key={m.id}>
                 <SidebarMenuButton asChild tooltip={restricted ? `${m.label} (accès restreint)` : m.label}>
