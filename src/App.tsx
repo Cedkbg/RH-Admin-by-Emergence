@@ -31,6 +31,7 @@ import Parametres from "./pages/modules/Parametres";
 import Secretariat from "./pages/modules/Secretariat";
 import Assistant from "./pages/modules/Assistant";
 import ManagerGeneral from "./pages/ManagerGeneral";
+import AdminCabinets from "./pages/AdminCabinets";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const App = () => (
               <Route path="/assistant" element={<Assistant />} />
               <Route path="/manager" element={<ManagerGeneral />} />
               <Route path="/parametres" element={<Parametres />} />
+              <Route path="/admin/cabinets" element={<AdminCabinets />} />
               <Route path="/admin" element={<Protected adminOnly><Admin /></Protected>} />
             </Route>
             <Route path="*" element={<NotFound />} />
