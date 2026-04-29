@@ -116,21 +116,32 @@ Deno.serve(async (req) => {
     // Remove default 'admin' role auto-assigned by handle_new_user trigger (unless caller wanted admin)
     await admin.from("user_roles").delete().eq("user_id", newUserId).eq("role", "admin");
 
-    // 2) Assign requested role
-    const { error: roleErr } = await admin.from("user_roles").insert({ user_id: newUserId, role });
+    // 2) Assign requested role (ignore duplicate)
+    const { error: roleErr } = await admin
+      .from("user_roles")
+      .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
     if (roleErr) {
       return new Response(JSON.stringify({ error: roleErr.message }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 3) Direction executive mapping (DG, DGA, manager, assistant_direction, secretaire bound to a direction)
+    // 3) Direction executive mapping
     if (direction_code) {
       const { data: dir } = await admin.from("directions").select("id").ilike("code", direction_code).maybeSingle();
       if (dir?.id) {
-        await admin.from("direction_executives").insert({
-          user_id: newUserId, direction_id: dir.id, role,
-        });
+        const { data: existingExec } = await admin
+          .from("direction_executives")
+          .select("id")
+          .eq("user_id", newUserId)
+          .eq("direction_id", dir.id)
+          .eq("role", role)
+          .maybeSingle();
+        if (!existingExec) {
+          await admin.from("direction_executives").insert({
+            user_id: newUserId, direction_id: dir.id, role,
+          });
+        }
       }
     }
 
