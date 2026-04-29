@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Users, Building2, Briefcase, FileText } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
-import { OrgChart } from "@/components/dashboard/OrgChart";
 import { ModuleGrid } from "@/components/dashboard/ModuleGrid";
 import { RecentActivities } from "@/components/dashboard/RecentActivities";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
@@ -42,7 +41,6 @@ const Index = () => {
         <KpiCard label="Documents" value={stats.documents.toString()} icon={FileText} color="purple" />
       </div>
 
-      <OrgChart />
       <ModuleGrid />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
