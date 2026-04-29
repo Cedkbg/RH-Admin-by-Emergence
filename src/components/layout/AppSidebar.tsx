@@ -7,20 +7,39 @@ import { modules } from "@/data/modules";
 import { cn } from "@/lib/utils";
 import { Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import companyLogo from "@/assets/company-logo.jpeg";
 
 export function AppSidebar() {
   const location = useLocation();
   const { isAdmin } = useAuth();
+  const [logoUrl, setLogoUrl] = useState<string>(companyLogo);
+  const [companyName, setCompanyName] = useState<string>("EMERGENCE DRC");
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("key,value")
+        .in("key", ["company_logo", "company_name"]);
+      (data || []).forEach((r: any) => {
+        const v = typeof r.value === "string" ? r.value : r.value?.value;
+        if (r.key === "company_logo" && v) setLogoUrl(v);
+        if (r.key === "company_name" && v) setCompanyName(v);
+      });
+    })();
+  }, []);
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Shield className="h-5 w-5" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white overflow-hidden ring-1 ring-sidebar-border">
+            <img src={logoUrl} alt={companyName} className="h-full w-full object-contain" />
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-bold tracking-tight">EMERGENCE DRC</h2>
+            <h2 className="truncate text-sm font-bold tracking-tight">{companyName}</h2>
             <p className="truncate text-xs text-sidebar-foreground/60">SIRH</p>
           </div>
         </div>
