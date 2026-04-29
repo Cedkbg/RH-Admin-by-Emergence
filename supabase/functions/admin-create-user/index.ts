@@ -72,16 +72,41 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 1) Create user
+    // 1) Create user (idempotent: reuse if already exists)
+    let newUserId: string | null = null;
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email, password, email_confirm: true, user_metadata: { full_name },
     });
-    if (createErr || !created.user) {
-      return new Response(JSON.stringify({ error: createErr?.message ?? "Création échouée" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (createErr || !created?.user) {
+      const msg = createErr?.message ?? "";
+      const alreadyExists = /already.*registered|already exists|duplicate|email_exists/i.test(msg);
+      if (alreadyExists) {
+        // Find existing user by email
+        const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+        if (listErr) {
+          return new Response(JSON.stringify({ error: listErr.message }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const existing = list.users.find((u) => (u.email ?? "").toLowerCase() === email.toLowerCase());
+        if (!existing) {
+          return new Response(JSON.stringify({ error: "Utilisateur existant introuvable" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        newUserId = existing.id;
+        // Update password & metadata so the chief can log in with provided creds
+        await admin.auth.admin.updateUserById(newUserId, {
+          password, email_confirm: true, user_metadata: { full_name },
+        });
+      } else {
+        return new Response(JSON.stringify({ error: msg || "Création échouée" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      newUserId = created.user.id;
     }
-    const newUserId = created.user.id;
 
     // Ensure profile exists / approved
     await admin.from("profiles").upsert({
@@ -91,21 +116,32 @@ Deno.serve(async (req) => {
     // Remove default 'admin' role auto-assigned by handle_new_user trigger (unless caller wanted admin)
     await admin.from("user_roles").delete().eq("user_id", newUserId).eq("role", "admin");
 
-    // 2) Assign requested role
-    const { error: roleErr } = await admin.from("user_roles").insert({ user_id: newUserId, role });
+    // 2) Assign requested role (ignore duplicate)
+    const { error: roleErr } = await admin
+      .from("user_roles")
+      .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
     if (roleErr) {
       return new Response(JSON.stringify({ error: roleErr.message }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 3) Direction executive mapping (DG, DGA, manager, assistant_direction, secretaire bound to a direction)
+    // 3) Direction executive mapping
     if (direction_code) {
       const { data: dir } = await admin.from("directions").select("id").ilike("code", direction_code).maybeSingle();
       if (dir?.id) {
-        await admin.from("direction_executives").insert({
-          user_id: newUserId, direction_id: dir.id, role,
-        });
+        const { data: existingExec } = await admin
+          .from("direction_executives")
+          .select("id")
+          .eq("user_id", newUserId)
+          .eq("direction_id", dir.id)
+          .eq("role", role)
+          .maybeSingle();
+        if (!existingExec) {
+          await admin.from("direction_executives").insert({
+            user_id: newUserId, direction_id: dir.id, role,
+          });
+        }
       }
     }
 
