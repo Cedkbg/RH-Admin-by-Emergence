@@ -74,9 +74,19 @@ const Presence = () => {
         <ArrowLeft className="mr-2 h-4 w-4" /> Retour
       </Button>
 
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Présence & Congés</h1>
-        <p className="text-sm text-muted-foreground">Pointage quotidien et gestion des demandes de congés.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Présence & Congés</h1>
+          <p className="text-sm text-muted-foreground">Pointage par scan QR + GPS, et gestion des congés.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="default">
+            <Link to="/presence/scan"><QrCode className="mr-2 h-4 w-4" /> Pointer (scan)</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/presence/locations"><MapPinned className="mr-2 h-4 w-4" /> Lieux de pointage</Link>
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="attendance">
