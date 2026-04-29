@@ -7,15 +7,33 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 interface AppHeaderProps {
   title: string;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Administrateur",
+  dg: "Directeur Général",
+  dga: "Directeur Général Adjoint",
+  manager: "Manager",
+  rh: "Ressources Humaines",
+  secretaire: "Secrétaire",
+  assistant_direction: "Assistant de Direction",
+  employee: "Agent",
+};
+
+const ROLE_PRIORITY = ["admin", "dg", "dga", "rh", "manager", "assistant_direction", "secretaire", "employee"];
+
 export function AppHeader({ title }: AppHeaderProps) {
   const { user, isAdmin, signOut } = useAuth();
+  const { roles } = useUserRoles();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
+
+  const primaryRole = ROLE_PRIORITY.find((r) => roles.includes(r));
+  const roleLabel = primaryRole ? ROLE_LABELS[primaryRole] : null;
 
   const initials = (user?.user_metadata?.full_name || user?.email || "?")
     .split(" ")
