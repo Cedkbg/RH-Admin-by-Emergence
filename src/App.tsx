@@ -42,6 +42,13 @@ const Ops = ({ children }: { children: JSX.Element }) => (
   <RoleGuard allowed={OPS_ROLES}>{children}</RoleGuard>
 );
 
+// Modules opérationnels terrain : masqués au DG/DGA/Secrétaire (cabinet exécutif)
+// pour préserver l'autonomie des équipes. Manager, RH, Assistant de direction y accèdent.
+const FIELD_ROLES = ["admin", "manager", "rh", "assistant_direction"];
+const Field = ({ children }: { children: JSX.Element }) => (
+  <RoleGuard allowed={FIELD_ROLES}>{children}</RoleGuard>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
