@@ -90,6 +90,45 @@ const Parametres = () => {
         {!isAdmin && <Badge variant="secondary">Lecture seule</Badge>}
       </div>
 
+      {/* Logo de l'entreprise */}
+      <section className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
+        <div className="flex items-center gap-2">
+          <ImageIcon className="h-5 w-5 text-muted-foreground" />
+          <h2 className="text-base font-semibold">Logo de l'entreprise</h2>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="h-20 w-20 rounded-xl border bg-white flex items-center justify-center overflow-hidden shrink-0">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
+            ) : (
+              <ImageIcon className="h-8 w-8 text-muted-foreground" />
+            )}
+          </div>
+          <div className="flex-1 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              PNG, JPG ou SVG. Format carré recommandé. Visible dans la barre latérale.
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = ""; }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!isAdmin || uploadingLogo}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              {uploadingLogo ? "Téléversement…" : "Changer le logo"}
+            </Button>
+          </div>
+        </div>
+      </section>
+
       <section className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
         {Object.entries(KEYS).map(([key, def]) => (
           <div key={key}>
