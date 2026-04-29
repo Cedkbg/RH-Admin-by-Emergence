@@ -78,17 +78,22 @@ export default function Onboarding() {
       logoUrl = pub.publicUrl;
     }
 
-    const rows = [
-      { key: "company_name", value: company.name },
-      { key: "company_logo", value: logoUrl },
-      { key: "company_address", value: company.address },
-      { key: "company_phone", value: company.phone },
-      { key: "company_email", value: company.email },
-      { key: "company_onboarded", value: true },
-    ];
-    const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "key" });
+    const { data, error } = await supabase.functions.invoke("complete-onboarding", {
+      body: {
+        company: {
+          name: company.name,
+          logoUrl,
+          address: company.address,
+          phone: company.phone,
+          email: company.email,
+        },
+      },
+    });
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || "Enregistrement échoué");
+      return;
+    }
     toast.success("Informations entreprise enregistrées");
     setStep(2);
   };
