@@ -21,7 +21,19 @@ export default function Auth() {
   const [forgotEmail, setForgotEmail] = useState("");
 
   useEffect(() => {
-    if (session) navigate("/", { replace: true });
+    if (session) { navigate("/", { replace: true }); return; }
+    // Si l'entreprise n'a pas encore été configurée, envoyer vers l'onboarding public
+    (async () => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "company_onboarded")
+        .maybeSingle();
+      const v: any = data?.value;
+      const done = v === true || (typeof v === "object" && v?.value === true);
+      if (!done) navigate("/onboarding", { replace: true });
+    })();
   }, [session, navigate]);
 
   const handleForgot = async (e: React.FormEvent) => {

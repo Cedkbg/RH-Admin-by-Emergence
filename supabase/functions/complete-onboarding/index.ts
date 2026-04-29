@@ -9,6 +9,9 @@ const corsHeaders = {
 type CompanyPayload = {
   name?: string;
   logoUrl?: string;
+  logoBase64?: string;
+  logoContentType?: string;
+  logoExt?: string;
   address?: string;
   phone?: string;
   email?: string;
@@ -28,26 +31,8 @@ Deno.serve(async (req) => {
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const ANON_KEY = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    if (!token) {
-      return new Response(JSON.stringify({ error: "Non authentifié" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: userData, error: userErr } = await admin.auth.getUser(token);
-    if (userErr || !userData.user) {
-      return new Response(JSON.stringify({ error: "Non authentifié" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const user = userData.user;
     const body = await req.json();
     const company = (body?.company ?? {}) as CompanyPayload;
 
@@ -58,51 +43,69 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: callerRoles, error: rolesErr } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
-    if (rolesErr) throw rolesErr;
-
+    // Bootstrap public autorisé tant qu'aucun admin n'existe.
+    // Sinon, exiger un token et que l'appelant soit admin.
     const { count: adminCount, error: adminCountErr } = await admin
       .from("user_roles")
       .select("id", { count: "exact", head: true })
       .eq("role", "admin");
     if (adminCountErr) throw adminCountErr;
 
-    const callerIsAdmin = (callerRoles ?? []).some((row: { role: string }) => row.role === "admin");
     const bootstrapAllowed = (adminCount ?? 0) === 0;
 
-    if (!callerIsAdmin && !bootstrapAllowed) {
-      return new Response(JSON.stringify({ error: "Permission refusée" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!bootstrapAllowed) {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+      if (!token) {
+        return new Response(JSON.stringify({ error: "Non authentifié" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: userData, error: userErr } = await admin.auth.getUser(token);
+      if (userErr || !userData.user) {
+        return new Response(JSON.stringify({ error: "Non authentifié" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: callerRoles } = await admin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userData.user.id);
+      const callerIsAdmin = (callerRoles ?? []).some((row: { role: string }) => row.role === "admin");
+      if (!callerIsAdmin) {
+        return new Response(JSON.stringify({ error: "Permission refusée" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
-    const fullName =
-      (user.user_metadata?.full_name as string | undefined) ||
-      (user.user_metadata?.name as string | undefined) ||
-      user.email ||
-      "Administrateur";
-
-    const { error: profileErr } = await admin.from("profiles").upsert({
-      id: user.id,
-      email: user.email,
-      full_name: fullName,
-      approval_status: "approved",
-      onboarding_completed: false,
-    });
-    if (profileErr) throw profileErr;
-
-    const { error: roleErr } = await admin
-      .from("user_roles")
-      .upsert({ user_id: user.id, role: "admin" }, { onConflict: "user_id,role" });
-    if (roleErr) throw roleErr;
+    // Upload du logo via service role (utile en bootstrap public)
+    let finalLogoUrl = company.logoUrl ?? "";
+    if (company.logoBase64) {
+      try {
+        const ext = (company.logoExt || "png").replace(/[^a-z0-9]/gi, "").toLowerCase() || "png";
+        const path = `company/logo-${Date.now()}.${ext}`;
+        const binary = Uint8Array.from(atob(company.logoBase64), (c) => c.charCodeAt(0));
+        const { error: upErr } = await admin.storage
+          .from("branding")
+          .upload(path, binary, {
+            upsert: true,
+            contentType: company.logoContentType || "image/png",
+          });
+        if (upErr) throw upErr;
+        const { data: pub } = admin.storage.from("branding").getPublicUrl(path);
+        finalLogoUrl = pub.publicUrl;
+      } catch (uploadError) {
+        console.error("Logo upload failed", uploadError);
+      }
+    }
 
     const rows = [
       { key: "company_name", value: company.name.trim() },
-      { key: "company_logo", value: company.logoUrl ?? "" },
+      { key: "company_logo", value: finalLogoUrl },
       { key: "company_address", value: company.address ?? "" },
       { key: "company_phone", value: company.phone ?? "" },
       { key: "company_email", value: company.email ?? "" },
