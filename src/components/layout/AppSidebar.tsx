@@ -30,6 +30,7 @@ export function AppSidebar() {
   const [companyName, setCompanyName] = useState<string>("EMERGENCE DRC");
   const [canManageCabinets, setCanManageCabinets] = useState(false);
   const [hasOpsAccess, setHasOpsAccess] = useState(false);
+  const [isExecutiveOnly, setIsExecutiveOnly] = useState(false);
 
   useEffect(() => {
     (async () => {
