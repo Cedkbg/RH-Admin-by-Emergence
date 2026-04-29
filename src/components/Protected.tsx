@@ -21,7 +21,16 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
         .maybeSingle();
       const v: any = data?.value;
       const done = v === true || (typeof v === "object" && v?.value === true);
-      setCompanyConfigured(!!done);
+      if (done) {
+        setCompanyConfigured(true);
+      } else {
+        // Si un admin existe déjà, on considère le bootstrap fait
+        const { count } = await supabase
+          .from("user_roles")
+          .select("id", { count: "exact", head: true })
+          .eq("role", "admin");
+        setCompanyConfigured((count ?? 0) > 0);
+      }
       setCompanyChecked(true);
     })();
   }, [session]);
