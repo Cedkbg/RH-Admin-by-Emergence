@@ -347,6 +347,30 @@ export type Database = {
           },
         ]
       }
+      direction_executives: {
+        Row: {
+          created_at: string
+          direction_id: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction_id: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          direction_id?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       directions: {
         Row: {
           code: string | null
@@ -991,6 +1015,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_direction: {
+        Args: { _direction_code: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
