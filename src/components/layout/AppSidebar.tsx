@@ -19,6 +19,9 @@ const RESTRICTED_PATHS = new Set([
   "/bien-etre", "/rapports", "/securite", "/secretariat", "/assistant",
   "/manager", "/parametres",
 ]);
+// Modules terrain masqués au cabinet exécutif (DG/DGA/Secrétaire) — préserve l'autonomie des équipes
+const FIELD_ONLY_PATHS = new Set(["/taches", "/presence", "/communication", "/bien-etre"]);
+const EXECUTIVE_ROLES = new Set(["dg", "dga", "secretaire"]);
 
 export function AppSidebar() {
   const location = useLocation();
@@ -27,6 +30,7 @@ export function AppSidebar() {
   const [companyName, setCompanyName] = useState<string>("EMERGENCE DRC");
   const [canManageCabinets, setCanManageCabinets] = useState(false);
   const [hasOpsAccess, setHasOpsAccess] = useState(false);
+  const [isExecutiveOnly, setIsExecutiveOnly] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -43,12 +47,16 @@ export function AppSidebar() {
   }, []);
 
   useEffect(() => {
-    if (!user) { setCanManageCabinets(false); setHasOpsAccess(false); return; }
+    if (!user) { setCanManageCabinets(false); setHasOpsAccess(false); setIsExecutiveOnly(false); return; }
     (async () => {
       const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
       const roles = (data || []).map((r: any) => r.role);
       setCanManageCabinets(roles.some((r) => CABINET_ROLES.has(r)));
       setHasOpsAccess(roles.some((r) => OPS_ROLES.has(r)));
+      // Cabinet exécutif sans rôle terrain → on masque les modules opérationnels quotidiens
+      const hasField = roles.some((r) => ["admin", "manager", "rh", "assistant_direction"].includes(r));
+      const hasExec = roles.some((r) => EXECUTIVE_ROLES.has(r));
+      setIsExecutiveOnly(hasExec && !hasField);
     })();
   }, [user]);
 
@@ -70,6 +78,8 @@ export function AppSidebar() {
         <SidebarMenu>
           {modules.map((m) => {
             const Icon = m.icon;
+            // Cacher complètement les modules terrain pour le cabinet exécutif (DG/DGA/Secrétaire)
+            if (isExecutiveOnly && FIELD_ONLY_PATHS.has(m.path)) return null;
             const active = m.path === "/" ? location.pathname === "/" : location.pathname.startsWith(m.path);
             const restricted = RESTRICTED_PATHS.has(m.path) && !hasOpsAccess;
             return (
