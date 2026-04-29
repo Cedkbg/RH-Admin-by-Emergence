@@ -9,6 +9,9 @@ const corsHeaders = {
 type CompanyPayload = {
   name?: string;
   logoUrl?: string;
+  logoBase64?: string;
+  logoContentType?: string;
+  logoExt?: string;
   address?: string;
   phone?: string;
   email?: string;
