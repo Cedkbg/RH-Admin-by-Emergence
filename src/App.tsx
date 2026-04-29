@@ -9,6 +9,7 @@ import { Protected } from "@/components/Protected";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import Onboarding from "./pages/Onboarding";
 import Organigramme from "./pages/Organigramme";
 import DirectionDetail from "./pages/DirectionDetail";
 import Employes from "./pages/Employes";
@@ -62,6 +63,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/onboarding" element={<Protected><Onboarding /></Protected>} />
             <Route element={<Protected><AppLayout /></Protected>}>
               <Route index element={<Index />} />
               <Route path="/organigramme" element={<Organigramme />} />

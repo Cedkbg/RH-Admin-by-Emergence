@@ -880,6 +880,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          onboarding_completed: boolean
         }
         Insert: {
           approval_status?: string
@@ -887,6 +888,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          onboarding_completed?: boolean
         }
         Update: {
           approval_status?: string
@@ -894,6 +896,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          onboarding_completed?: boolean
         }
         Relationships: []
       }

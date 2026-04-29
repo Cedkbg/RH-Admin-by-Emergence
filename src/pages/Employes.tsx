@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
 interface DirectionRow { id: string; name: string; code: string | null }
@@ -56,6 +57,9 @@ const blankForm = {
 
 const Employes = () => {
   const { isAdmin } = useAuth();
+  const { hasAny } = useUserRoles();
+  // Tous les "chefs" + RH peuvent ajouter/éditer un agent
+  const canManage = isAdmin || hasAny(["rh", "dg", "dga", "manager", "secretaire", "assistant_direction"]);
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [directions, setDirections] = useState<DirectionRow[]>([]);
@@ -180,8 +184,8 @@ const Employes = () => {
         </div>
         <Button
           onClick={openCreate}
-          disabled={!isAdmin}
-          title={!isAdmin ? "Réservé à l'administrateur RH" : undefined}
+          disabled={!canManage}
+          title={!canManage ? "Réservé aux chefs et à l'administrateur RH" : undefined}
         >
           <UserPlus className="mr-2 h-4 w-4" /> Ajouter un agent
         </Button>
@@ -221,7 +225,7 @@ const Employes = () => {
                 <th className="hidden lg:table-cell p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Contrat</th>
                 <th className="p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Statut</th>
                 <th className="hidden lg:table-cell p-3 md:p-4 text-left text-xs uppercase font-semibold text-muted-foreground">Contact</th>
-                {isAdmin && <th className="p-3 md:p-4" />}
+                {canManage && <th className="p-3 md:p-4" />}
               </tr>
             </thead>
             <tbody>
@@ -255,7 +259,7 @@ const Employes = () => {
                         </a>
                       ) : "—"}
                     </td>
-                    {isAdmin && (
+                    {canManage && (
                       <td className="p-3 md:p-4">
                         <div className="flex justify-end gap-1">
                           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(e)}>
@@ -272,9 +276,9 @@ const Employes = () => {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={isAdmin ? 7 : 6} className="p-12 text-center text-muted-foreground">
+                  <td colSpan={canManage ? 7 : 6} className="p-12 text-center text-muted-foreground">
                     {employees.length === 0
-                      ? (isAdmin ? 'Aucun agent. Cliquez sur "Ajouter un agent".' : "L'admin RH peut en ajouter.")
+                      ? (canManage ? 'Aucun agent. Cliquez sur "Ajouter un agent".' : "Un chef ou la RH peut en ajouter.")
                       : "Aucun résultat."}
                   </td>
                 </tr>
