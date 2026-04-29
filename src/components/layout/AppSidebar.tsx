@@ -19,6 +19,9 @@ const RESTRICTED_PATHS = new Set([
   "/bien-etre", "/rapports", "/securite", "/secretariat", "/assistant",
   "/manager", "/parametres",
 ]);
+// Modules terrain masqués au cabinet exécutif (DG/DGA/Secrétaire) — préserve l'autonomie des équipes
+const FIELD_ONLY_PATHS = new Set(["/taches", "/presence", "/communication", "/bien-etre"]);
+const EXECUTIVE_ROLES = new Set(["dg", "dga", "secretaire"]);
 
 export function AppSidebar() {
   const location = useLocation();
