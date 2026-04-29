@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, UserPlus, Loader2 } from "lucide-react";
+import { ArrowLeft, UserPlus, Loader2, Link2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,12 +29,15 @@ const HIERARCHY: Record<string, RoleKey[]> = {
   manager: ["assistant_direction"],
 };
 
+type ProfileLite = { id: string; full_name: string | null; email: string | null };
+
 export default function AdminCabinets() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [callerRoles, setCallerRoles] = useState<string[]>([]);
   const [directions, setDirections] = useState<{ id: string; code: string; name: string }[]>([]);
   const [executives, setExecutives] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<ProfileLite[]>([]);
   const [loading, setLoading] = useState(true);
 
   const allowedRoles = useMemo(() => {
@@ -52,14 +55,16 @@ export default function AdminCabinets() {
   const refresh = async () => {
     if (!user) return;
     setLoading(true);
-    const [{ data: roles }, { data: dirs }, { data: execs }] = await Promise.all([
+    const [{ data: roles }, { data: dirs }, { data: execs }, { data: profs }] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", user.id),
       supabase.from("directions").select("id,code,name").order("code"),
       supabase.from("direction_executives").select("id,role,user_id,direction_id"),
+      supabase.from("profiles").select("id,full_name,email").order("full_name"),
     ]);
     setCallerRoles((roles || []).map((r: any) => r.role));
     setDirections(dirs || []);
     setExecutives(execs || []);
+    setProfiles(profs || []);
     setLoading(false);
   };
 
@@ -73,7 +78,7 @@ export default function AdminCabinets() {
     return (
       <div className="mx-auto max-w-2xl p-8 text-center space-y-4">
         <h1 className="text-2xl font-bold">Accès restreint</h1>
-        <p className="text-muted-foreground">Vous n'avez pas la permission de créer des comptes de cabinet.</p>
+        <p className="text-muted-foreground">Vous n'avez pas la permission de gérer les comptes de cabinet.</p>
         <Button onClick={() => navigate(-1)} variant="outline"><ArrowLeft className="mr-2 h-4 w-4" />Retour</Button>
       </div>
     );
@@ -86,7 +91,9 @@ export default function AdminCabinets() {
       </Button>
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Gestion des cabinets</h1>
-        <p className="text-sm text-muted-foreground">Créez les comptes de la haute direction et de leurs collaborateurs.</p>
+        <p className="text-sm text-muted-foreground">
+          Créez de nouveaux comptes ou affectez des utilisateurs déjà inscrits à une direction.
+        </p>
       </div>
 
       <Tabs value={activeRole ?? undefined} onValueChange={(v) => setActiveRole(v as RoleKey)}>
@@ -97,12 +104,95 @@ export default function AdminCabinets() {
         </TabsList>
         {allowedRoles.map((r) => (
           <TabsContent key={r} value={r} className="space-y-6">
+            <AssignExistingForm role={r} directions={directions} profiles={profiles} onAssigned={refresh} />
             <CreateForm role={r} directions={directions} onCreated={refresh} />
-            <ExistingList role={r} executives={executives} directions={directions} />
+            <ExistingList role={r} executives={executives} directions={directions} profiles={profiles} />
           </TabsContent>
         ))}
       </Tabs>
     </div>
+  );
+}
+
+function AssignExistingForm({ role, directions, profiles, onAssigned }: {
+  role: RoleKey;
+  directions: { id: string; code: string; name: string }[];
+  profiles: ProfileLite[];
+  onAssigned: () => void;
+}) {
+  const meta = ROLE_META[role];
+  const [userId, setUserId] = useState("");
+  const [directionCode, setDirectionCode] = useState<string>(
+    meta.needsDirection === "fixed-DG" ? "DG" : meta.needsDirection === "fixed-DGA" ? "DGA" : ""
+  );
+  const [submitting, setSubmitting] = useState(false);
+
+  const showDirection = meta.needsDirection !== "none";
+  const directionLocked = meta.needsDirection === "fixed-DG" || meta.needsDirection === "fixed-DGA";
+  const directionRequired = meta.needsDirection === "any" || directionLocked;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId) { toast.error("Sélectionnez un utilisateur"); return; }
+    if (directionRequired && !directionCode) { toast.error("Sélectionnez une direction"); return; }
+    setSubmitting(true);
+    const { data, error } = await supabase.functions.invoke("assign-executive", {
+      body: { user_id: userId, role, direction_code: directionCode || undefined },
+    });
+    setSubmitting(false);
+    if (error || (data as any)?.error) {
+      toast.error(((data as any)?.error) || error?.message || "Échec de l'affectation");
+      return;
+    }
+    toast.success(`${meta.label} affecté avec succès`);
+    setUserId("");
+    if (!directionLocked) setDirectionCode("");
+    onAssigned();
+  };
+
+  return (
+    <form onSubmit={submit} className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
+      <div className="flex items-center gap-2">
+        <Link2 className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-semibold">Affecter un utilisateur existant — {meta.label}</h2>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Choisissez une personne déjà inscrite et assignez-lui ce rôle{showDirection ? " sur la direction de votre choix" : ""}.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Utilisateur *</Label>
+          <Select value={userId} onValueChange={setUserId}>
+            <SelectTrigger><SelectValue placeholder="Sélectionner un utilisateur" /></SelectTrigger>
+            <SelectContent>
+              {profiles.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {(p.full_name || "—")} {p.email ? `· ${p.email}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {showDirection && (
+          <div className="space-y-2">
+            <Label>Direction {directionRequired ? "*" : "(optionnel)"}</Label>
+            <Select value={directionCode} onValueChange={setDirectionCode} disabled={directionLocked}>
+              <SelectTrigger><SelectValue placeholder="Choisir une direction" /></SelectTrigger>
+              <SelectContent>
+                {directions.map((d) => (
+                  <SelectItem key={d.id} value={d.code ?? ""}>{d.code} — {d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={submitting} variant="secondary">
+          {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Affectation…</> : <><Link2 className="mr-2 h-4 w-4" />Affecter</>}
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -159,7 +249,7 @@ function CreateForm({ role, directions, onCreated }: {
     <form onSubmit={submit} className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
       <div className="flex items-center gap-2">
         <UserPlus className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold">Créer un compte {meta.label}</h2>
+        <h2 className="text-lg font-semibold">Créer un nouveau compte {meta.label}</h2>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -197,26 +287,32 @@ function CreateForm({ role, directions, onCreated }: {
   );
 }
 
-function ExistingList({ role, executives, directions }: {
+function ExistingList({ role, executives, directions, profiles }: {
   role: RoleKey;
   executives: any[];
   directions: { id: string; code: string; name: string }[];
+  profiles: ProfileLite[];
 }) {
   const filtered = executives.filter((e) => e.role === role);
   const dirById = new Map(directions.map((d) => [d.id, d]));
+  const profById = new Map(profiles.map((p) => [p.id, p]));
   return (
     <div className="rounded-xl border bg-card p-6 shadow-sm">
-      <h3 className="text-sm font-semibold mb-3">Comptes existants ({filtered.length})</h3>
+      <h3 className="text-sm font-semibold mb-3">Affectations existantes ({filtered.length})</h3>
       {filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground">Aucun compte assigné pour ce rôle.</p>
       ) : (
         <ul className="space-y-2">
           {filtered.map((e) => {
             const d = dirById.get(e.direction_id);
+            const p = profById.get(e.user_id);
             return (
-              <li key={e.id} className="flex items-center justify-between text-sm p-2 rounded-md bg-secondary/40">
-                <span className="font-mono text-xs text-muted-foreground">{e.user_id.slice(0, 8)}…</span>
-                {d && <Badge variant="outline">{d.code} — {d.name}</Badge>}
+              <li key={e.id} className="flex items-center justify-between gap-3 text-sm p-2 rounded-md bg-secondary/40">
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{p?.full_name || "Utilisateur inconnu"}</div>
+                  {p?.email && <div className="text-xs text-muted-foreground truncate">{p.email}</div>}
+                </div>
+                {d && <Badge variant="outline" className="shrink-0">{d.code} — {d.name}</Badge>}
               </li>
             );
           })}
