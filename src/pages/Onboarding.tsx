@@ -52,21 +52,27 @@ export default function Onboarding() {
     if (!company.name.trim()) { toast.error("Le nom de l'entreprise est obligatoire"); return; }
     setSaving(true);
 
-    let logoUrl = company.logoUrl;
+    let logoBase64: string | undefined;
+    let logoContentType: string | undefined;
+    let logoExt: string | undefined;
     if (logoFile) {
-      const ext = logoFile.name.split(".").pop() || "png";
-      const path = `company/logo-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("branding").upload(path, logoFile, { upsert: true });
-      if (upErr) { setSaving(false); toast.error("Upload logo échoué : " + upErr.message); return; }
-      const { data: pub } = supabase.storage.from("branding").getPublicUrl(path);
-      logoUrl = pub.publicUrl;
+      const buf = await logoFile.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = "";
+      for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]);
+      logoBase64 = btoa(bin);
+      logoContentType = logoFile.type || "image/png";
+      logoExt = logoFile.name.split(".").pop() || "png";
     }
 
     const { data, error } = await supabase.functions.invoke("complete-onboarding", {
       body: {
         company: {
           name: company.name,
-          logoUrl,
+          logoUrl: company.logoUrl,
+          logoBase64,
+          logoContentType,
+          logoExt,
           address: company.address,
           phone: company.phone,
           email: company.email,
