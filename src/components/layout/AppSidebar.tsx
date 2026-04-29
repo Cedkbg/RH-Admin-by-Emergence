@@ -83,6 +83,8 @@ export function AppSidebar() {
         <SidebarMenu>
           {modules.map((m) => {
             const Icon = m.icon;
+            // Agent : seulement le tableau de bord et la page présence
+            if (isAgentOnly && !AGENT_ALLOWED_PATHS.has(m.path)) return null;
             // Cacher complètement les modules terrain pour le cabinet exécutif (DG/DGA/Secrétaire)
             if (isExecutiveOnly && FIELD_ONLY_PATHS.has(m.path)) return null;
             const active = m.path === "/" ? location.pathname === "/" : location.pathname.startsWith(m.path);
