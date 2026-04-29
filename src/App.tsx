@@ -65,16 +65,16 @@ const App = () => (
               <Route path="/direction/:code" element={<DirectionDetail />} />
               <Route path="/employes" element={<Employes />} />
               <Route path="/recrutement" element={<Ops><Recrutement /></Ops>} />
-              <Route path="/taches" element={<Ops><Taches /></Ops>} />
+              <Route path="/taches" element={<Field><Taches /></Field>} />
               <Route path="/performance" element={<Ops><Performance /></Ops>} />
               <Route path="/formation" element={<Ops><Formation /></Ops>} />
               <Route path="/paie" element={<Ops><Paie /></Ops>} />
-              <Route path="/presence" element={<Ops><Presence /></Ops>} />
+              <Route path="/presence" element={<Field><Presence /></Field>} />
               <Route path="/documents" element={<Ops><Documents /></Ops>} />
               <Route path="/juridique" element={<Ops><Juridique /></Ops>} />
-              <Route path="/communication" element={<Ops><Communication /></Ops>} />
+              <Route path="/communication" element={<Field><Communication /></Field>} />
               <Route path="/talents" element={<Ops><Talents /></Ops>} />
-              <Route path="/bien-etre" element={<Ops><BienEtre /></Ops>} />
+              <Route path="/bien-etre" element={<Field><BienEtre /></Field>} />
               <Route path="/rapports" element={<Ops><Rapports /></Ops>} />
               <Route path="/securite" element={<Ops><Securite /></Ops>} />
               <Route path="/secretariat" element={<Ops><Secretariat /></Ops>} />
