@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils";
 import { iconForCode, colorForCode } from "@/data/orgData";
 import { colorClasses, modules } from "@/data/modules";
 import { ExecutiveDashboard } from "@/components/dashboard/ExecutiveDashboard";
+import { useDirectionAccess } from "@/hooks/useDirectionAccess";
+import { AccessDenied } from "@/components/AccessDenied";
 
 const DIRECTION_MODULES: Record<string, string[]> = {
   DG:  ["dashboard", "reports", "communication"],
@@ -81,6 +83,8 @@ export default function DirectionDetail() {
   const [saving, setSaving] = useState(false);
 
   const upperCode = (code || "").toUpperCase();
+  const isExecutiveZone = ["DG", "DGA"].includes(upperCode) || /^D\d+$/.test(upperCode);
+  const { allowed, loading: accessLoading } = useDirectionAccess(isExecutiveZone ? upperCode : undefined);
 
   const refresh = async () => {
     const { data: dir } = await supabase
