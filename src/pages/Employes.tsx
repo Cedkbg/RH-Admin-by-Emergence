@@ -178,7 +178,11 @@ const Employes = () => {
             {filtered.length} / {employees.length} agent{employees.length > 1 ? "s" : ""}
           </p>
         </div>
-        <Button onClick={openCreate}>
+        <Button
+          onClick={openCreate}
+          disabled={!isAdmin}
+          title={!isAdmin ? "Réservé à l'administrateur RH" : undefined}
+        >
           <UserPlus className="mr-2 h-4 w-4" /> Ajouter un agent
         </Button>
       </div>
