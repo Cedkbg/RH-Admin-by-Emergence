@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
 interface DirectionRow { id: string; name: string; code: string | null }
@@ -56,6 +57,9 @@ const blankForm = {
 
 const Employes = () => {
   const { isAdmin } = useAuth();
+  const { hasAny } = useUserRoles();
+  // Tous les "chefs" + RH peuvent ajouter/éditer un agent
+  const canManage = isAdmin || hasAny(["rh", "dg", "dga", "manager", "secretaire", "assistant_direction"]);
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [directions, setDirections] = useState<DirectionRow[]>([]);
