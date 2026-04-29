@@ -186,7 +186,7 @@ const Employes = () => {
         email: e.email,
         full_name: fullName,
         employee_id: e.id,
-        redirect_to: `${window.location.origin}/`,
+        redirect_to: `${window.location.origin}/reset-password`,
       },
     });
     toast.dismiss(t);
