@@ -72,16 +72,41 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 1) Create user
+    // 1) Create user (idempotent: reuse if already exists)
+    let newUserId: string | null = null;
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email, password, email_confirm: true, user_metadata: { full_name },
     });
-    if (createErr || !created.user) {
-      return new Response(JSON.stringify({ error: createErr?.message ?? "Création échouée" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (createErr || !created?.user) {
+      const msg = createErr?.message ?? "";
+      const alreadyExists = /already.*registered|already exists|duplicate|email_exists/i.test(msg);
+      if (alreadyExists) {
+        // Find existing user by email
+        const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+        if (listErr) {
+          return new Response(JSON.stringify({ error: listErr.message }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const existing = list.users.find((u) => (u.email ?? "").toLowerCase() === email.toLowerCase());
+        if (!existing) {
+          return new Response(JSON.stringify({ error: "Utilisateur existant introuvable" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        newUserId = existing.id;
+        // Update password & metadata so the chief can log in with provided creds
+        await admin.auth.admin.updateUserById(newUserId, {
+          password, email_confirm: true, user_metadata: { full_name },
+        });
+      } else {
+        return new Response(JSON.stringify({ error: msg || "Création échouée" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      newUserId = created.user.id;
     }
-    const newUserId = created.user.id;
 
     // Ensure profile exists / approved
     await admin.from("profiles").upsert({
