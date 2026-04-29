@@ -33,14 +33,18 @@ const PresenceScan = () => {
   const launchCamera = async (gps: GeolocationCoordinates) => {
     setStatus("scanning");
     setMessage("Pointez la caméra vers le QR code…");
+    // Wait for the #qr-reader div to be mounted
+    await new Promise((r) => setTimeout(r, 100));
     try {
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
+      let handled = false;
       await scanner.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         async (decoded) => {
-          if (status === "validating") return;
+          if (handled) return;
+          handled = true;
           await scanner.stop().catch(() => {});
           await validate(decoded, gps);
         },
@@ -48,7 +52,7 @@ const PresenceScan = () => {
       );
     } catch (e: any) {
       setStatus("error");
-      setMessage("Caméra inaccessible : " + e.message);
+      setMessage("Caméra inaccessible : " + (e?.message || e));
     }
   };
 
@@ -93,15 +97,17 @@ const PresenceScan = () => {
             </div>
           )}
 
-          {status === "scanning" && (
-            <>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4" /> Position acquise
-              </div>
-              <div id="qr-reader" className="overflow-hidden rounded-lg border" />
-              <p className="text-sm text-muted-foreground">{message}</p>
-            </>
-          )}
+          <div className={status === "scanning" ? "space-y-3" : "hidden"}>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4" /> Position acquise
+            </div>
+            <div id="qr-reader" className="overflow-hidden rounded-lg border min-h-[280px] bg-black/5" />
+            <p className="text-sm text-muted-foreground">{message}</p>
+            <Button variant="outline" className="w-full" onClick={async () => {
+              await scannerRef.current?.stop().catch(() => {});
+              setStatus("idle"); setMessage("");
+            }}>Annuler</Button>
+          </div>
 
           {status === "success" && result && (
             <div className="space-y-3 rounded-lg border border-green-500/40 bg-green-50 p-4 dark:bg-green-950/20">

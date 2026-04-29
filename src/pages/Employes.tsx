@@ -300,6 +300,10 @@ const Employes = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Prénom *</Label><Input required value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} /></div>
                   <div><Label>Nom *</Label><Input required value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} /></div>
+                  <div className="col-span-2">
+                    <Label>Email du compte * <span className="text-xs text-muted-foreground font-normal">(sert à lier le pointage scan au compte de l'agent)</span></Label>
+                    <Input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="agent@entreprise.com" />
+                  </div>
                   <div>
                     <Label>Genre</Label>
                     <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
