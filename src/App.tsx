@@ -73,6 +73,9 @@ const App = () => (
               <Route path="/formation" element={<Ops><Formation /></Ops>} />
               <Route path="/paie" element={<Ops><Paie /></Ops>} />
               <Route path="/presence" element={<Field><Presence /></Field>} />
+              <Route path="/presence/scan" element={<PresenceScan />} />
+              <Route path="/presence/locations" element={<Field><PresenceLocations /></Field>} />
+              <Route path="/presence/kiosk/:locationId" element={<PresenceKiosk />} />
               <Route path="/documents" element={<Ops><Documents /></Ops>} />
               <Route path="/juridique" element={<Ops><Juridique /></Ops>} />
               <Route path="/communication" element={<Field><Communication /></Field>} />
