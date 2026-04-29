@@ -168,7 +168,23 @@ export default function DirectionDetail() {
     );
   }
 
-  const Icon = iconForCode(direction.code || "");
+  // Gating: zones exécutives (DG, DGA, directions managériales) ne sont accessibles
+  // qu'aux personnes habilitées (admin, DG, DGA limité, ou manager assigné).
+  if (isExecutiveZone && !accessLoading && allowed === false) {
+    return (
+      <AccessDenied
+        title="Accès restreint au cabinet"
+        message={
+          upperCode === "DG"
+            ? "Le module de la Direction Générale est réservé au DG et aux membres de son cabinet."
+            : upperCode === "DGA"
+            ? "Le module de la DGA est réservé au DG, au DGA et aux membres de son cabinet."
+            : "Cette direction est réservée à son manager, à son assistant de direction, au DG et au DGA."
+        }
+      />
+    );
+  }
+
   const color = colorForCode(direction.code || "");
   const c = colorClasses[color];
   const moduleIds = DIRECTION_MODULES[direction.code || ""] || [];
