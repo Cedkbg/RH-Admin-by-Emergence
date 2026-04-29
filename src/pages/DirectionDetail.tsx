@@ -185,6 +185,7 @@ export default function DirectionDetail() {
     );
   }
 
+  const Icon = iconForCode(direction.code || "");
   const color = colorForCode(direction.code || "");
   const c = colorClasses[color];
   const moduleIds = DIRECTION_MODULES[direction.code || ""] || [];
