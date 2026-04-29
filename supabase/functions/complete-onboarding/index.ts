@@ -82,9 +82,30 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Upload du logo via service role (utile en bootstrap public)
+    let finalLogoUrl = company.logoUrl ?? "";
+    if (company.logoBase64) {
+      try {
+        const ext = (company.logoExt || "png").replace(/[^a-z0-9]/gi, "").toLowerCase() || "png";
+        const path = `company/logo-${Date.now()}.${ext}`;
+        const binary = Uint8Array.from(atob(company.logoBase64), (c) => c.charCodeAt(0));
+        const { error: upErr } = await admin.storage
+          .from("branding")
+          .upload(path, binary, {
+            upsert: true,
+            contentType: company.logoContentType || "image/png",
+          });
+        if (upErr) throw upErr;
+        const { data: pub } = admin.storage.from("branding").getPublicUrl(path);
+        finalLogoUrl = pub.publicUrl;
+      } catch (uploadError) {
+        console.error("Logo upload failed", uploadError);
+      }
+    }
+
     const rows = [
       { key: "company_name", value: company.name.trim() },
-      { key: "company_logo", value: company.logoUrl ?? "" },
+      { key: "company_logo", value: finalLogoUrl },
       { key: "company_address", value: company.address ?? "" },
       { key: "company_phone", value: company.phone ?? "" },
       { key: "company_email", value: company.email ?? "" },
