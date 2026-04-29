@@ -13,6 +13,7 @@ import companyLogo from "@/assets/company-logo.jpeg";
 
 const CABINET_ROLES = new Set(["admin", "dg", "dga", "manager"]);
 const OPS_ROLES = new Set(["admin", "dg", "dga", "manager", "rh", "assistant_direction"]);
+const STAFF_ROLES = new Set(["admin", "dg", "dga", "manager", "rh", "secretaire", "assistant_direction"]);
 const RESTRICTED_PATHS = new Set([
   "/recrutement", "/taches", "/performance", "/formation", "/paie",
   "/presence", "/documents", "/juridique", "/communication", "/talents",
@@ -22,6 +23,8 @@ const RESTRICTED_PATHS = new Set([
 // Modules terrain masqués au cabinet exécutif (DG/DGA/Secrétaire) — préserve l'autonomie des équipes
 const FIELD_ONLY_PATHS = new Set(["/taches", "/presence", "/communication", "/bien-etre"]);
 const EXECUTIVE_ROLES = new Set(["dg", "dga", "secretaire"]);
+// Pour un agent (employee) sans rôle staff : ne voir que son tableau de bord et la présence
+const AGENT_ALLOWED_PATHS = new Set(["/", "/presence"]);
 
 export function AppSidebar() {
   const location = useLocation();
