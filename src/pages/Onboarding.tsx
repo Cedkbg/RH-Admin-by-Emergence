@@ -4,25 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Building2, Users2, Check, ArrowRight, SkipForward } from "lucide-react";
+import { Loader2, Building2, UserCog, Check, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 
 type Step = 1 | 2;
 
-const ROLE_OPTIONS = [
-  { value: "rh", label: "Responsable RH" },
-  { value: "dg", label: "Directeur Général", direction: "DG" },
-  { value: "dga", label: "Directeur Général Adjoint", direction: "DGA" },
-  { value: "manager", label: "Manager de Direction" },
-  { value: "secretaire", label: "Secrétaire" },
-  { value: "assistant_direction", label: "Assistant de Direction" },
-];
-
 export default function Onboarding() {
-  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(1);
   const [saving, setSaving] = useState(false);
@@ -33,20 +21,17 @@ export default function Onboarding() {
   });
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
-  // Step 2 — Premier chef
-  const [chief, setChief] = useState({
-    full_name: "", email: "", password: "", role: "rh", direction_code: "",
+  // Step 2 — Compte administrateur (premier utilisateur)
+  const [admin, setAdmin] = useState({
+    full_name: "", email: "", password: "",
   });
-  const [directions, setDirections] = useState<{ id: string; code: string; name: string }[]>([]);
 
   useEffect(() => {
     (async () => {
-      const [{ data: settings }, { data: dirs }] = await Promise.all([
-        supabase.from("app_settings").select("key,value").in("key", [
-          "company_name", "company_logo", "company_address", "company_phone", "company_email",
-        ]),
-        supabase.from("directions").select("id,code,name").order("code"),
-      ]);
+      const { data: settings } = await supabase
+        .from("app_settings")
+        .select("key,value")
+        .in("key", ["company_name", "company_logo", "company_address", "company_phone", "company_email"]);
       const map: any = {};
       (settings || []).forEach((r: any) => {
         const v = typeof r.value === "string" ? r.value : r.value?.value;
@@ -59,7 +44,6 @@ export default function Onboarding() {
         phone: map.company_phone || "",
         email: map.company_email || "",
       });
-      setDirections(dirs || []);
     })();
   }, []);
 
@@ -67,15 +51,6 @@ export default function Onboarding() {
     e.preventDefault();
     if (!company.name.trim()) { toast.error("Le nom de l'entreprise est obligatoire"); return; }
     setSaving(true);
-
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError || !authData.user) {
-      setSaving(false);
-      await signOut();
-      toast.error("Session expirée. Reconnectez-vous puis réessayez.");
-      navigate("/auth", { replace: true });
-      return;
-    }
 
     let logoUrl = company.logoUrl;
     if (logoFile) {
@@ -100,56 +75,49 @@ export default function Onboarding() {
     });
     setSaving(false);
     if (error || (data as any)?.error) {
-      const message = (data as any)?.error || error?.message || "Enregistrement échoué";
-      if (/non authentifi|unauthorized|jwt|session/i.test(message)) {
-        await signOut();
-        toast.error("Session expirée. Reconnectez-vous puis réessayez.");
-        navigate("/auth", { replace: true });
-        return;
-      }
-      toast.error(message);
+      toast.error((data as any)?.error || error?.message || "Enregistrement échoué");
       return;
     }
     toast.success("Informations entreprise enregistrées");
     setStep(2);
   };
 
-  const finishOnboarding = async () => {
-    if (!user) return;
-    await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
-    toast.success("Configuration terminée — bienvenue !");
-    navigate("/", { replace: true });
-  };
-
-  const createChief = async (e: React.FormEvent) => {
+  const createAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chief.full_name.trim() || !chief.email.trim() || chief.password.length < 8) {
+    if (!admin.full_name.trim() || !admin.email.trim() || admin.password.length < 8) {
       toast.error("Nom, email et mot de passe (8+ caractères) requis");
       return;
     }
-    const roleMeta = ROLE_OPTIONS.find((r) => r.value === chief.role)!;
-    const needsDirection = ["manager", "assistant_direction"].includes(chief.role);
-    const fixedDir = roleMeta.direction;
-    const directionCode = fixedDir || (needsDirection ? chief.direction_code : undefined);
-    if (needsDirection && !directionCode) { toast.error("Direction requise pour ce rôle"); return; }
-
     setSaving(true);
-    const { data, error } = await supabase.functions.invoke("admin-create-user", {
-      body: {
-        email: chief.email.trim(),
-        password: chief.password,
-        full_name: chief.full_name.trim(),
-        role: chief.role,
-        direction_code: directionCode,
+
+    const redirectUrl = `${window.location.origin}/`;
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: admin.email.trim(),
+      password: admin.password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: { full_name: admin.full_name.trim() },
       },
     });
-    setSaving(false);
-    if (error || (data as any)?.error) {
-      toast.error((data as any)?.error || error?.message || "Création échouée");
+
+    if (signUpError) {
+      setSaving(false);
+      toast.error(signUpError.message);
       return;
     }
-    toast.success(`${roleMeta.label} créé`);
-    await finishOnboarding();
+
+    // Si la session est immédiatement disponible (auto-confirm), marquer onboarding terminé
+    if (signUpData.session && signUpData.user) {
+      await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", signUpData.user.id);
+      setSaving(false);
+      toast.success("Compte administrateur créé — bienvenue !");
+      navigate("/", { replace: true });
+      return;
+    }
+
+    setSaving(false);
+    toast.success("Compte créé. Vérifiez votre email pour confirmer puis connectez-vous.");
+    navigate("/auth", { replace: true });
   };
 
   return (
@@ -166,9 +134,9 @@ export default function Onboarding() {
           <div className={`h-px w-12 ${step >= 2 ? "bg-primary" : "bg-border"}`} />
           <div className={`flex items-center gap-2 ${step >= 2 ? "text-primary" : "text-muted-foreground"}`}>
             <div className={`flex h-9 w-9 items-center justify-center rounded-full ${step === 2 ? "bg-primary/10 ring-2 ring-primary" : "bg-muted"}`}>
-              <Users2 className="h-4 w-4" />
+              <UserCog className="h-4 w-4" />
             </div>
-            <span className="text-sm font-medium">Premier chef</span>
+            <span className="text-sm font-medium">Administrateur</span>
           </div>
         </div>
 
@@ -224,62 +192,37 @@ export default function Onboarding() {
           )}
 
           {step === 2 && (
-            <form onSubmit={createChief} className="space-y-5">
+            <form onSubmit={createAdmin} className="space-y-5">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Créer votre premier chef</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Créer le compte administrateur</h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Ce compte aura le droit d'ajouter des agents. Vous pourrez créer les autres rôles depuis la page <strong>Cabinets</strong>.
+                  Ce premier compte sera administrateur de la plateforme. Vous pourrez ensuite ajouter les autres utilisateurs.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="md:col-span-2 space-y-2">
                   <Label>Nom complet *</Label>
-                  <Input value={chief.full_name} onChange={(e) => setChief({ ...chief, full_name: e.target.value })} required />
-                </div>
-                <div className="space-y-2">
-                  <Label>Rôle *</Label>
-                  <Select value={chief.role} onValueChange={(v) => setChief({ ...chief, role: v, direction_code: "" })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {ROLE_OPTIONS.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Input value={admin.full_name} onChange={(e) => setAdmin({ ...admin, full_name: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
                   <Label>Email *</Label>
-                  <Input type="email" value={chief.email} onChange={(e) => setChief({ ...chief, email: e.target.value })} required />
+                  <Input type="email" value={admin.email} onChange={(e) => setAdmin({ ...admin, email: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Mot de passe initial * (8+)</Label>
-                  <Input type="password" value={chief.password} onChange={(e) => setChief({ ...chief, password: e.target.value })} minLength={8} required />
+                  <Label>Mot de passe * (8+)</Label>
+                  <Input type="password" value={admin.password} onChange={(e) => setAdmin({ ...admin, password: e.target.value })} minLength={8} required />
                 </div>
-                {["manager", "assistant_direction"].includes(chief.role) && (
-                  <div className="md:col-span-2 space-y-2">
-                    <Label>Direction *</Label>
-                    <Select value={chief.direction_code} onValueChange={(v) => setChief({ ...chief, direction_code: v })}>
-                      <SelectTrigger><SelectValue placeholder="Choisir une direction" /></SelectTrigger>
-                      <SelectContent>
-                        {directions.map((d) => <SelectItem key={d.id} value={d.code}>{d.code} — {d.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-                <Button type="button" variant="ghost" onClick={finishOnboarding} disabled={saving}>
-                  <SkipForward className="mr-2 h-4 w-4" /> Plus tard
+              <div className="flex items-center justify-between gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setStep(1)} disabled={saving}>
+                  Retour
                 </Button>
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" onClick={() => setStep(1)} disabled={saving}>
-                    Retour
-                  </Button>
-                  <Button type="submit" disabled={saving}>
-                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                    Créer & terminer
-                  </Button>
-                </div>
+                <Button type="submit" disabled={saving}>
+                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                  Créer & terminer
+                </Button>
               </div>
             </form>
           )}
