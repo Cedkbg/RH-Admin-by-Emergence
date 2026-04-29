@@ -34,6 +34,7 @@ export function AppSidebar() {
   const [canManageCabinets, setCanManageCabinets] = useState(false);
   const [hasOpsAccess, setHasOpsAccess] = useState(false);
   const [isExecutiveOnly, setIsExecutiveOnly] = useState(false);
+  const [isAgentOnly, setIsAgentOnly] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -50,16 +51,17 @@ export function AppSidebar() {
   }, []);
 
   useEffect(() => {
-    if (!user) { setCanManageCabinets(false); setHasOpsAccess(false); setIsExecutiveOnly(false); return; }
+    if (!user) { setCanManageCabinets(false); setHasOpsAccess(false); setIsExecutiveOnly(false); setIsAgentOnly(false); return; }
     (async () => {
       const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
       const roles = (data || []).map((r: any) => r.role);
       setCanManageCabinets(roles.some((r) => CABINET_ROLES.has(r)));
       setHasOpsAccess(roles.some((r) => OPS_ROLES.has(r)));
-      // Cabinet exécutif sans rôle terrain → on masque les modules opérationnels quotidiens
       const hasField = roles.some((r) => ["admin", "manager", "rh", "assistant_direction"].includes(r));
       const hasExec = roles.some((r) => EXECUTIVE_ROLES.has(r));
       setIsExecutiveOnly(hasExec && !hasField);
+      // Agent = aucun rôle staff
+      setIsAgentOnly(!roles.some((r) => STAFF_ROLES.has(r)));
     })();
   }, [user]);
 
