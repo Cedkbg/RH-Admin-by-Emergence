@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils";
 import { iconForCode, colorForCode } from "@/data/orgData";
 import { colorClasses, modules } from "@/data/modules";
 import { ExecutiveDashboard } from "@/components/dashboard/ExecutiveDashboard";
+import { useDirectionAccess } from "@/hooks/useDirectionAccess";
+import { AccessDenied } from "@/components/AccessDenied";
 
 const DIRECTION_MODULES: Record<string, string[]> = {
   DG:  ["dashboard", "reports", "communication"],
@@ -81,6 +83,8 @@ export default function DirectionDetail() {
   const [saving, setSaving] = useState(false);
 
   const upperCode = (code || "").toUpperCase();
+  const isExecutiveZone = ["DG", "DGA"].includes(upperCode) || /^D\d+$/.test(upperCode);
+  const { allowed, loading: accessLoading } = useDirectionAccess(isExecutiveZone ? upperCode : undefined);
 
   const refresh = async () => {
     const { data: dir } = await supabase
@@ -161,6 +165,23 @@ export default function DirectionDetail() {
           Direction introuvable.
         </div>
       </div>
+    );
+  }
+
+  // Gating: zones exécutives (DG, DGA, directions managériales) ne sont accessibles
+  // qu'aux personnes habilitées (admin, DG, DGA limité, ou manager assigné).
+  if (isExecutiveZone && !accessLoading && allowed === false) {
+    return (
+      <AccessDenied
+        title="Accès restreint au cabinet"
+        message={
+          upperCode === "DG"
+            ? "Le module de la Direction Générale est réservé au DG et aux membres de son cabinet."
+            : upperCode === "DGA"
+            ? "Le module de la DGA est réservé au DG, au DGA et aux membres de son cabinet."
+            : "Cette direction est réservée à son manager, à son assistant de direction, au DG et au DGA."
+        }
+      />
     );
   }
 
