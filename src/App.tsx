@@ -32,8 +32,15 @@ import Secretariat from "./pages/modules/Secretariat";
 import Assistant from "./pages/modules/Assistant";
 import ManagerGeneral from "./pages/ManagerGeneral";
 import AdminCabinets from "./pages/AdminCabinets";
+import { RoleGuard } from "@/components/RoleGuard";
 
 const queryClient = new QueryClient();
+
+// Rôles autorisés à accéder aux modules opérationnels (Recrutement → Paramètres)
+const OPS_ROLES = ["admin", "dg", "dga", "manager", "rh", "assistant_direction"];
+const Ops = ({ children }: { children: JSX.Element }) => (
+  <RoleGuard allowed={OPS_ROLES}>{children}</RoleGuard>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -50,23 +57,23 @@ const App = () => (
               <Route path="/organigramme" element={<Organigramme />} />
               <Route path="/direction/:code" element={<DirectionDetail />} />
               <Route path="/employes" element={<Employes />} />
-              <Route path="/recrutement" element={<Recrutement />} />
-              <Route path="/taches" element={<Taches />} />
-              <Route path="/performance" element={<Performance />} />
-              <Route path="/formation" element={<Formation />} />
-              <Route path="/paie" element={<Paie />} />
-              <Route path="/presence" element={<Presence />} />
-              <Route path="/documents" element={<Documents />} />
-              <Route path="/juridique" element={<Juridique />} />
-              <Route path="/communication" element={<Communication />} />
-              <Route path="/talents" element={<Talents />} />
-              <Route path="/bien-etre" element={<BienEtre />} />
-              <Route path="/rapports" element={<Rapports />} />
-              <Route path="/securite" element={<Securite />} />
-              <Route path="/secretariat" element={<Secretariat />} />
-              <Route path="/assistant" element={<Assistant />} />
-              <Route path="/manager" element={<ManagerGeneral />} />
-              <Route path="/parametres" element={<Parametres />} />
+              <Route path="/recrutement" element={<Ops><Recrutement /></Ops>} />
+              <Route path="/taches" element={<Ops><Taches /></Ops>} />
+              <Route path="/performance" element={<Ops><Performance /></Ops>} />
+              <Route path="/formation" element={<Ops><Formation /></Ops>} />
+              <Route path="/paie" element={<Ops><Paie /></Ops>} />
+              <Route path="/presence" element={<Ops><Presence /></Ops>} />
+              <Route path="/documents" element={<Ops><Documents /></Ops>} />
+              <Route path="/juridique" element={<Ops><Juridique /></Ops>} />
+              <Route path="/communication" element={<Ops><Communication /></Ops>} />
+              <Route path="/talents" element={<Ops><Talents /></Ops>} />
+              <Route path="/bien-etre" element={<Ops><BienEtre /></Ops>} />
+              <Route path="/rapports" element={<Ops><Rapports /></Ops>} />
+              <Route path="/securite" element={<Ops><Securite /></Ops>} />
+              <Route path="/secretariat" element={<Ops><Secretariat /></Ops>} />
+              <Route path="/assistant" element={<Ops><Assistant /></Ops>} />
+              <Route path="/manager" element={<Ops><ManagerGeneral /></Ops>} />
+              <Route path="/parametres" element={<Ops><Parametres /></Ops>} />
               <Route path="/admin/cabinets" element={<AdminCabinets />} />
               <Route path="/admin" element={<Protected adminOnly><Admin /></Protected>} />
             </Route>

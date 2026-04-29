@@ -12,6 +12,13 @@ import { supabase } from "@/integrations/supabase/client";
 import companyLogo from "@/assets/company-logo.jpeg";
 
 const CABINET_ROLES = new Set(["admin", "dg", "dga", "manager"]);
+const OPS_ROLES = new Set(["admin", "dg", "dga", "manager", "rh", "assistant_direction"]);
+const RESTRICTED_PATHS = new Set([
+  "/recrutement", "/taches", "/performance", "/formation", "/paie",
+  "/presence", "/documents", "/juridique", "/communication", "/talents",
+  "/bien-etre", "/rapports", "/securite", "/secretariat", "/assistant",
+  "/manager", "/parametres",
+]);
 
 export function AppSidebar() {
   const location = useLocation();
@@ -19,6 +26,7 @@ export function AppSidebar() {
   const [logoUrl, setLogoUrl] = useState<string>(companyLogo);
   const [companyName, setCompanyName] = useState<string>("EMERGENCE DRC");
   const [canManageCabinets, setCanManageCabinets] = useState(false);
+  const [hasOpsAccess, setHasOpsAccess] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -35,10 +43,12 @@ export function AppSidebar() {
   }, []);
 
   useEffect(() => {
-    if (!user) { setCanManageCabinets(false); return; }
+    if (!user) { setCanManageCabinets(false); setHasOpsAccess(false); return; }
     (async () => {
       const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
-      setCanManageCabinets((data || []).some((r: any) => CABINET_ROLES.has(r.role)));
+      const roles = (data || []).map((r: any) => r.role);
+      setCanManageCabinets(roles.some((r) => CABINET_ROLES.has(r)));
+      setHasOpsAccess(roles.some((r) => OPS_ROLES.has(r)));
     })();
   }, [user]);
 
@@ -61,12 +71,18 @@ export function AppSidebar() {
           {modules.map((m) => {
             const Icon = m.icon;
             const active = m.path === "/" ? location.pathname === "/" : location.pathname.startsWith(m.path);
+            const restricted = RESTRICTED_PATHS.has(m.path) && !hasOpsAccess;
             return (
               <SidebarMenuItem key={m.id}>
-                <SidebarMenuButton asChild tooltip={m.label}>
+                <SidebarMenuButton asChild tooltip={restricted ? `${m.label} (accès restreint)` : m.label}>
                   <NavLink
                     to={m.path}
-                    className={cn(active && "bg-sidebar-accent text-sidebar-accent-foreground font-medium")}
+                    onClick={(e) => { if (restricted) e.preventDefault(); }}
+                    aria-disabled={restricted}
+                    className={cn(
+                      active && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+                      restricted && "opacity-40 cursor-not-allowed pointer-events-none",
+                    )}
                   >
                     <Icon className="h-[18px] w-[18px] shrink-0" />
                     <span className="truncate text-sm">{m.label}</span>
