@@ -49,10 +49,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setTimeout(() => refreshUserData(newSession?.user?.id), 0);
     });
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) {
+        setSession(null);
+        setUser(null);
+        await refreshUserData(undefined);
+        setLoading(false);
+        return;
+      }
+
+      const { data: userData, error } = await supabase.auth.getUser();
+      if (error || !userData.user) {
+        await supabase.auth.signOut({ scope: "local" });
+        setSession(null);
+        setUser(null);
+        await refreshUserData(undefined);
+        setLoading(false);
+        return;
+      }
+
       setSession(data.session);
-      setUser(data.session?.user ?? null);
-      refreshUserData(data.session?.user?.id).finally(() => setLoading(false));
+      setUser(userData.user);
+      refreshUserData(userData.user.id).finally(() => setLoading(false));
     });
 
     return () => sub.subscription.unsubscribe();
@@ -79,7 +97,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) await supabase.auth.signOut({ scope: "local" });
+    setSession(null);
+    setUser(null);
     setIsAdmin(false);
     setIsSecretary(false);
     setApprovalStatus(null);
