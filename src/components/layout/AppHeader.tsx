@@ -56,8 +56,8 @@ export function AppHeader({ title }: AppHeaderProps) {
               <p className="text-sm font-semibold leading-tight text-foreground">
                 {user?.user_metadata?.full_name || user?.email}
               </p>
-              <p className="text-xs leading-tight text-muted-foreground">
-                {isAdmin ? "Admin RH" : "Employé"}
+              <p className="text-xs leading-tight text-muted-foreground truncate max-w-[220px]">
+                {user?.email}
               </p>
             </div>
           </Button>
