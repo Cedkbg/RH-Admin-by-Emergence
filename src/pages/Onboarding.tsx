@@ -22,7 +22,7 @@ const ROLE_OPTIONS = [
 ];
 
 export default function Onboarding() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(1);
   const [saving, setSaving] = useState(false);
@@ -68,6 +68,15 @@ export default function Onboarding() {
     if (!company.name.trim()) { toast.error("Le nom de l'entreprise est obligatoire"); return; }
     setSaving(true);
 
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      setSaving(false);
+      await signOut();
+      toast.error("Session expirée. Reconnectez-vous puis réessayez.");
+      navigate("/auth", { replace: true });
+      return;
+    }
+
     let logoUrl = company.logoUrl;
     if (logoFile) {
       const ext = logoFile.name.split(".").pop() || "png";
@@ -91,7 +100,14 @@ export default function Onboarding() {
     });
     setSaving(false);
     if (error || (data as any)?.error) {
-      toast.error((data as any)?.error || error?.message || "Enregistrement échoué");
+      const message = (data as any)?.error || error?.message || "Enregistrement échoué";
+      if (/non authentifi|unauthorized|jwt|session/i.test(message)) {
+        await signOut();
+        toast.error("Session expirée. Reconnectez-vous puis réessayez.");
+        navigate("/auth", { replace: true });
+        return;
+      }
+      toast.error(message);
       return;
     }
     toast.success("Informations entreprise enregistrées");
