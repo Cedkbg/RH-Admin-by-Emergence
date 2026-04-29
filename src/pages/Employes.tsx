@@ -149,13 +149,23 @@ const Employes = () => {
       status: form.status,
       hire_date: form.hire_date || null,
     };
-    const { error } = editingId
-      ? await supabase.from("employees").update(payload).eq("id", editingId)
-      : await supabase.from("employees").insert(payload);
+    const { data: saved, error } = editingId
+      ? await supabase.from("employees").update(payload).eq("id", editingId).select("id, email, first_name, last_name").maybeSingle()
+      : await supabase.from("employees").insert(payload).select("id, email, first_name, last_name").maybeSingle();
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success(editingId ? "Agent modifié" : "Agent ajouté (matricule auto-généré)");
     setOpen(false);
+
+    // Auto-invitation si nouvel agent avec email
+    if (!editingId && saved?.email) {
+      handleInvite({
+        id: (saved as any).id,
+        email: (saved as any).email,
+        first_name: (saved as any).first_name,
+        last_name: (saved as any).last_name,
+      } as EmployeeRow);
+    }
     refresh();
   };
 
