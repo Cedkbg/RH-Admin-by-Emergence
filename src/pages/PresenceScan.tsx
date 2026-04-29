@@ -72,7 +72,13 @@ const PresenceScan = () => {
   };
 
   useEffect(() => {
-    return () => { scannerRef.current?.stop().catch(() => {}); };
+    return () => {
+      const s = scannerRef.current;
+      if (s && s.getState && s.getState() === 2 /* SCANNING */) {
+        s.stop().catch(() => {}).then(() => s.clear?.()).catch(() => {});
+      }
+      scannerRef.current = null;
+    };
   }, []);
 
   return (
