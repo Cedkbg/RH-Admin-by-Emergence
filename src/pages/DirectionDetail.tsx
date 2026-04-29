@@ -22,6 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { iconForCode, colorForCode } from "@/data/orgData";
 import { colorClasses, modules } from "@/data/modules";
+import { ExecutiveDashboard } from "@/components/dashboard/ExecutiveDashboard";
 
 const DIRECTION_MODULES: Record<string, string[]> = {
   DG:  ["dashboard", "reports", "communication"],
@@ -199,6 +200,9 @@ export default function DirectionDetail() {
           )}
         </div>
       </div>
+
+      {/* Tableau de bord exclusif au DG */}
+      {upperCode === "DG" && <ExecutiveDashboard />}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
