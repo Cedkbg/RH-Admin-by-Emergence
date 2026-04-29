@@ -48,7 +48,8 @@ const Ops = ({ children }: { children: JSX.Element }) => (
 
 // Modules opérationnels terrain : masqués au DG/DGA/Secrétaire (cabinet exécutif)
 // pour préserver l'autonomie des équipes. Manager, RH, Assistant de direction y accèdent.
-const FIELD_ROLES = ["admin", "manager", "rh", "assistant_direction"];
+// Modules terrain : aussi accessibles aux agents (employee) pour pointer/voir leurs congés
+const FIELD_ROLES = ["admin", "manager", "rh", "assistant_direction", "employee"];
 const Field = ({ children }: { children: JSX.Element }) => (
   <RoleGuard allowed={FIELD_ROLES}>{children}</RoleGuard>
 );
