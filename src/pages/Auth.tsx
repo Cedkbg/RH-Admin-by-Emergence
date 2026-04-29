@@ -22,7 +22,8 @@ export default function Auth() {
 
   useEffect(() => {
     if (session) { navigate("/", { replace: true }); return; }
-    // Si l'entreprise n'a pas encore été configurée, envoyer vers l'onboarding public
+    // Ne rediriger vers /onboarding QUE si l'entreprise n'est pas configurée
+    // ET qu'aucun compte admin n'existe encore (bootstrap initial).
     (async () => {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data } = await supabase
@@ -32,7 +33,12 @@ export default function Auth() {
         .maybeSingle();
       const v: any = data?.value;
       const done = v === true || (typeof v === "object" && v?.value === true);
-      if (!done) navigate("/onboarding", { replace: true });
+      if (done) return;
+      const { count } = await supabase
+        .from("user_roles")
+        .select("id", { count: "exact", head: true })
+        .eq("role", "admin");
+      if ((count ?? 0) === 0) navigate("/onboarding", { replace: true });
     })();
   }, [session, navigate]);
 
