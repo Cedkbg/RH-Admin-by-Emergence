@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, Users, QrCode, CalendarDays, Mail } from "lucide-react";
+import { Building2, Users, QrCode, CalendarDays, Mail, ChevronDown, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -14,6 +15,8 @@ const AgentDashboard = () => {
   const [me, setMe] = useState<Employee | null>(null);
   const [direction, setDirection] = useState<Direction | null>(null);
   const [colleagues, setColleagues] = useState<Employee[]>([]);
+  const [allDirections, setAllDirections] = useState<Direction[]>([]);
+  const [showAllDirections, setShowAllDirections] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,6 +28,12 @@ const AgentDashboard = () => {
         .ilike("email", user.email!)
         .maybeSingle();
       setMe(emp as Employee | null);
+
+      const { data: allDirs } = await supabase
+        .from("directions")
+        .select("id, name, code, manager_name, description")
+        .order("code");
+      setAllDirections((allDirs as Direction[]) || []);
 
       if (emp?.direction_id) {
         const [{ data: dir }, { data: cols }] = await Promise.all([
