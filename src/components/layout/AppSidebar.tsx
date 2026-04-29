@@ -78,6 +78,8 @@ export function AppSidebar() {
         <SidebarMenu>
           {modules.map((m) => {
             const Icon = m.icon;
+            // Cacher complètement les modules terrain pour le cabinet exécutif (DG/DGA/Secrétaire)
+            if (isExecutiveOnly && FIELD_ONLY_PATHS.has(m.path)) return null;
             const active = m.path === "/" ? location.pathname === "/" : location.pathname.startsWith(m.path);
             const restricted = RESTRICTED_PATHS.has(m.path) && !hasOpsAccess;
             return (
