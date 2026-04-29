@@ -5,17 +5,20 @@ import {
 } from "@/components/ui/sidebar";
 import { modules } from "@/data/modules";
 import { cn } from "@/lib/utils";
-import { Shield } from "lucide-react";
+import { Shield, Users2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import companyLogo from "@/assets/company-logo.jpeg";
 
+const CABINET_ROLES = new Set(["admin", "dg", "dga", "manager"]);
+
 export function AppSidebar() {
   const location = useLocation();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [logoUrl, setLogoUrl] = useState<string>(companyLogo);
   const [companyName, setCompanyName] = useState<string>("EMERGENCE DRC");
+  const [canManageCabinets, setCanManageCabinets] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -30,6 +33,14 @@ export function AppSidebar() {
       });
     })();
   }, []);
+
+  useEffect(() => {
+    if (!user) { setCanManageCabinets(false); return; }
+    (async () => {
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      setCanManageCabinets((data || []).some((r: any) => CABINET_ROLES.has(r.role)));
+    })();
+  }, [user]);
 
   return (
     <Sidebar collapsible="icon">
@@ -65,12 +76,26 @@ export function AppSidebar() {
             );
           })}
 
+          {canManageCabinets && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Cabinets (DG/DGA/Manager)">
+                <NavLink
+                  to="/admin/cabinets"
+                  className={cn(location.pathname.startsWith("/admin/cabinets") && "bg-sidebar-accent text-sidebar-accent-foreground font-medium")}
+                >
+                  <Users2 className="h-[18px] w-[18px] shrink-0" />
+                  <span className="truncate text-sm">Cabinets</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+
           {isAdmin && (
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Administration">
                 <NavLink
                   to="/admin"
-                  className={cn(location.pathname.startsWith("/admin") && "bg-sidebar-accent text-sidebar-accent-foreground font-medium")}
+                  className={cn(location.pathname === "/admin" && "bg-sidebar-accent text-sidebar-accent-foreground font-medium")}
                 >
                   <Shield className="h-[18px] w-[18px] shrink-0" />
                   <span className="truncate text-sm">Administration</span>
