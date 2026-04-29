@@ -32,6 +32,9 @@ import Secretariat from "./pages/modules/Secretariat";
 import Assistant from "./pages/modules/Assistant";
 import ManagerGeneral from "./pages/ManagerGeneral";
 import AdminCabinets from "./pages/AdminCabinets";
+import PresenceKiosk from "./pages/PresenceKiosk";
+import PresenceScan from "./pages/PresenceScan";
+import PresenceLocations from "./pages/PresenceLocations";
 import { RoleGuard } from "@/components/RoleGuard";
 
 const queryClient = new QueryClient();
