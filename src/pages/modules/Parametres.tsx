@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Settings as SettingsIcon, Save, ArrowLeft } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Settings as SettingsIcon, Save, ArrowLeft, ImageIcon, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,18 +24,48 @@ const Parametres = () => {
   const navigate = useNavigate();
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string>("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refresh = async () => {
     const { data } = await supabase.from("app_settings").select("key,value");
     const map: Record<string, string> = {};
     Object.entries(KEYS).forEach(([k, v]) => (map[k] = v.default));
+    let logo = "";
     (data || []).forEach((r: any) => {
-      try { map[r.key] = typeof r.value === "string" ? r.value : r.value?.value ?? JSON.stringify(r.value); }
-      catch { map[r.key] = String(r.value); }
+      try {
+        const v = typeof r.value === "string" ? r.value : r.value?.value ?? JSON.stringify(r.value);
+        if (r.key === "company_logo") logo = v;
+        else map[r.key] = v;
+      } catch { map[r.key] = String(r.value); }
     });
     setValues(map);
+    setLogoUrl(logo);
   };
   useEffect(() => { refresh(); }, []);
+
+  const uploadLogo = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Veuillez sélectionner une image");
+      return;
+    }
+    setUploadingLogo(true);
+    const ext = file.name.split(".").pop() || "png";
+    const path = `logo-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from("branding")
+      .upload(path, file, { upsert: true, cacheControl: "3600" });
+    if (upErr) { setUploadingLogo(false); toast.error(upErr.message); return; }
+    const { data: pub } = supabase.storage.from("branding").getPublicUrl(path);
+    const { error: setErr } = await supabase
+      .from("app_settings")
+      .upsert({ key: "company_logo", value: { value: pub.publicUrl } });
+    setUploadingLogo(false);
+    if (setErr) { toast.error(setErr.message); return; }
+    setLogoUrl(pub.publicUrl);
+    toast.success("Logo mis à jour. Rechargez l'application pour voir le changement partout.");
+  };
 
   const save = async () => {
     setSaving(true);
