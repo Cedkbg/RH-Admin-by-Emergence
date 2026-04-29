@@ -52,7 +52,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    const redirectUrl = redirect_to || `${new URL(req.url).origin}/`;
+    // Redirige l'agent invité vers la page de définition du mot de passe
+    // (et non vers la racine, qui forcerait l'onboarding entreprise).
+    const origin = req.headers.get("origin") || new URL(req.url).origin;
+    const redirectUrl = redirect_to || `${origin}/reset-password`;
 
     // 1) Send invitation (creates user if not exists)
     let invitedUserId: string | null = null;
