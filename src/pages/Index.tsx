@@ -6,11 +6,19 @@ import { RecentActivities } from "@/components/dashboard/RecentActivities";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { MonthStats } from "@/components/dashboard/MonthStats";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRoles } from "@/hooks/useUserRoles";
+import AgentDashboard from "./AgentDashboard";
+
+const STAFF_ROLES = ["admin", "dg", "dga", "manager", "rh", "secretaire", "assistant_direction"];
 
 const Index = () => {
+  const { roles, loading } = useUserRoles();
   const [stats, setStats] = useState({ employees: 0, directions: 0, jobs: 0, documents: 0 });
 
+  const isStaff = roles.some((r) => STAFF_ROLES.includes(r));
+
   useEffect(() => {
+    if (loading || !isStaff) return;
     (async () => {
       const [emp, dir, jobs, docs] = await Promise.all([
         supabase.from("employees").select("*", { count: "exact", head: true }),
@@ -25,7 +33,10 @@ const Index = () => {
         documents: docs.count ?? 0,
       });
     })();
-  }, []);
+  }, [loading, isStaff]);
+
+  if (loading) return <div className="text-sm text-muted-foreground">Chargement…</div>;
+  if (!isStaff) return <AgentDashboard />;
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 animate-fade-in">
