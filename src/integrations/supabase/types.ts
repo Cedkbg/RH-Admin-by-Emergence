@@ -152,8 +152,13 @@ export type Database = {
           check_out: string | null
           created_at: string
           date: string
+          distance_meters: number | null
           employee_id: string
+          gps_lat: number | null
+          gps_lng: number | null
           id: string
+          location_id: string | null
+          scan_method: string | null
           status: string
         }
         Insert: {
@@ -161,8 +166,13 @@ export type Database = {
           check_out?: string | null
           created_at?: string
           date?: string
+          distance_meters?: number | null
           employee_id: string
+          gps_lat?: number | null
+          gps_lng?: number | null
           id?: string
+          location_id?: string | null
+          scan_method?: string | null
           status?: string
         }
         Update: {
@@ -170,8 +180,13 @@ export type Database = {
           check_out?: string | null
           created_at?: string
           date?: string
+          distance_meters?: number | null
           employee_id?: string
+          gps_lat?: number | null
+          gps_lng?: number | null
           id?: string
+          location_id?: string | null
+          scan_method?: string | null
           status?: string
         }
         Relationships: [
@@ -182,7 +197,53 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "attendance_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_locations"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      attendance_locations: {
+        Row: {
+          active: boolean
+          address: string | null
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          radius_meters: number
+          secret: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          radius_meters?: number
+          secret?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          address?: string | null
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          radius_meters?: number
+          secret?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       audit_logs: {
         Row: {
