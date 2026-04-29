@@ -27,7 +27,7 @@ export function useOnboarding() {
       return false;
     })();
     const userDone = !!profile?.onboarding_completed;
-    setNeedsOnboarding(!companyDone || (profile ? !userDone : false));
+    setNeedsOnboarding(!(companyDone && userDone));
     setLoading(false);
   };
 
