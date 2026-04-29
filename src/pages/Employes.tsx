@@ -282,10 +282,20 @@ const Employes = () => {
                     {canManage && (
                       <td className="p-3 md:p-4">
                         <div className="flex justify-end gap-1">
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(e)}>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(e)} title="Modifier">
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(e.id)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={() => handleInvite(e)}
+                            disabled={!e.email}
+                            title={e.email ? "Envoyer une invitation par email" : "Email requis"}
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(e.id)} title="Supprimer">
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
