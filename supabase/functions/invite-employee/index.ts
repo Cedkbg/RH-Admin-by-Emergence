@@ -89,9 +89,9 @@ Deno.serve(async (req) => {
       invitedUserId = invited.user.id;
     }
 
-    // 2) Profile approved + email aligned
+    // 2) Profile approved + email aligned + onboarding completed (invited user skips onboarding wizard)
     await admin.from("profiles").upsert({
-      id: invitedUserId, email, full_name, approval_status: "approved",
+      id: invitedUserId, email, full_name, approval_status: "approved", onboarding_completed: true,
     });
 
     // 3) Remove possible 'admin' default and assign 'employee'
