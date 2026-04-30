@@ -10,6 +10,16 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
   const location = useLocation();
   const [companyChecked, setCompanyChecked] = useState(false);
   const [companyConfigured, setCompanyConfigured] = useState(true);
+  const [forceReady, setForceReady] = useState(false);
+
+  // Timeout de sécurité pour éviter le blocage infini (10 secondes max)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.warn("Timeout chargement - continuation forcée");
+      setForceReady(true);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (session) { setCompanyChecked(true); return; }
@@ -34,6 +44,17 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
       setCompanyChecked(true);
     })();
   }, [session]);
+
+  // Ne pas bloquer si timeout déclenché
+  if (forceReady) {
+    if (!session) {
+      if (!companyConfigured) {
+        return <Navigate to="/onboarding" replace />;
+      }
+      return <Navigate to="/auth" replace state={{ from: location }} />;
+    }
+    return <>{children}</>;
+  }
 
   if (loading || (session && onboardingLoading) || (!session && !companyChecked)) {
     return (

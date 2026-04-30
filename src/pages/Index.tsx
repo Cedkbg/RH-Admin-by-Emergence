@@ -15,10 +15,22 @@ const Index = () => {
   const { roles, loading } = useUserRoles();
   const [stats, setStats] = useState({ employees: 0, directions: 0, jobs: 0, documents: 0 });
 
-  const isStaff = roles.some((r) => STAFF_ROLES.includes(r));
+  // Timeout de sécurité pour éviter le blocage sur les rôles (7 secondes)
+  const [roleTimeout, setRoleTimeout] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (loading) setRoleTimeout(true);
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  // Si pas de rôle ou loading trop long, on traite comme agent simple
+  const isStaff = !loading && roles.length > 0 && roles.some((r: string) => STAFF_ROLES.includes(r));
 
   useEffect(() => {
-    if (loading || !isStaff) return;
+    // Si pas staff, pas besoin des stats
+    if (!isStaff) return;
+    
     (async () => {
       const [emp, dir, jobs, docs] = await Promise.all([
         supabase.from("employees").select("*", { count: "exact", head: true }),
@@ -33,9 +45,13 @@ const Index = () => {
         documents: docs.count ?? 0,
       });
     })();
-  }, [loading, isStaff]);
+  }, [isStaff]);
 
-  if (loading) return <div className="text-sm text-muted-foreground">Chargement…</div>;
+  // Afficher directement le dashboard agent si loading long ou pas staff
+  if (loading && !roleTimeout) {
+    return <div className="text-sm text-muted-foreground">Chargement…</div>;
+  }
+  
   if (!isStaff) return <AgentDashboard />;
 
   return (
