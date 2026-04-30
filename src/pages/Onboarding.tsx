@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,55 +14,89 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(1);
   const [saving, setSaving] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   // Step 1 — Entreprise
   const [company, setCompany] = useState({
     name: "", logoUrl: "", address: "", phone: "", email: "",
   });
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const logoUrlRef = useRef<string | null>(null);
+
+  // Show loading screen while checking setup status
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Nettoyer l'URL d'objet lors du changement de fichier
+  const handleLogoChange = (file: File | null) => {
+    if (logoUrlRef.current) {
+      URL.revokeObjectURL(logoUrlRef.current);
+      logoUrlRef.current = null;
+    }
+    if (file) {
+      logoUrlRef.current = URL.createObjectURL(file);
+    }
+    setLogoFile(file);
+  };
 
   // Step 2 — Compte administrateur (premier utilisateur)
   const [admin, setAdmin] = useState({
     full_name: "", email: "", password: "",
   });
 
-  useEffect(() => {
+useEffect(() => {
     (async () => {
-      // Si l'URL contient un token d'invitation/recovery, on quitte immédiatement vers /reset-password
-      const hash = window.location.hash || "";
-      const search = window.location.search || "";
-      if (/access_token=|type=(recovery|invite|signup|magiclink|email_change)|code=[\w-]+/.test(hash + search)) {
-        navigate(`/reset-password${search}${hash}`, { replace: true });
-        return;
-      }
-      // Si la configuration est déjà faite OU qu'un admin existe, rediriger vers la connexion
-      const [{ data: cfg }, { count: adminCount }] = await Promise.all([
-        supabase.from("app_settings").select("value").eq("key", "company_onboarded").maybeSingle(),
-        supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin"),
-      ]);
-      const v: any = cfg?.value;
-      const done = v === true || (typeof v === "object" && v?.value === true);
-      if (done || (adminCount ?? 0) > 0) {
-        navigate("/auth", { replace: true });
-        return;
-      }
+      try {
+        // Si l'URL contient un token d'invitation/recovery, on quitte immédiatement vers /reset-password
+        const hash = window.location.hash || "";
+        const search = window.location.search || "";
+        if (/access_token=|type=(recovery|invite|signup|magiclink|email_change)|code=[\w-]+/.test(hash + search)) {
+          setInitialLoading(false);
+          navigate(`/reset-password${search}${hash}`, { replace: true });
+          return;
+        }
+        // Si la configuration est déjà faite OU qu'un admin existe, rediriger vers la connexion
+        const [{ data: cfg }, { count: adminCount }] = await Promise.all([
+          supabase.from("app_settings").select("value").eq("key", "company_onboarded").maybeSingle(),
+          supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin"),
+        ]);
+        const v: any = cfg?.value;
+        const done = v === true || (typeof v === "object" && v?.value === true);
+        if (done || (adminCount ?? 0) > 0) {
+          setInitialLoading(false);
+          navigate("/auth", { replace: true });
+          return;
+        }
 
-      const { data: settings } = await supabase
-        .from("app_settings")
-        .select("key,value")
-        .in("key", ["company_name", "company_logo", "company_address", "company_phone", "company_email"]);
-      const map: any = {};
-      (settings || []).forEach((r: any) => {
-        const v = typeof r.value === "string" ? r.value : r.value?.value;
-        map[r.key] = v ?? "";
-      });
-      setCompany({
-        name: map.company_name || "",
-        logoUrl: map.company_logo || "",
-        address: map.company_address || "",
-        phone: map.company_phone || "",
-        email: map.company_email || "",
-      });
+        const { data: settings } = await supabase
+          .from("app_settings")
+          .select("key,value")
+          .in("key", ["company_name", "company_logo", "company_address", "company_phone", "company_email"]);
+        const map: any = {};
+        (settings || []).forEach((r: any) => {
+          const v = typeof r.value === "string" ? r.value : r.value?.value;
+          map[r.key] = v ?? "";
+        });
+        setCompany({
+          name: map.company_name || "",
+          logoUrl: map.company_logo || "",
+          address: map.company_address || "",
+          phone: map.company_phone || "",
+          email: map.company_email || "",
+        });
+        setInitialLoading(false);
+      } catch (err) {
+        console.error("Onboarding init error:", err);
+        setInitialLoading(false);
+      }
     })();
   }, [navigate]);
 
@@ -84,7 +118,15 @@ export default function Onboarding() {
       logoExt = logoFile.name.split(".").pop() || "png";
     }
 
+// Retrieve current session for authenticated API call
+    const { data: { session: activeSession } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {};
+    if (activeSession?.access_token) {
+      headers["Authorization"] = `Bearer ${activeSession.access_token}`;
+    }
+
     const { data, error } = await supabase.functions.invoke("complete-onboarding", {
+      headers,
       body: {
         company: {
           name: company.name,
@@ -183,14 +225,14 @@ export default function Onboarding() {
                 <div className="md:col-span-2 space-y-2">
                   <Label>Logo</Label>
                   <div className="flex items-center gap-3">
-                    {(logoFile || company.logoUrl) && (
+{(logoFile || company.logoUrl) && (
                       <img
-                        src={logoFile ? URL.createObjectURL(logoFile) : company.logoUrl}
+                        src={logoUrlRef.current || company.logoUrl}
                         alt="logo"
                         className="h-14 w-14 rounded-lg object-contain bg-secondary p-1"
                       />
                     )}
-                    <Input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)} />
+<Input type="file" accept="image/*" onChange={(e) => handleLogoChange(e.target.files?.[0] ?? null)} />
                   </div>
                 </div>
                 <div className="md:col-span-2 space-y-2">

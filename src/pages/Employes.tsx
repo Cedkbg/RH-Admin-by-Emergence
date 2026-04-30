@@ -221,22 +221,29 @@ const Employes = () => {
         </Button>
       </div>
 
-      <section className="rounded-xl border bg-card p-4 shadow-sm">
-        <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
-          <Filter className="h-3.5 w-3.5" /> Direction
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant={activeDir === "all" ? "default" : "outline"} size="sm" className="rounded-full" onClick={() => setActiveDir("all")}>
-            Toutes ({employees.length})
-          </Button>
-          {directions.map((d) => {
-            const count = employees.filter((e) => e.direction_id === d.id).length;
-            return (
-              <Button key={d.id} variant={activeDir === d.id ? "default" : "outline"} size="sm" className="rounded-full" onClick={() => setActiveDir(d.id)}>
-                {d.name} <span className="ml-1 text-xs opacity-75">({count})</span>
-              </Button>
-            );
-          })}
+<section className="rounded-xl border bg-card p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
+            <Filter className="h-3.5 w-3.5" /> Filtrer par direction
+          </div>
+          <Select value={activeDir} onValueChange={(v) => setActiveDir(v)}>
+            <SelectTrigger className="w-[240px] justify-between">
+              <SelectValue placeholder="Toutes les directions" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                Toutes les directions ({employees.length})
+              </SelectItem>
+              {directions.map((d) => {
+                const count = employees.filter((e) => e.direction_id === d.id).length;
+                return (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name} ({count})
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
         </div>
       </section>
 

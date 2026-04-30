@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Shield } from "lucide-react";
+import { Shield, Loader2 } from "lucide-react";
 
 export default function Auth() {
   const { session, signIn, signUp, loading: authLoading } = useAuth();
@@ -75,7 +75,14 @@ export default function Auth() {
     else toast.success("Compte créé. Vérifiez votre email pour confirmer.");
   };
 
-  if (authLoading) return null;
+if (authLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <div className="flex flex-col items-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Chargement...</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">

@@ -87,9 +87,9 @@ export default function ResetPassword() {
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Mot de passe défini ! Vous pouvez maintenant vous connecter.");
-    await supabase.auth.signOut();
-    navigate("/auth", { replace: true });
+toast.success("Mot de passe défini ! Redirection vers le tableau de bord...");
+    // Don't sign out - keep the user logged in and redirect to dashboard
+    navigate("/", { replace: true });
   };
 
   return (
