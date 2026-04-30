@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Lieu + secret
+    // Lieu
     const { data: loc, error: le } = await admin
       .from("attendance_locations")
       .select("id,name,secret,latitude,longitude,radius_meters,active")
@@ -72,16 +72,16 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Lieu inconnu ou désactivé" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Vérifie signature dans la fenêtre temporelle (slot ±1)
-    const currentSlot = Math.floor(Date.now() / 1000 / WINDOW_SEC);
+    // Vérification d'expiration : supporte v2 (e=expires_at ms) et v1 (s=slot HMAC, rétro-compat)
+    const GRACE_MS = 60_000; // tolérance 1 min pour décalage horloge tablette
     let valid = false;
-    for (let i = -TOLERANCE_SLOTS; i <= TOLERANCE_SLOTS; i++) {
-      const s = currentSlot + i;
-      if (s !== payload.s && Math.abs(s - payload.s) > 0) continue;
+    if (payload.v === 2 && typeof payload.e === "number") {
+      valid = Date.now() <= payload.e + GRACE_MS;
+    } else if (payload.s != null && payload.h) {
+      // Rétro-compatibilité v1 (HMAC)
+      const currentSlot = Math.floor(Date.now() / 1000 / WINDOW_SEC);
       const expected = (await hmac(loc.secret, `${loc.id}:${payload.s}`)).slice(0, 24);
-      if (expected === payload.h && Math.abs(currentSlot - payload.s) <= TOLERANCE_SLOTS) {
-        valid = true; break;
-      }
+      valid = expected === payload.h && Math.abs(currentSlot - payload.s) <= TOLERANCE_SLOTS;
     }
     if (!valid) {
       return new Response(JSON.stringify({ error: "QR expiré, scannez à nouveau" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
