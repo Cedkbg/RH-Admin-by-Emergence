@@ -32,24 +32,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setApprovalStatus(null);
       return;
     }
-    const [{ data: roles }, { data: profileData }] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", uid),
-      supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
-    ]);
-    const roleSet = new Set((roles || []).map((r: any) => r.role));
-    setIsAdmin(roleSet.has("admin"));
-    setIsSecretary(roleSet.has("secretaire") || roleSet.has("admin"));
-    setApprovalStatus((profileData?.approval_status as any) ?? "pending");
+    try {
+      const [{ data: roles }, { data: profileData }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", uid),
+        supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
+      ]);
+      const roleSet = new Set((roles || []).map((r: any) => r.role));
+      setIsAdmin(roleSet.has("admin"));
+      setIsSecretary(roleSet.has("secretaire") || roleSet.has("admin"));
+      setApprovalStatus((profileData?.approval_status as any) ?? "pending");
+    } catch (e) {
+      console.error("Erreur refreshUserData:", e);
+      setIsAdmin(false);
+      setIsSecretary(false);
+      setApprovalStatus(null);
+    }
   };
 
+  // Gestionnaire avec timeout de securite
   useEffect(() => {
+    let isMounted = true;
+    
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!isMounted) return;
       setSession(newSession);
       setUser(newSession?.user ?? null);
-      setTimeout(() => refreshUserData(newSession?.user?.id), 0);
+      
+      // Timeout de 5 secondes pour chaque changement d'etat auth
+      const timer = setTimeout(() => {
+        if (isMounted) setLoading(false);
+      }, 5000);
+      
+      if (newSession?.user?.id) {
+        refreshUserData(newSession.user.id).finally(() => {
+          if (isMounted) {
+            clearTimeout(timer);
+            setLoading(false);
+          }
+        });
+      } else {
+        clearTimeout(timer);
+        if (isMounted) {
+          refreshUserData(undefined);
+          setLoading(false);
+        }
+      }
     });
 
+    // Initial session check avec timeout
     supabase.auth.getSession().then(async ({ data }) => {
+      if (!isMounted) return;
+      
       if (!data.session) {
         setSession(null);
         setUser(null);
@@ -59,7 +92,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const { data: userData, error } = await supabase.auth.getUser();
-      if (error || !userData.user) {
+      if (error || !userData?.user) {
+        console.error("Erreur getUser:", error);
         await supabase.auth.signOut({ scope: "local" });
         setSession(null);
         setUser(null);
@@ -73,13 +107,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       refreshUserData(userData.user.id).finally(() => setLoading(false));
     });
 
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const refreshApproval = async () => { await refreshUserData(user?.id); };
 
   const signIn = async (email: string, password: string) => {
+    setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setLoading(false);
     return { error: error?.message ?? null };
   };
 
@@ -104,6 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAdmin(false);
     setIsSecretary(false);
     setApprovalStatus(null);
+    setLoading(false);
   };
 
   return (

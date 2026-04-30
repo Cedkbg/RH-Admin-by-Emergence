@@ -12,40 +12,50 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
   const [companyConfigured, setCompanyConfigured] = useState(true);
   const [forceReady, setForceReady] = useState(false);
 
-  // Timeout de sécurité pour éviter le blocage infini (10 secondes max)
+  // Timeout de securite pour eviter le blocage infini (8 secondes max)
   useEffect(() => {
     const timer = setTimeout(() => {
-      console.warn("Timeout chargement - continuation forcée");
+      console.warn("Protected: timeout atteint, continuation forcee");
       setForceReady(true);
-    }, 10000);
+    }, 8000);
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
     if (session) { setCompanyChecked(true); return; }
-    (async () => {
-      const { data } = await supabase
-        .from("app_settings")
-        .select("value")
-        .eq("key", "company_onboarded")
-        .maybeSingle();
-      const v: any = data?.value;
-      const done = v === true || (typeof v === "object" && v?.value === true);
-      if (done) {
-        setCompanyConfigured(true);
-      } else {
-        // Si un admin existe déjà, on considère le bootstrap fait
-        const { count } = await supabase
-          .from("user_roles")
-          .select("id", { count: "exact", head: true })
-          .eq("role", "admin");
-        setCompanyConfigured((count ?? 0) > 0);
+    
+    const checkCompany = async () => {
+      try {
+        const { data } = await supabase
+          .from("app_settings")
+          .select("value")
+          .eq("key", "company_onboarded")
+          .maybeSingle();
+        
+        const v: any = data?.value;
+        const done = v === true || (typeof v === "object" && v?.value === true);
+        
+        if (done) {
+          setCompanyConfigured(true);
+        } else {
+          const { count } = await supabase
+            .from("user_roles")
+            .select("id", { count: "exact", head: true })
+            .eq("role", "admin");
+          setCompanyConfigured((count ?? 0) > 0);
+        }
+      } catch (e) {
+        console.error("Erreur Protected:", e);
+        setCompanyConfigured(true); // En cas d'erreur, on considere configure
+      } finally {
+        setCompanyChecked(true);
       }
-      setCompanyChecked(true);
-    })();
+    };
+    
+    checkCompany();
   }, [session]);
 
-  // Ne pas bloquer si timeout déclenché
+  // Si timeout atteint, autoriser l'acces
   if (forceReady) {
     if (!session) {
       if (!companyConfigured) {
@@ -56,10 +66,11 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
     return <>{children}</>;
   }
 
+  // Si loading auth ou onboarding en cours
   if (loading || (session && onboardingLoading) || (!session && !companyChecked)) {
     return (
       <div className="flex h-screen items-center justify-center text-muted-foreground">
-        Chargement…
+        Chargement...
       </div>
     );
   }
