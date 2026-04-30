@@ -28,6 +28,13 @@ export default function Onboarding() {
 
   useEffect(() => {
     (async () => {
+      // Si l'URL contient un token d'invitation/recovery, on quitte immédiatement vers /reset-password
+      const hash = window.location.hash || "";
+      const search = window.location.search || "";
+      if (/access_token=|type=(recovery|invite|signup|magiclink|email_change)|code=[\w-]+/.test(hash + search)) {
+        navigate(`/reset-password${search}${hash}`, { replace: true });
+        return;
+      }
       // Si la configuration est déjà faite OU qu'un admin existe, rediriger vers la connexion
       const [{ data: cfg }, { count: adminCount }] = await Promise.all([
         supabase.from("app_settings").select("value").eq("key", "company_onboarded").maybeSingle(),
