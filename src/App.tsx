@@ -1,5 +1,6 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -39,6 +40,30 @@ import PresenceLocations from "./pages/PresenceLocations";
 import { RoleGuard } from "@/components/RoleGuard";
 
 const queryClient = new QueryClient();
+
+/**
+ * Détecte un lien d'invitation / réinitialisation Supabase (hash ou query)
+ * et redirige IMMÉDIATEMENT vers /reset-password en préservant les tokens.
+ * Évite que l'utilisateur soit baladé vers /onboarding ou /auth.
+ */
+const AuthRedirectGuard = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  useEffect(() => {
+    if (location.pathname === "/reset-password") return;
+    const hash = window.location.hash || "";
+    const search = window.location.search || "";
+    const isAuthHash =
+      /access_token=/.test(hash) ||
+      /type=(recovery|invite|signup|magiclink|email_change)/.test(hash) ||
+      /type=(recovery|invite|signup|magiclink|email_change)/.test(search) ||
+      /code=[\w-]+/.test(search); // PKCE flow
+    if (isAuthHash) {
+      navigate(`/reset-password${search}${hash}`, { replace: true });
+    }
+  }, [location.pathname, navigate]);
+  return null;
+};
 
 // Rôles autorisés à accéder aux modules opérationnels (Recrutement → Paramètres)
 const OPS_ROLES = ["admin", "dg", "dga", "manager", "rh", "assistant_direction"];
