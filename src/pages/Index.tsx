@@ -6,29 +6,66 @@ import { RecentActivities } from "@/components/dashboard/RecentActivities";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { MonthStats } from "@/components/dashboard/MonthStats";
 import { supabase } from "@/integrations/supabase/client";
-import { useUserRoles } from "@/hooks/useUserRoles";
+import { useAuth } from "@/contexts/AuthContext";
 import AgentDashboard from "./AgentDashboard";
 
 const STAFF_ROLES = ["admin", "dg", "dga", "manager", "rh", "secretaire", "assistant_direction"];
 
 const Index = () => {
-  const { roles, loading } = useUserRoles();
+  const { user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState({ employees: 0, directions: 0, jobs: 0, documents: 0 });
+  const [roles, setRoles] = useState<string[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
 
-  // Timeout de sécurité pour éviter le blocage sur les rôles (7 secondes)
-  const [roleTimeout, setRoleTimeout] = useState(false);
+  // Chargement direct des roles avec timeout court (3 secondes max)
   useEffect(() => {
+    if (!user || authLoading) return;
+    
     const timer = setTimeout(() => {
-      if (loading) setRoleTimeout(true);
-    }, 7000);
+      setRolesLoading(false);
+    }, 3000);
+    
+    const fetchRoles = async () => {
+      try {
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+        
+        setRoles((data || []).map((r: any) => r.role));
+      } catch (e) {
+        console.error("Erreur roles:", e);
+        setRoles([]);
+      } finally {
+        setRolesLoading(false);
+        clearTimeout(timer);
+      }
+    };
+    
+    fetchRoles();
     return () => clearTimeout(timer);
-  }, [loading]);
+  }, [user?.id, authLoading]);
 
-  // Si pas de rôle ou loading trop long, on traite comme agent simple
-  const isStaff = !loading && roles.length > 0 && roles.some((r: string) => STAFF_ROLES.includes(r));
+  // Si auth pas pret, on attend un peu
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-muted-foreground">Connexion en cours...</div>
+      </div>
+    );
+  }
 
+  // Si pas d'user, aller a auth
+  if (!user) {
+    window.location.href = "/auth";
+    return null;
+  }
+
+  // Determiner si staff (avec timeout)
+  const isStaff = !rolesLoading && roles.length > 0 && roles.some((r: string) => STAFF_ROLES.includes(r));
+
+  // Charger les stats si staff
   useEffect(() => {
-    // Si pas staff, pas besoin des stats
     if (!isStaff) return;
     
     (async () => {
@@ -47,18 +84,18 @@ const Index = () => {
     })();
   }, [isStaff]);
 
-  // Afficher directement le dashboard agent si loading long ou pas staff
-  if (loading && !roleTimeout) {
-    return <div className="text-sm text-muted-foreground">Chargement…</div>;
+  // Afficher dashboard agent si:
+  // - Pas staff (pas de roles staff)
+  // - rolesLoading trop long (plus de 3 secondes)
+  if (!isStaff) {
+    return <AgentDashboard />;
   }
-  
-  if (!isStaff) return <AgentDashboard />;
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Tableau de bord</h1>
-        <p className="text-sm text-muted-foreground">EMERGENCE DRC — Système de Gestion RH</p>
+        <p className="text-sm text-muted-foreground">EMERGENCE DRC — Systeme de Gestion RH</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
