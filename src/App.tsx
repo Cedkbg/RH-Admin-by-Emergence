@@ -37,6 +37,7 @@ import AdminCabinets from "./pages/AdminCabinets";
 import PresenceKiosk from "./pages/PresenceKiosk";
 import PresenceScan from "./pages/PresenceScan";
 import PresenceLocations from "./pages/PresenceLocations";
+import Install from "./pages/Install";
 import { RoleGuard } from "@/components/RoleGuard";
 
 const queryClient = new QueryClient();
