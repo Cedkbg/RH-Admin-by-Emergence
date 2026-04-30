@@ -8,13 +8,39 @@ export function useUserRoles() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Attendre que l'auth soit pret
     if (authLoading) return;
-    if (!user) { setRoles([]); setLoading(false); return; }
-    (async () => {
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
-      setRoles((data || []).map((r: any) => r.role));
-      setLoading(false);
-    })();
+    
+    // Si pas d'utilisateur, pas de roles
+    if (!user) { 
+      setRoles([]); 
+      setLoading(false); 
+      return; 
+    }
+    
+    // Fonction asynchrone pour charger les roles
+    const fetchRoles = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+        
+        if (error) {
+          console.error("Erreur chargement roles:", error);
+          setRoles([]);
+        } else {
+          setRoles((data || []).map((r: any) => r.role));
+        }
+      } catch (err) {
+        console.error("Exception chargement roles:", err);
+        setRoles([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchRoles();
   }, [user?.id, authLoading]);
 
   const hasAny = (allowed: string[]) => roles.some((r) => allowed.includes(r));
