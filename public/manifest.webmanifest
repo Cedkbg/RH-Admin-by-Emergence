@@ -1,0 +1,19 @@
+{
+  "name": "EMERGENCE DRC — RH",
+  "short_name": "EMERGENCE",
+  "description": "Plateforme de gestion RH EMERGENCE DRC",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/placeholder.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

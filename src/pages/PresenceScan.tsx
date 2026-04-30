@@ -69,6 +69,8 @@ const PresenceScan = () => {
     }
     setResult(data);
     setStatus("success");
+    // Pose un drapeau pour afficher une notif au retour sur le dashboard agent
+    try { sessionStorage.setItem("attendance:justScanned", data.action); } catch {}
   };
 
   useEffect(() => {

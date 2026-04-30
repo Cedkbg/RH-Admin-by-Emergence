@@ -10,7 +10,7 @@ import { MapPin, Clock, AlertTriangle } from "lucide-react";
  * Le QR contient juste { l: location_id, e: expires_at }. La validation côté
  * serveur vérifie l'expiration, l'utilisateur authentifié et le GPS dans le rayon.
  */
-const WINDOW_MS = 30_000;
+const WINDOW_MS = 10_000;
 
 const PresenceKiosk = () => {
   const { locationId } = useParams<{ locationId: string }>();

@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, Users, QrCode, CalendarDays, Mail, ChevronDown, Network } from "lucide-react";
+import { Building2, Users, QrCode, CalendarDays, Mail, ChevronDown, Network, CheckCircle2, Clock, AlertTriangle, Smartphone, LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface Direction { id: string; name: string; code: string | null; manager_name: string | null; description: string | null; }
 interface Employee { id: string; first_name: string; last_name: string; position: string | null; email: string | null; direction_id: string | null; }
+interface Attendance { id: string; date: string; check_in: string | null; check_out: string | null; status: string; }
+
+// Heure limite d'arrivée (configurable plus tard via app_settings)
+const ARRIVAL_DEADLINE_HOUR = 9; // 09:00
 
 const AgentDashboard = () => {
   const { user } = useAuth();
@@ -17,7 +22,35 @@ const AgentDashboard = () => {
   const [colleagues, setColleagues] = useState<Employee[]>([]);
   const [allDirections, setAllDirections] = useState<Direction[]>([]);
   const [showAllDirections, setShowAllDirections] = useState(false);
+  const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(new Date());
+
+  // Notification au retour de la page de scan
+  useEffect(() => {
+    const flag = sessionStorage.getItem("attendance:justScanned");
+    if (flag) {
+      sessionStorage.removeItem("attendance:justScanned");
+      toast.success(flag === "check_in" ? "Entrée enregistrée ✅" : "Sortie enregistrée ✅");
+    }
+  }, []);
+
+  // Tic-tac pour rafraîchir l'alerte d'heure limite
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const loadAttendance = async (employeeId: string) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data } = await supabase
+      .from("attendance")
+      .select("id,date,check_in,check_out,status")
+      .eq("employee_id", employeeId)
+      .eq("date", today)
+      .maybeSingle();
+    setTodayAttendance((data as Attendance | null) ?? null);
+  };
 
   useEffect(() => {
     if (!user?.email) return;
@@ -43,6 +76,7 @@ const AgentDashboard = () => {
         setDirection(dir as Direction | null);
         setColleagues((cols as Employee[]) || []);
       }
+      if (emp?.id) await loadAttendance(emp.id);
       setLoading(false);
     })();
   }, [user?.email]);
@@ -50,6 +84,12 @@ const AgentDashboard = () => {
   if (loading) {
     return <div className="text-sm text-muted-foreground">Chargement…</div>;
   }
+
+  const checkedIn = !!todayAttendance?.check_in;
+  const checkedOut = !!todayAttendance?.check_out;
+  const fullyDone = checkedIn && checkedOut;
+  const isLate = !checkedIn && (now.getHours() > ARRIVAL_DEADLINE_HOUR ||
+    (now.getHours() === ARRIVAL_DEADLINE_HOUR && now.getMinutes() > 0));
 
   return (
     <div className="mx-auto max-w-[1200px] space-y-6 animate-fade-in">
@@ -61,6 +101,67 @@ const AgentDashboard = () => {
           <Mail className="h-3.5 w-3.5" /> {user?.email}
         </p>
       </header>
+
+      {/* ====== BLOC PRÉSENCE DU JOUR — gros bouton + statut ====== */}
+      {me && (
+        <section className={`rounded-2xl border-2 p-5 shadow-sm transition-colors ${
+          fullyDone ? "border-green-500/40 bg-green-50 dark:bg-green-950/20"
+          : checkedIn ? "border-blue-500/40 bg-blue-50 dark:bg-blue-950/20"
+          : isLate ? "border-destructive/40 bg-destructive/5"
+          : "border-primary/40 bg-primary/5"
+        }`}>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-bold text-lg">Ma présence aujourd'hui</h2>
+                <Badge variant="outline" className="text-xs">
+                  {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                </Badge>
+              </div>
+
+              {/* Statut */}
+              <div className="mt-3 space-y-1.5 text-sm">
+                <div className="flex items-center gap-2">
+                  {checkedIn ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Clock className="h-4 w-4 text-muted-foreground" />}
+                  <span><b>Entrée :</b> {checkedIn ? todayAttendance!.check_in?.slice(0, 5) : <span className="text-muted-foreground">non pointée</span>}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {checkedOut ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Clock className="h-4 w-4 text-muted-foreground" />}
+                  <span><b>Sortie :</b> {checkedOut ? todayAttendance!.check_out?.slice(0, 5) : <span className="text-muted-foreground">non pointée</span>}</span>
+                </div>
+              </div>
+
+              {/* Alerte heure limite */}
+              {isLate && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>Vous n'avez pas encore pointé votre arrivée. L'heure limite était <b>{String(ARRIVAL_DEADLINE_HOUR).padStart(2, "0")}:00</b> — pensez à scanner dès que possible.</span>
+                </div>
+              )}
+              {fullyDone && (
+                <p className="mt-3 text-sm text-green-700 dark:text-green-400">
+                  ✅ Journée complète enregistrée. Bonne soirée !
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* GROS BOUTON Pointer maintenant */}
+          {!fullyDone && (
+            <Button
+              asChild
+              size="lg"
+              className="mt-5 w-full h-16 text-base font-semibold shadow-md"
+            >
+              <Link to="/presence/scan">
+                {checkedIn ? <LogOut className="mr-2 h-5 w-5" /> : <LogIn className="mr-2 h-5 w-5" />}
+                {checkedIn ? "Pointer ma sortie" : "Pointer maintenant"}
+                <QrCode className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+          )}
+        </section>
+      )}
 
       {!me ? (
         <section className="rounded-xl border bg-card p-6 shadow-sm">
@@ -139,18 +240,7 @@ const AgentDashboard = () => {
         </section>
       </Collapsible>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link to="/presence/scan" className="group rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
-          <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <QrCode className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Pointer ma présence</h3>
-              <p className="text-xs text-muted-foreground">Scanner le QR code RH</p>
-            </div>
-          </div>
-        </Link>
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Link to="/presence" className="group rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
           <div className="flex items-center gap-3">
             <div className="h-11 w-11 rounded-lg bg-module-green/10 text-module-green flex items-center justify-center">
@@ -159,6 +249,28 @@ const AgentDashboard = () => {
             <div>
               <h3 className="font-semibold">Mes congés</h3>
               <p className="text-xs text-muted-foreground">Demander un congé</p>
+            </div>
+          </div>
+        </Link>
+        <Link to="/install" className="group rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <Smartphone className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Installer l'app</h3>
+              <p className="text-xs text-muted-foreground">Sur l'écran d'accueil</p>
+            </div>
+          </div>
+        </Link>
+        <Link to="/presence/scan" className="group rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 rounded-lg bg-accent/40 text-foreground flex items-center justify-center">
+              <QrCode className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Scanner un QR</h3>
+              <p className="text-xs text-muted-foreground">Pointage rapide</p>
             </div>
           </div>
         </Link>

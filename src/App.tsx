@@ -37,6 +37,7 @@ import AdminCabinets from "./pages/AdminCabinets";
 import PresenceKiosk from "./pages/PresenceKiosk";
 import PresenceScan from "./pages/PresenceScan";
 import PresenceLocations from "./pages/PresenceLocations";
+import Install from "./pages/Install";
 import { RoleGuard } from "@/components/RoleGuard";
 
 const queryClient = new QueryClient();
@@ -96,6 +97,7 @@ const App = () => (
               <Route path="/organigramme" element={<Organigramme />} />
               <Route path="/direction/:code" element={<DirectionDetail />} />
               <Route path="/employes" element={<Employes />} />
+              <Route path="/install" element={<Install />} />
               <Route path="/recrutement" element={<Ops><Recrutement /></Ops>} />
               <Route path="/taches" element={<Field><Taches /></Field>} />
               <Route path="/performance" element={<Ops><Performance /></Ops>} />
