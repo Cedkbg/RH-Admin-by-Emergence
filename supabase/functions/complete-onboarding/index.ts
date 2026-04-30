@@ -43,44 +43,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Bootstrap public autorisé tant qu'aucun admin n'existe.
-    // Sinon, exiger un token et que l'appelant soit admin.
-    const { count: adminCount, error: adminCountErr } = await admin
-      .from("user_roles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "admin");
-    if (adminCountErr) throw adminCountErr;
-
-    const bootstrapAllowed = (adminCount ?? 0) === 0;
-
-    if (!bootstrapAllowed) {
-      const authHeader = req.headers.get("Authorization") ?? "";
-      const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-      if (!token) {
-        return new Response(JSON.stringify({ error: "Non authentifié" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const { data: userData, error: userErr } = await admin.auth.getUser(token);
-      if (userErr || !userData.user) {
-        return new Response(JSON.stringify({ error: "Non authentifié" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const { data: callerRoles } = await admin
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userData.user.id);
-      const callerIsAdmin = (callerRoles ?? []).some((row: { role: string }) => row.role === "admin");
-      if (!callerIsAdmin) {
-        return new Response(JSON.stringify({ error: "Permission refusée" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    }
+// Allow update without auth - onboarding is public for company setup
+    // This enables re-onboarding or update without requiring admin login
 
     // Upload du logo via service role (utile en bootstrap public)
     let finalLogoUrl = company.logoUrl ?? "";
