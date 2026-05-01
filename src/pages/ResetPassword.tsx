@@ -85,11 +85,22 @@ export default function ResetPassword() {
     if (password.length < 6) { toast.error("Minimum 6 caractères"); return; }
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
+    if (error) { setLoading(false); toast.error(error.message); return; }
+
+    // Marquer l'onboarding utilisateur comme terminé pour éviter la boucle de redirection
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
+      }
+    } catch (e) {
+      console.warn("Impossible de marquer onboarding_completed:", e);
+    }
+
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
-toast.success("Mot de passe défini ! Redirection vers le tableau de bord...");
-    // Don't sign out - keep the user logged in and redirect to dashboard
-    navigate("/", { replace: true });
+    toast.success("Mot de passe défini ! Redirection vers le tableau de bord...");
+    // Hard redirect pour recharger proprement l'état d'auth et éviter toute boucle
+    window.location.replace("/");
   };
 
   return (
