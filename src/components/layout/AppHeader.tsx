@@ -34,6 +34,10 @@ export function AppHeader({ title }: AppHeaderProps) {
 
   const primaryRole = ROLE_PRIORITY.find((r) => roles.includes(r));
   const roleLabel = primaryRole ? ROLE_LABELS[primaryRole] : null;
+  const lastUpdated = user?.updated_at || user?.last_sign_in_at || user?.created_at;
+  const formattedLastUpdated = lastUpdated
+    ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(lastUpdated))
+    : "Non disponible";
 
   const initials = (user?.user_metadata?.full_name || user?.email || "?")
     .split(" ")
@@ -97,6 +101,12 @@ export function AppHeader({ title }: AppHeaderProps) {
               </span>
             )}
           </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <div className="px-2 py-2 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">Diagnostic profil</p>
+            <p>Rôle : {roleLabel || "Agent"}</p>
+            <p>Dernière mise à jour : {formattedLastUpdated}</p>
+          </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={async () => { await signOut(); navigate("/auth"); }}>
             <LogOut className="mr-2 h-4 w-4" />
