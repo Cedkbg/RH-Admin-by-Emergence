@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 
@@ -17,6 +17,12 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/**
+ * AuthProvider robuste :
+ *  - Ne bloque JAMAIS l'UI plus de 3s sur le check initial
+ *  - Détecte et purge les tokens JWT orphelins (user supprimé en BDD)
+ *  - Charge les rôles en arrière-plan SANS bloquer le rendu
+ */
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -24,9 +30,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isSecretary, setIsSecretary] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
 
   const refreshUserData = async (uid: string | undefined) => {
     if (!uid) {
+      if (!mountedRef.current) return;
       setIsAdmin(false);
       setIsSecretary(false);
       setApprovalStatus(null);
@@ -37,78 +45,92 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         supabase.from("user_roles").select("role").eq("user_id", uid),
         supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
       ]);
+      if (!mountedRef.current) return;
       const roleSet = new Set((roles || []).map((r: any) => r.role));
       setIsAdmin(roleSet.has("admin"));
       setIsSecretary(roleSet.has("secretaire") || roleSet.has("admin"));
       setApprovalStatus((profileData?.approval_status as any) ?? "pending");
     } catch (e) {
       console.error("Erreur refreshUserData:", e);
-      setIsAdmin(false);
-      setIsSecretary(false);
-      setApprovalStatus(null);
     }
   };
 
-  // Gestionnaire avec timeout de securite
   useEffect(() => {
-    let isMounted = true;
-    
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (!isMounted) return;
+    mountedRef.current = true;
+
+    // Filet de sécurité ABSOLU : après 3s, on débloque l'UI quoi qu'il arrive
+    const safety = setTimeout(() => {
+      if (mountedRef.current) {
+        console.warn("[Auth] Safety timeout — déblocage forcé");
+        setLoading(false);
+      }
+    }, 3000);
+
+    // Listener — IMPORTANT: ne JAMAIS faire d'await ici (sinon deadlock Supabase)
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (!mountedRef.current) return;
+
       setSession(newSession);
       setUser(newSession?.user ?? null);
-      
-      // Timeout de 5 secondes pour chaque changement d'etat auth
-      const timer = setTimeout(() => {
-        if (isMounted) setLoading(false);
-      }, 5000);
-      
+      setLoading(false);
+      clearTimeout(safety);
+
+      // Charger les rôles en arrière-plan (différé)
       if (newSession?.user?.id) {
-        refreshUserData(newSession.user.id).finally(() => {
-          if (isMounted) {
-            clearTimeout(timer);
-            setLoading(false);
-          }
-        });
+        setTimeout(() => { refreshUserData(newSession.user.id); }, 0);
       } else {
-        clearTimeout(timer);
-        if (isMounted) {
-          refreshUserData(undefined);
+        setIsAdmin(false);
+        setIsSecretary(false);
+        setApprovalStatus(null);
+      }
+    });
+
+    // Initial check + validation du token (purge si user orphelin)
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!mountedRef.current) return;
+
+        if (!data.session) {
+          setSession(null);
+          setUser(null);
           setLoading(false);
+          clearTimeout(safety);
+          return;
+        }
+
+        // Vérifier que le user existe toujours (sub claim valide)
+        const { data: userData, error } = await supabase.auth.getUser();
+        if (!mountedRef.current) return;
+
+        if (error || !userData?.user) {
+          console.warn("[Auth] Token JWT orphelin détecté — purge");
+          // Purge locale uniquement (signOut serveur échouerait)
+          await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          clearTimeout(safety);
+          return;
+        }
+
+        setSession(data.session);
+        setUser(userData.user);
+        setLoading(false);
+        clearTimeout(safety);
+        setTimeout(() => { refreshUserData(userData.user.id); }, 0);
+      } catch (e) {
+        console.error("[Auth] Erreur init:", e);
+        if (mountedRef.current) {
+          setLoading(false);
+          clearTimeout(safety);
         }
       }
-    });
-
-    // Initial session check avec timeout
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!isMounted) return;
-      
-      if (!data.session) {
-        setSession(null);
-        setUser(null);
-        await refreshUserData(undefined);
-        setLoading(false);
-        return;
-      }
-
-      const { data: userData, error } = await supabase.auth.getUser();
-      if (error || !userData?.user) {
-        console.error("Erreur getUser:", error);
-        await supabase.auth.signOut({ scope: "local" });
-        setSession(null);
-        setUser(null);
-        await refreshUserData(undefined);
-        setLoading(false);
-        return;
-      }
-
-      setSession(data.session);
-      setUser(userData.user);
-      refreshUserData(userData.user.id).finally(() => setLoading(false));
-    });
+    })();
 
     return () => {
-      isMounted = false;
+      mountedRef.current = false;
+      clearTimeout(safety);
       sub.subscription.unsubscribe();
     };
   }, []);
@@ -137,7 +159,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
-    if (error) await supabase.auth.signOut({ scope: "local" });
+    if (error) await supabase.auth.signOut({ scope: "local" }).catch(() => {});
     setSession(null);
     setUser(null);
     setIsAdmin(false);
