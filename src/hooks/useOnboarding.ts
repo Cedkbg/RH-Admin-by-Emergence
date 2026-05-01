@@ -3,70 +3,69 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
- * Determine si l'utilisateur courant doit passer par le wizard d'onboarding.
- * Timeout de securite pour eviter le blocage infini.
+ * Détermine si l'utilisateur courant doit passer par le wizard d'onboarding.
+ * Court-circuit ultra rapide : seul un admin peut être redirigé vers /onboarding.
+ * Pour tous les autres, on retourne false IMMÉDIATEMENT (pas de requête).
  */
 export function useOnboarding() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const refresh = async () => {
+  useEffect(() => {
+    // Tant que l'auth charge, on attend
+    if (authLoading) return;
+
+    // Pas d'utilisateur connecté → pas d'onboarding
     if (!user) {
       setNeedsOnboarding(false);
       setLoading(false);
       return;
     }
-    setLoading(true);
-    
-    try {
-      const [{ data: settings }, { data: profile }, { data: roles }] = await Promise.all([
-        supabase.from("app_settings").select("key,value").eq("key", "company_onboarded").maybeSingle(),
-        supabase.from("profiles").select("onboarding_completed").eq("id", user.id).maybeSingle(),
-        supabase.from("user_roles").select("role").eq("user_id", user.id),
-      ]);
 
-      const companyDone = (() => {
-        const v: any = settings?.value;
-        if (v === true) return true;
-        if (typeof v === "object" && v?.value === true) return true;
-        return false;
-      })();
-
-      const isAdmin = (roles ?? []).some((r: any) => r.role === "admin");
-      const userDone = !!profile?.onboarding_completed;
-
-      // Seul un admin peut être renvoyé vers le wizard d'onboarding (config entreprise).
-      // Les autres utilisateurs (agents, RH, managers...) accèdent directement à l'app.
-      if (!isAdmin) {
-        // Auto-marque onboarding terminé pour éviter toute future vérification
-        if (!userDone) {
-          supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id).then(() => {});
-        }
-        setNeedsOnboarding(false);
-      } else {
-        setNeedsOnboarding(!(companyDone && userDone));
-      }
-    } catch (e) {
-      console.error("Erreur useOnboarding:", e);
+    // Non-admin → JAMAIS d'onboarding (court-circuit instantané)
+    if (!isAdmin) {
       setNeedsOnboarding(false);
-    } finally {
       setLoading(false);
+      return;
     }
-  };
 
-  useEffect(() => {
-    if (authLoading) return;
-    
-    // Timeout de 4 secondes
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 4000);
-    
-    refresh();
-    
-    return () => clearTimeout(timer);
-  }, [user?.id, authLoading]);
+    // Admin uniquement : on vérifie l'état de configuration
+    let cancelled = false;
+    const safety = setTimeout(() => {
+      if (!cancelled) {
+        console.warn("[Onboarding] Safety timeout");
+        setLoading(false);
+      }
+    }, 3000);
 
-  return { needsOnboarding, loading, refresh };
+    (async () => {
+      try {
+        const [{ data: settings }, { data: profile }] = await Promise.all([
+          supabase.from("app_settings").select("value").eq("key", "company_onboarded").maybeSingle(),
+          supabase.from("profiles").select("onboarding_completed").eq("id", user.id).maybeSingle(),
+        ]);
+        if (cancelled) return;
+        const v: any = settings?.value;
+        const companyDone = v === true || (typeof v === "object" && v?.value === true);
+        const userDone = !!profile?.onboarding_completed;
+        setNeedsOnboarding(!(companyDone && userDone));
+      } catch (e) {
+        console.error("Erreur useOnboarding:", e);
+        if (!cancelled) setNeedsOnboarding(false);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          clearTimeout(safety);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(safety);
+    };
+  }, [user?.id, isAdmin, authLoading]);
+
+  return { needsOnboarding, loading, refresh: async () => {} };
 }
