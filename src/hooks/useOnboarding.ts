@@ -20,20 +20,33 @@ export function useOnboarding() {
     setLoading(true);
     
     try {
-      const [{ data: settings }, { data: profile }] = await Promise.all([
+      const [{ data: settings }, { data: profile }, { data: roles }] = await Promise.all([
         supabase.from("app_settings").select("key,value").eq("key", "company_onboarded").maybeSingle(),
         supabase.from("profiles").select("onboarding_completed").eq("id", user.id).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", user.id),
       ]);
-      
+
       const companyDone = (() => {
         const v: any = settings?.value;
         if (v === true) return true;
         if (typeof v === "object" && v?.value === true) return true;
         return false;
       })();
-      
+
+      const isAdmin = (roles ?? []).some((r: any) => r.role === "admin");
       const userDone = !!profile?.onboarding_completed;
-      setNeedsOnboarding(!(companyDone && userDone));
+
+      // Seul un admin peut être renvoyé vers le wizard d'onboarding (config entreprise).
+      // Les autres utilisateurs (agents, RH, managers...) accèdent directement à l'app.
+      if (!isAdmin) {
+        // Auto-marque onboarding terminé pour éviter toute future vérification
+        if (!userDone) {
+          supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id).then(() => {});
+        }
+        setNeedsOnboarding(false);
+      } else {
+        setNeedsOnboarding(!(companyDone && userDone));
+      }
     } catch (e) {
       console.error("Erreur useOnboarding:", e);
       setNeedsOnboarding(false);
