@@ -23,18 +23,6 @@ export default function Onboarding() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const logoUrlRef = useRef<string | null>(null);
 
-  // Show loading screen while checking setup status
-  if (initialLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30 flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground">Chargement...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Nettoyer l'URL d'objet lors du changement de fichier
   const handleLogoChange = (file: File | null) => {
     if (logoUrlRef.current) {
@@ -52,7 +40,7 @@ export default function Onboarding() {
     full_name: "", email: "", password: "",
   });
 
-useEffect(() => {
+  useEffect(() => {
     (async () => {
       try {
         // Si l'URL contient un token d'invitation/recovery, on quitte immédiatement vers /reset-password
@@ -99,6 +87,18 @@ useEffect(() => {
       }
     })();
   }, [navigate]);
+
+  // Show loading screen while checking setup status
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   const saveCompany = async (e: React.FormEvent) => {
     e.preventDefault();
