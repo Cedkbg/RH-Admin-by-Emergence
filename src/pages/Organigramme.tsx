@@ -47,6 +47,8 @@ interface DirectionRow {
 
 const Organigramme = () => {
   const { isAdmin } = useAuth();
+  const { hasAny } = useUserRoles();
+  const canManageManager = isAdmin || hasAny(["dg", "dga"]);
   const [params] = useSearchParams();
   const queryFilter = (params.get("q") || "").toLowerCase();
   const [directions, setDirections] = useState<DirectionRow[]>([]);
