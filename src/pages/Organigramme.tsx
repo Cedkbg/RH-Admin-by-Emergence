@@ -210,14 +210,23 @@ const Organigramme = () => {
                 </div>
               )}
 
-              {isAdmin && (
+              {(isAdmin || canManageManager) && (
                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(d)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(d.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {canManageManager && (
+                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Choisir le manager direct" onClick={() => { setManagerDialog(d); setSelectedManagerId(""); }}>
+                      <UserCog className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {isAdmin && (
+                    <>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(d)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(d.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
