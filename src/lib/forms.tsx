@@ -20,7 +20,11 @@ interface FieldBase {
   onChange: (v: string) => void;
   required?: boolean;
   className?: string;
+  span?: number;
 }
+
+const spanCls = (span?: number) =>
+  span === 2 ? "md:col-span-2" : span === 3 ? "md:col-span-3" : "";
 
 export const TextField = ({
   label,
