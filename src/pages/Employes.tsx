@@ -44,6 +44,19 @@ const POSITION_SUGGESTIONS = [
 
 const CONTRACT_TYPES = ["CDI", "CDD", "Stage", "Alternance", "Freelance", "Intérim"];
 
+const DEFAULT_DIRECTIONS: DirectionRow[] = [
+  { id: "DG", code: "DG", name: "Direction Générale", manager_name: null },
+  { id: "DGA", code: "DGA", name: "Direction Générale Adjointe", manager_name: null },
+  { id: "D1", code: "D1", name: "Direction Technologie", manager_name: null },
+  { id: "D2", code: "D2", name: "Direction Produits", manager_name: null },
+  { id: "D3", code: "D3", name: "Direction Opérations", manager_name: null },
+  { id: "D4", code: "D4", name: "Direction Financière", manager_name: null },
+  { id: "D5", code: "D5", name: "Direction Risques", manager_name: null },
+  { id: "D6", code: "D6", name: "Direction Commerciale", manager_name: null },
+  { id: "D7", code: "D7", name: "Direction RH", manager_name: null },
+  { id: "D8", code: "D8", name: "Direction Juridique", manager_name: null },
+];
+
 const statusLabel: Record<EmployeeRow["status"], string> = {
   active: "Actif", suspended: "Suspendu", departed: "Départ",
 };
@@ -54,6 +67,8 @@ const blankForm = {
   contract_type: "CDI", gender: "", base_salary: "", manager_id: "",
   status: "active" as EmployeeRow["status"], hire_date: "",
 };
+
+const DIRECTION_MENU_CLASS = "max-h-[220px] touch-pan-y overflow-y-auto overscroll-contain";
 
 const Employes = () => {
   const { isAdmin } = useAuth();
@@ -80,7 +95,7 @@ const Employes = () => {
       supabase.from("departments").select("id,name,direction_id").order("name"),
       supabase.from("employees").select("*").order("created_at", { ascending: false }),
     ]);
-    setDirections(d.data || []);
+    setDirections((d.data && d.data.length > 0 ? d.data : DEFAULT_DIRECTIONS) as DirectionRow[]);
     setDepartments((dep.data as DepartmentRow[]) || []);
     setEmployees((e.data as EmployeeRow[]) || []);
   };
@@ -230,7 +245,7 @@ const Employes = () => {
             <SelectTrigger className="w-[240px] justify-between">
               <SelectValue placeholder="Toutes les directions" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className={DIRECTION_MENU_CLASS}>
               <SelectItem value="all">
                 Toutes les directions ({employees.length})
               </SelectItem>
@@ -381,7 +396,7 @@ const Employes = () => {
                     <Label>Direction</Label>
                     <Select value={form.direction_id} onValueChange={(v) => setForm({ ...form, direction_id: v, department_id: "" })}>
                       <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent className="max-h-72 overflow-y-auto">
+                      <SelectContent className={DIRECTION_MENU_CLASS}>
                         {directions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
