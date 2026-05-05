@@ -425,17 +425,16 @@ const Employes = () => {
                     </Select>
                   </div>
                   <div className="col-span-2">
-                    <Label>Manager direct</Label>
-                    <Select value={form.manager_id} onValueChange={(v) => setForm({ ...form, manager_id: v })}>
-                      <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
-                      <SelectContent className="max-h-72 overflow-y-auto">
-                        {managerOptions.length === 0 ? (
-                          <div className="px-2 py-3 text-xs text-muted-foreground">Aucun manager disponible</div>
-                        ) : managerOptions.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>{m.first_name} {m.last_name} — {m.position || "—"}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Manager direct (chef de la direction)</Label>
+                    <Input
+                      readOnly
+                      value={
+                        form.direction_id
+                          ? (directions.find((d) => d.id === form.direction_id) as any)?.manager_name || "Aucun chef défini pour cette direction"
+                          : "Sélectionnez d'abord une direction"
+                      }
+                      className="bg-muted"
+                    />
                   </div>
                 </div>
               </TabsContent>
