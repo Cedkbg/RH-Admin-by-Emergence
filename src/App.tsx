@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Protected } from "@/components/Protected";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import AgentAuth from "./pages/AgentAuth";
 import ResetPassword from "./pages/ResetPassword";
 import Onboarding from "./pages/Onboarding";
 import Organigramme from "./pages/Organigramme";
@@ -90,6 +91,8 @@ const App = () => (
           <AuthRedirectGuard />
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/agent/login" element={<AgentAuth />} />
+            <Route path="/login" element={<AgentAuth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route element={<Protected><AppLayout /></Protected>}>
