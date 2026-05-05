@@ -412,7 +412,7 @@ const Employes = () => {
                     </Select>
                   </div>
                   <div><Label>Date d'embauche</Label><Input type="date" value={form.hire_date} onChange={(e) => setForm({ ...form, hire_date: e.target.value })} /></div>
-                  <div><Label>Salaire de base (FCFA)</Label><Input type="number" min="0" value={form.base_salary} onChange={(e) => setForm({ ...form, base_salary: e.target.value })} /></div>
+                  <div><Label>Salaire de base (USD)</Label><Input type="number" min="0" step="0.01" value={form.base_salary} onChange={(e) => setForm({ ...form, base_salary: e.target.value })} /></div>
                   <div>
                     <Label>Statut</Label>
                     <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as EmployeeRow["status"] })}>
