@@ -1083,6 +1083,7 @@ export type Database = {
         Args: { _direction_code: string; _user_id: string }
         Returns: boolean
       }
+      current_employee_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1090,6 +1091,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_hr_privileged: { Args: { _user_id: string }; Returns: boolean }
       is_secretary_or_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {

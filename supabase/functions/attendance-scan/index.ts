@@ -75,9 +75,7 @@ Deno.serve(async (req) => {
     // Vérification d'expiration : supporte v2 (e=expires_at ms) et v1 (s=slot HMAC, rétro-compat)
     const GRACE_MS = 60_000; // tolérance 1 min pour décalage horloge tablette
     let valid = false;
-    if (payload.v === 2 && typeof payload.e === "number") {
-      valid = Date.now() <= payload.e + GRACE_MS;
-    } else if (payload.s != null && payload.h) {
+    if (payload.s != null && payload.h) {
       // Rétro-compatibilité v1 (HMAC)
       const currentSlot = Math.floor(Date.now() / 1000 / WINDOW_SEC);
       const expected = (await hmac(loc.secret, `${loc.id}:${payload.s}`)).slice(0, 24);
@@ -137,6 +135,7 @@ Deno.serve(async (req) => {
       location: loc.name, time: nowTime, distance_meters: Math.round(distance),
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    console.error("[attendance-scan]", e);
+    return new Response(JSON.stringify({ error: "Erreur interne, réessayez." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

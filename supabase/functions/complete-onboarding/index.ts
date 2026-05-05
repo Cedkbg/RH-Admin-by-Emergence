@@ -43,8 +43,35 @@ Deno.serve(async (req) => {
       });
     }
 
-// Allow update without auth - onboarding is public for company setup
-    // This enables re-onboarding or update without requiring admin login
+// Bootstrap : public uniquement si AUCUN admin n'existe encore.
+    // Sinon : exige un admin authentifié.
+    const { count: adminCount } = await admin
+      .from("user_roles").select("*", { count: "exact", head: true }).eq("role", "admin");
+
+    if ((adminCount ?? 0) > 0) {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(JSON.stringify({ error: "Authentification requise" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: claims } = await userClient.auth.getClaims(authHeader.replace("Bearer ", ""));
+      const uid = claims?.claims?.sub;
+      if (!uid) {
+        return new Response(JSON.stringify({ error: "Session invalide" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: isAdmin } = await admin.rpc("has_role", { _user_id: uid, _role: "admin" });
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: "Réservé aux administrateurs" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // Upload du logo via service role (utile en bootstrap public)
     let finalLogoUrl = company.logoUrl ?? "";
@@ -83,7 +110,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
+    console.error("[complete-onboarding]", e);
+    return new Response(JSON.stringify({ error: "Erreur interne, réessayez." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

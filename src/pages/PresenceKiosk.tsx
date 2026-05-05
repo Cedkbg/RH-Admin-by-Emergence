@@ -37,18 +37,22 @@ const PresenceKiosk = () => {
     })();
   }, [locationId]);
 
-  // Génère un nouveau token toutes les 30s — simple, côté client
+  // Génère un nouveau token HMAC signé via edge function toutes les 30s
   useEffect(() => {
     if (!locationId || error) return;
-    const generate = () => {
-      const exp = Date.now() + WINDOW_MS;
-      const payload = { v: 2, l: locationId, e: exp };
-      setQrToken(btoa(JSON.stringify(payload)));
-      setExpiresAt(exp);
+    let cancelled = false;
+    const generate = async () => {
+      const { data, error: e } = await supabase.functions.invoke("attendance-qr-token", {
+        body: { location_id: locationId },
+      });
+      if (cancelled) return;
+      if (e || !data?.token) { setError("Impossible de générer le QR. Reconnectez-vous."); return; }
+      setQrToken(data.token);
+      setExpiresAt(data.expires_at);
     };
     generate();
     const id = setInterval(generate, WINDOW_MS);
-    return () => clearInterval(id);
+    return () => { cancelled = true; clearInterval(id); };
   }, [locationId, error]);
 
   // Countdown affiché
