@@ -4,8 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * Détermine si l'utilisateur courant doit passer par le wizard d'onboarding.
- * Court-circuit ultra rapide : seul un admin peut être redirigé vers /onboarding.
- * Pour tous les autres, on retourne false IMMÉDIATEMENT (pas de requête).
+ * L'onboarding concerne la configuration entreprise, pas un flag de profil :
+ * sinon un admin qui confirme son email après la création reste bloqué ici.
  */
 export function useOnboarding() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -30,7 +30,7 @@ export function useOnboarding() {
       return;
     }
 
-    // Admin uniquement : on vérifie l'état de configuration
+    // Admin uniquement : on vérifie l'état de configuration entreprise
     let cancelled = false;
     const safety = setTimeout(() => {
       if (!cancelled) {
@@ -41,15 +41,15 @@ export function useOnboarding() {
 
     (async () => {
       try {
-        const [{ data: settings }, { data: profile }] = await Promise.all([
-          supabase.from("app_settings").select("value").eq("key", "company_onboarded").maybeSingle(),
-          supabase.from("profiles").select("onboarding_completed").eq("id", user.id).maybeSingle(),
-        ]);
+        const { data: settings } = await supabase
+          .from("app_settings")
+          .select("value")
+          .eq("key", "company_onboarded")
+          .maybeSingle();
         if (cancelled) return;
         const v: any = settings?.value;
         const companyDone = v === true || (typeof v === "object" && v?.value === true);
-        const userDone = !!profile?.onboarding_completed;
-        setNeedsOnboarding(!(companyDone && userDone));
+        setNeedsOnboarding(!companyDone);
       } catch (e) {
         console.error("Erreur useOnboarding:", e);
         if (!cancelled) setNeedsOnboarding(false);
