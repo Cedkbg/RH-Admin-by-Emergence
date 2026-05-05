@@ -114,7 +114,7 @@ export const SelectField = ({
 );
 
 /** Retire les champs vides ('' ou null) avant un upsert/insert Supabase. */
-export const cleanForm = (form: Record<string, any>): Record<string, any> => {
+export const cleanForm = (form: Record<string, any>): any => {
   const out: Record<string, any> = {};
   for (const [k, v] of Object.entries(form)) {
     if (v === "" || v === null || v === undefined) continue;
