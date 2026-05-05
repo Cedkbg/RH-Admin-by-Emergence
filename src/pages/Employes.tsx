@@ -76,7 +76,7 @@ const Employes = () => {
 
   const refresh = async () => {
     const [d, dep, e] = await Promise.all([
-      supabase.from("directions").select("id,name,code").order("code"),
+      supabase.from("directions").select("id,name,code,manager_name").order("code"),
       supabase.from("departments").select("id,name,direction_id").order("name"),
       supabase.from("employees").select("*").order("created_at", { ascending: false }),
     ]);
