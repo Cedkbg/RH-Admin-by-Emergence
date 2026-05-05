@@ -42,11 +42,16 @@ const PresenceKiosk = () => {
     if (!locationId || error) return;
     let cancelled = false;
     const generate = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setError("Connexion requise pour afficher le QR. Ouvrez cette page depuis une session RH connectée.");
+        return;
+      }
       const { data, error: e } = await supabase.functions.invoke("attendance-qr-token", {
         body: { location_id: locationId },
       });
       if (cancelled) return;
-      if (e || !data?.token) { setError("Impossible de générer le QR. Reconnectez-vous."); return; }
+      if (e || !data?.token) { setError(data?.error || "Impossible de générer le QR. Reconnectez-vous."); return; }
       setQrToken(data.token);
       setExpiresAt(data.expires_at);
     };
