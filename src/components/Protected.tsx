@@ -12,12 +12,12 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
   const [companyConfigured, setCompanyConfigured] = useState(true);
   const [forceReady, setForceReady] = useState(false);
 
-  // Timeout de securite pour eviter le blocage infini (8 secondes max)
+  // Filet de sécurité : 3s max, sinon on débloque l'UI
   useEffect(() => {
     const timer = setTimeout(() => {
       console.warn("Protected: timeout atteint, continuation forcee");
       setForceReady(true);
-    }, 8000);
+    }, 3000);
     return () => clearTimeout(timer);
   }, []);
 

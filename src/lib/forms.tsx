@@ -2,63 +2,123 @@ import { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-export function Field({ label, children, span = 1 }: { label: string; children: ReactNode; span?: 1 | 2 }) {
-  return (
-    <div className={span === 2 ? "col-span-2" : ""}>
-      <Label className="mb-1 block text-xs font-medium">{label}</Label>
-      {children}
-    </div>
-  );
+export const FormGrid = ({ children }: { children: ReactNode }) => (
+  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">{children}</div>
+);
+
+interface FieldBase {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+  className?: string;
+  span?: number;
 }
 
-export function TextField({ label, value, onChange, type = "text", required, span = 1, placeholder }: {
-  label: string; value: any; onChange: (v: string) => void; type?: string; required?: boolean; span?: 1 | 2; placeholder?: string;
-}) {
-  return (
-    <Field label={label} span={span}>
-      <Input type={type} required={required} value={value ?? ""} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
-    </Field>
-  );
-}
+const spanCls = (span?: number) =>
+  span === 2 ? "md:col-span-2" : span === 3 ? "md:col-span-3" : "";
 
-export function AreaField({ label, value, onChange, span = 2 }: { label: string; value: any; onChange: (v: string) => void; span?: 1 | 2 }) {
-  return (
-    <Field label={label} span={span}>
-      <Textarea value={value ?? ""} onChange={(e) => onChange(e.target.value)} rows={3} />
-    </Field>
-  );
-}
+export const TextField = ({
+  label,
+  value,
+  onChange,
+  required,
+  type = "text",
+  className,
+  placeholder,
+  min,
+  step,
+}: FieldBase & {
+  type?: string;
+  placeholder?: string;
+  min?: string | number;
+  step?: string | number;
+}) => (
+  <div className={`space-y-1.5 ${className ?? ""}`}>
+    <Label>
+      {label}
+      {required && <span className="text-destructive"> *</span>}
+    </Label>
+    <Input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      required={required}
+      placeholder={placeholder}
+      min={min}
+      step={step}
+    />
+  </div>
+);
 
-export function SelectField({ label, value, onChange, options, span = 1 }: {
-  label: string; value: any; onChange: (v: string) => void; options: { value: string; label: string }[]; span?: 1 | 2;
-}) {
-  return (
-    <Field label={label} span={span}>
-      <Select value={value ?? ""} onValueChange={onChange}>
-        <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-        <SelectContent>
-          {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-        </SelectContent>
-      </Select>
-    </Field>
-  );
-}
+export const AreaField = ({
+  label,
+  value,
+  onChange,
+  required,
+  rows = 3,
+  className,
+}: FieldBase & { rows?: number }) => (
+  <div className={`space-y-1.5 md:col-span-2 ${className ?? ""}`}>
+    <Label>
+      {label}
+      {required && <span className="text-destructive"> *</span>}
+    </Label>
+    <Textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      required={required}
+      rows={rows}
+    />
+  </div>
+);
 
-export function FormGrid({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-2 gap-3">{children}</div>;
-}
+export const SelectField = ({
+  label,
+  value,
+  onChange,
+  options,
+  required,
+  placeholder = "Sélectionner...",
+  className,
+}: FieldBase & {
+  options: { value: string; label: string }[];
+  placeholder?: string;
+}) => (
+  <div className={`space-y-1.5 ${className ?? ""}`}>
+    <Label>
+      {label}
+      {required && <span className="text-destructive"> *</span>}
+    </Label>
+    <Select value={value || undefined} onValueChange={onChange}>
+      <SelectTrigger>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+);
 
-/** Strip empty strings -> null for nullable columns */
-export function cleanForm<T extends Record<string, any>>(form: T): T {
-  const out: any = {};
-  for (const k of Object.keys(form)) {
-    const v = (form as any)[k];
-    out[k] = v === "" ? null : v;
+/** Retire les champs vides ('' ou null) avant un upsert/insert Supabase. */
+export const cleanForm = (form: Record<string, any>): any => {
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(form)) {
+    if (v === "" || v === null || v === undefined) continue;
+    out[k] = v;
   }
-  delete out.id;
-  delete out.created_at;
-  delete out.updated_at;
   return out;
-}
+};

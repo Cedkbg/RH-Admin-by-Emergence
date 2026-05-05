@@ -19,7 +19,7 @@ export function RoleGuard({ allowed, children }: Props) {
   useEffect(() => {
     const timer = setTimeout(() => {
       setTimeoutReached(true);
-    }, 8000);
+    }, 3000);
     return () => clearTimeout(timer);
   }, []);
 
