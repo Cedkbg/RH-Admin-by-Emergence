@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Pencil, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, Pencil, ChevronDown, ChevronUp, UserCog } from "lucide-react";
 import { Link } from "react-router-dom";
 import { OrgChart } from "@/components/dashboard/OrgChart";
 import { Button } from "@/components/ui/button";
