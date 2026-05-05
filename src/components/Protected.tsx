@@ -61,7 +61,7 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
       if (!companyConfigured) {
         return <Navigate to="/onboarding" replace />;
       }
-      return <Navigate to="/auth" replace state={{ from: location }} />;
+      return <Navigate to="/agent/login" replace state={{ from: location }} />;
     }
     return <>{children}</>;
   }
@@ -79,7 +79,7 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
     if (!companyConfigured) {
       return <Navigate to="/onboarding" replace />;
     }
-    return <Navigate to="/auth" replace state={{ from: location }} />;
+    return <Navigate to="/agent/login" replace state={{ from: location }} />;
   }
 
   if (needsOnboarding && location.pathname !== "/onboarding") {
