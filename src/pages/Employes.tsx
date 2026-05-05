@@ -68,6 +68,8 @@ const blankForm = {
   status: "active" as EmployeeRow["status"], hire_date: "",
 };
 
+const DIRECTION_MENU_CLASS = "max-h-[220px] touch-pan-y overflow-y-auto overscroll-contain";
+
 const Employes = () => {
   const { isAdmin } = useAuth();
   const { hasAny } = useUserRoles();
@@ -243,7 +245,7 @@ const Employes = () => {
             <SelectTrigger className="w-[240px] justify-between">
               <SelectValue placeholder="Toutes les directions" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className={DIRECTION_MENU_CLASS}>
               <SelectItem value="all">
                 Toutes les directions ({employees.length})
               </SelectItem>
@@ -394,7 +396,7 @@ const Employes = () => {
                     <Label>Direction</Label>
                     <Select value={form.direction_id} onValueChange={(v) => setForm({ ...form, direction_id: v, department_id: "" })}>
                       <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent className="max-h-72 overflow-y-auto">
+                      <SelectContent className={DIRECTION_MENU_CLASS}>
                         {directions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
