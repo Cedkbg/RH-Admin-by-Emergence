@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
-interface DirectionRow { id: string; name: string; code: string | null }
+interface DirectionRow { id: string; name: string; code: string | null; manager_name: string | null }
 interface DepartmentRow { id: string; name: string; direction_id: string }
 interface EmployeeRow {
   id: string;
