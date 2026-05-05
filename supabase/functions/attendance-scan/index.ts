@@ -44,12 +44,12 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: auth } } },
     );
     const token = auth.replace("Bearer ", "");
-    const { data: claims, error: ce } = await supabase.auth.getClaims(token);
-    if (ce || !claims?.claims) {
+    const { data: userData, error: ce } = await supabase.auth.getUser(token);
+    if (ce || !userData?.user?.id) {
       return new Response(JSON.stringify({ error: "Connexion requise" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    const userId = claims.claims.sub as string;
-    const userEmail = claims.claims.email as string | undefined;
+    const userId = userData.user.id;
+    const userEmail = userData.user.email;
 
     const body = await req.json();
     const { qr_token, gps_lat, gps_lng } = body || {};
