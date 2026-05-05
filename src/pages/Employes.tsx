@@ -381,7 +381,7 @@ const Employes = () => {
                     <Label>Direction</Label>
                     <Select value={form.direction_id} onValueChange={(v) => setForm({ ...form, direction_id: v, department_id: "" })}>
                       <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-72 overflow-y-auto">
                         {directions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -390,7 +390,7 @@ const Employes = () => {
                     <Label>Département</Label>
                     <Select value={form.department_id} onValueChange={(v) => setForm({ ...form, department_id: v })} disabled={!form.direction_id}>
                       <SelectTrigger><SelectValue placeholder={form.direction_id ? "—" : "Choisir direction"} /></SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-72 overflow-y-auto">
                         {filteredDepartments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
