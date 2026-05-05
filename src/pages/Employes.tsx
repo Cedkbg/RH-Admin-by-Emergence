@@ -44,6 +44,19 @@ const POSITION_SUGGESTIONS = [
 
 const CONTRACT_TYPES = ["CDI", "CDD", "Stage", "Alternance", "Freelance", "Intérim"];
 
+const DEFAULT_DIRECTIONS: DirectionRow[] = [
+  { id: "DG", code: "DG", name: "Direction Générale", manager_name: null },
+  { id: "DGA", code: "DGA", name: "Direction Générale Adjointe", manager_name: null },
+  { id: "D1", code: "D1", name: "Direction Technologie", manager_name: null },
+  { id: "D2", code: "D2", name: "Direction Produits", manager_name: null },
+  { id: "D3", code: "D3", name: "Direction Opérations", manager_name: null },
+  { id: "D4", code: "D4", name: "Direction Financière", manager_name: null },
+  { id: "D5", code: "D5", name: "Direction Risques", manager_name: null },
+  { id: "D6", code: "D6", name: "Direction Commerciale", manager_name: null },
+  { id: "D7", code: "D7", name: "Direction RH", manager_name: null },
+  { id: "D8", code: "D8", name: "Direction Juridique", manager_name: null },
+];
+
 const statusLabel: Record<EmployeeRow["status"], string> = {
   active: "Actif", suspended: "Suspendu", departed: "Départ",
 };
@@ -80,7 +93,7 @@ const Employes = () => {
       supabase.from("departments").select("id,name,direction_id").order("name"),
       supabase.from("employees").select("*").order("created_at", { ascending: false }),
     ]);
-    setDirections(d.data || []);
+    setDirections((d.data && d.data.length > 0 ? d.data : DEFAULT_DIRECTIONS) as DirectionRow[]);
     setDepartments((dep.data as DepartmentRow[]) || []);
     setEmployees((e.data as EmployeeRow[]) || []);
   };
