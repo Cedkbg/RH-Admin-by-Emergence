@@ -58,8 +58,8 @@ Deno.serve(async (req) => {
       const userClient = createClient(SUPABASE_URL, ANON_KEY, {
         global: { headers: { Authorization: authHeader } },
       });
-      const { data: claims } = await userClient.auth.getClaims(authHeader.replace("Bearer ", ""));
-      const uid = claims?.claims?.sub;
+      const { data: userData } = await userClient.auth.getUser(authHeader.replace("Bearer ", ""));
+      const uid = userData?.user?.id;
       if (!uid) {
         return new Response(JSON.stringify({ error: "Session invalide" }), {
           status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
