@@ -114,11 +114,11 @@ export const SelectField = ({
 );
 
 /** Retire les champs vides ('' ou null) avant un upsert/insert Supabase. */
-export const cleanForm = <T extends Record<string, any>>(form: T): Partial<T> => {
+export const cleanForm = (form: Record<string, any>): Record<string, any> => {
   const out: Record<string, any> = {};
   for (const [k, v] of Object.entries(form)) {
     if (v === "" || v === null || v === undefined) continue;
     out[k] = v;
   }
-  return out as Partial<T>;
+  return out;
 };
