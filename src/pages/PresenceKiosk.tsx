@@ -21,39 +21,25 @@ const PresenceKiosk = () => {
   const [now, setNow] = useState(new Date());
   const [error, setError] = useState<string>("");
 
-  // Charge le nom du lieu une seule fois (lecture publique via RLS)
-  useEffect(() => {
-    if (!locationId) return;
-    (async () => {
-      const { data, error } = await supabase
-        .from("attendance_locations")
-        .select("id,name,active")
-        .eq("id", locationId)
-        .maybeSingle();
-      if (error || !data) { setError("Lieu introuvable"); return; }
-      if (!data.active) { setError("Lieu désactivé"); return; }
-      setLocationName(data.name);
-      setError("");
-    })();
-  }, [locationId]);
-
   // Génère un nouveau token HMAC signé via edge function toutes les 30s
   useEffect(() => {
-    if (!locationId || error) return;
+    if (!locationId) return;
     let cancelled = false;
     const generate = async () => {
       const { data, error: e } = await supabase.functions.invoke("attendance-qr-token", {
         body: { location_id: locationId },
       });
       if (cancelled) return;
-      if (e || !data?.token) { setError("Impossible de générer le QR. Reconnectez-vous."); return; }
+      if (e || !data?.token) { setError(data?.error || "Impossible de générer le QR. Reconnectez-vous."); return; }
+      setError("");
+      setLocationName(data.location_name || "Site de pointage");
       setQrToken(data.token);
       setExpiresAt(data.expires_at);
     };
     generate();
     const id = setInterval(generate, WINDOW_MS);
     return () => { cancelled = true; clearInterval(id); };
-  }, [locationId, error]);
+  }, [locationId]);
 
   // Countdown affiché
   useEffect(() => {

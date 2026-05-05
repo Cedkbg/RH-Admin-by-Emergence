@@ -22,22 +22,6 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const auth = req.headers.get("Authorization");
-    if (!auth?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: auth } } },
-    );
-    const token = auth.replace("Bearer ", "");
-    const { data: userData, error: ce } = await supabase.auth.getUser(token);
-    if (ce || !userData?.user?.id) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
     const { location_id } = await req.json();
     if (!location_id || typeof location_id !== "string") {
       return new Response(JSON.stringify({ error: "location_id requis" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
