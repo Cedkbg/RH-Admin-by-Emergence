@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Pencil, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, Pencil, ChevronDown, ChevronUp, UserCog } from "lucide-react";
 import { Link } from "react-router-dom";
 import { OrgChart } from "@/components/dashboard/OrgChart";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRoles } from "@/hooks/useUserRoles";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { iconForCode, colorForCode } from "@/data/orgData";
@@ -46,6 +48,8 @@ interface DirectionRow {
 
 const Organigramme = () => {
   const { isAdmin } = useAuth();
+  const { hasAny } = useUserRoles();
+  const canManageManager = isAdmin || hasAny(["dg", "dga"]);
   const [params] = useSearchParams();
   const queryFilter = (params.get("q") || "").toLowerCase();
   const [directions, setDirections] = useState<DirectionRow[]>([]);
@@ -54,10 +58,17 @@ const Organigramme = () => {
   const [form, setForm] = useState({ code: "", name: "", manager_name: "", description: "" });
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [managerDialog, setManagerDialog] = useState<DirectionRow | null>(null);
+  const [employees, setEmployees] = useState<{ id: string; first_name: string; last_name: string; position: string | null; direction_id: string | null }[]>([]);
+  const [selectedManagerId, setSelectedManagerId] = useState<string>("");
 
   const refresh = async () => {
-    const { data } = await supabase.from("directions").select("*").order("code");
-    setDirections(data || []);
+    const [d, emp] = await Promise.all([
+      supabase.from("directions").select("*").order("code"),
+      supabase.from("employees").select("id,first_name,last_name,position,direction_id"),
+    ]);
+    setDirections(d.data || []);
+    setEmployees(emp.data || []);
   };
 
   useEffect(() => { refresh(); }, []);
@@ -199,14 +210,23 @@ const Organigramme = () => {
                 </div>
               )}
 
-              {isAdmin && (
+              {(isAdmin || canManageManager) && (
                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(d)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(d.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {canManageManager && (
+                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Choisir le manager direct" onClick={() => { setManagerDialog(d); setSelectedManagerId(""); }}>
+                      <UserCog className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {isAdmin && (
+                    <>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(d)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleDelete(d.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -251,6 +271,49 @@ const Organigramme = () => {
               <Button type="submit" disabled={loading}>{loading ? "…" : (editingId ? "Enregistrer" : "Créer")}</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!managerDialog} onOpenChange={(o) => !o && setManagerDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Manager direct — {managerDialog?.name}</DialogTitle>
+            <DialogDescription>
+              Choisissez un agent de cette direction comme manager direct (chef). Réservé au DG/DGA.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Agent</Label>
+            <Select value={selectedManagerId} onValueChange={setSelectedManagerId}>
+              <SelectTrigger><SelectValue placeholder="Choisir un agent" /></SelectTrigger>
+              <SelectContent className="max-h-72 overflow-y-auto">
+                {employees.filter((e) => e.direction_id === managerDialog?.id).map((e) => (
+                  <SelectItem key={e.id} value={e.id}>{e.first_name} {e.last_name} — {e.position || "—"}</SelectItem>
+                ))}
+                {employees.filter((e) => e.direction_id === managerDialog?.id).length === 0 && (
+                  <div className="px-2 py-3 text-xs text-muted-foreground">Aucun agent dans cette direction</div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setManagerDialog(null)}>Annuler</Button>
+            <Button
+              disabled={!selectedManagerId}
+              onClick={async () => {
+                const emp = employees.find((e) => e.id === selectedManagerId);
+                if (!emp || !managerDialog) return;
+                const fullName = `${emp.first_name} ${emp.last_name}`.trim();
+                const { error } = await supabase.from("directions").update({ manager_name: fullName }).eq("id", managerDialog.id);
+                if (error) { toast.error(error.message); return; }
+                toast.success("Manager direct défini");
+                setManagerDialog(null);
+                refresh();
+              }}
+            >
+              Enregistrer
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

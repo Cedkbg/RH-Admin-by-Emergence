@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
-interface DirectionRow { id: string; name: string; code: string | null }
+interface DirectionRow { id: string; name: string; code: string | null; manager_name: string | null }
 interface DepartmentRow { id: string; name: string; direction_id: string }
 interface EmployeeRow {
   id: string;
@@ -76,7 +76,7 @@ const Employes = () => {
 
   const refresh = async () => {
     const [d, dep, e] = await Promise.all([
-      supabase.from("directions").select("id,name,code").order("code"),
+      supabase.from("directions").select("id,name,code,manager_name").order("code"),
       supabase.from("departments").select("id,name,direction_id").order("name"),
       supabase.from("employees").select("*").order("created_at", { ascending: false }),
     ]);
@@ -381,7 +381,7 @@ const Employes = () => {
                     <Label>Direction</Label>
                     <Select value={form.direction_id} onValueChange={(v) => setForm({ ...form, direction_id: v, department_id: "" })}>
                       <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-72 overflow-y-auto">
                         {directions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -390,7 +390,7 @@ const Employes = () => {
                     <Label>Département</Label>
                     <Select value={form.department_id} onValueChange={(v) => setForm({ ...form, department_id: v })} disabled={!form.direction_id}>
                       <SelectTrigger><SelectValue placeholder={form.direction_id ? "—" : "Choisir direction"} /></SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-72 overflow-y-auto">
                         {filteredDepartments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -412,7 +412,7 @@ const Employes = () => {
                     </Select>
                   </div>
                   <div><Label>Date d'embauche</Label><Input type="date" value={form.hire_date} onChange={(e) => setForm({ ...form, hire_date: e.target.value })} /></div>
-                  <div><Label>Salaire de base (FCFA)</Label><Input type="number" min="0" value={form.base_salary} onChange={(e) => setForm({ ...form, base_salary: e.target.value })} /></div>
+                  <div><Label>Salaire de base (USD)</Label><Input type="number" min="0" step="0.01" value={form.base_salary} onChange={(e) => setForm({ ...form, base_salary: e.target.value })} /></div>
                   <div>
                     <Label>Statut</Label>
                     <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as EmployeeRow["status"] })}>
@@ -425,17 +425,16 @@ const Employes = () => {
                     </Select>
                   </div>
                   <div className="col-span-2">
-                    <Label>Manager direct</Label>
-                    <Select value={form.manager_id} onValueChange={(v) => setForm({ ...form, manager_id: v })}>
-                      <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
-                      <SelectContent className="max-h-72 overflow-y-auto">
-                        {managerOptions.length === 0 ? (
-                          <div className="px-2 py-3 text-xs text-muted-foreground">Aucun manager disponible</div>
-                        ) : managerOptions.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>{m.first_name} {m.last_name} — {m.position || "—"}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Manager direct (chef de la direction)</Label>
+                    <Input
+                      readOnly
+                      value={
+                        form.direction_id
+                          ? (directions.find((d) => d.id === form.direction_id) as any)?.manager_name || "Aucun chef défini pour cette direction"
+                          : "Sélectionnez d'abord une direction"
+                      }
+                      className="bg-muted"
+                    />
                   </div>
                 </div>
               </TabsContent>
