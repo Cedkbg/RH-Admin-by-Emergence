@@ -91,6 +91,8 @@ const App = () => (
           <AuthRedirectGuard />
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/agent/login" element={<AgentAuth />} />
+            <Route path="/login" element={<AgentAuth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route element={<Protected><AppLayout /></Protected>}>
