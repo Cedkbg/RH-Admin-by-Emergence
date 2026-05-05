@@ -1,0 +1,1 @@
+DELETE FROM public.app_settings WHERE key IN ('company_name','company_logo','company_address','company_phone','company_email','company_onboarded');
