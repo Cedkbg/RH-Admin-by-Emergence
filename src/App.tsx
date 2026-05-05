@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Protected } from "@/components/Protected";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import AgentAuth from "./pages/AgentAuth";
 import ResetPassword from "./pages/ResetPassword";
 import Onboarding from "./pages/Onboarding";
 import Organigramme from "./pages/Organigramme";
