@@ -57,10 +57,17 @@ const Organigramme = () => {
   const [form, setForm] = useState({ code: "", name: "", manager_name: "", description: "" });
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [managerDialog, setManagerDialog] = useState<DirectionRow | null>(null);
+  const [employees, setEmployees] = useState<{ id: string; first_name: string; last_name: string; position: string | null; direction_id: string | null }[]>([]);
+  const [selectedManagerId, setSelectedManagerId] = useState<string>("");
 
   const refresh = async () => {
-    const { data } = await supabase.from("directions").select("*").order("code");
-    setDirections(data || []);
+    const [d, emp] = await Promise.all([
+      supabase.from("directions").select("*").order("code"),
+      supabase.from("employees").select("id,first_name,last_name,position,direction_id"),
+    ]);
+    setDirections(d.data || []);
+    setEmployees(emp.data || []);
   };
 
   useEffect(() => { refresh(); }, []);
