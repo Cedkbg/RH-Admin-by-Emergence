@@ -95,6 +95,7 @@ const App = () => (
             <Route path="/login" element={<AgentAuth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/presence/kiosk/:locationId" element={<PresenceKiosk />} />
             <Route element={<Protected><AppLayout /></Protected>}>
               <Route index element={<Index />} />
               <Route path="/organigramme" element={<Organigramme />} />
@@ -109,7 +110,6 @@ const App = () => (
               <Route path="/presence" element={<Field><Presence /></Field>} />
               <Route path="/presence/scan" element={<PresenceScan />} />
               <Route path="/presence/locations" element={<Field><PresenceLocations /></Field>} />
-              <Route path="/presence/kiosk/:locationId" element={<PresenceKiosk />} />
               <Route path="/documents" element={<Ops><Documents /></Ops>} />
               <Route path="/juridique" element={<Ops><Juridique /></Ops>} />
               <Route path="/communication" element={<Field><Communication /></Field>} />
