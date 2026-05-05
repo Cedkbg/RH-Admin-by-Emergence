@@ -273,6 +273,49 @@ const Organigramme = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!managerDialog} onOpenChange={(o) => !o && setManagerDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Manager direct — {managerDialog?.name}</DialogTitle>
+            <DialogDescription>
+              Choisissez un agent de cette direction comme manager direct (chef). Réservé au DG/DGA.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Agent</Label>
+            <Select value={selectedManagerId} onValueChange={setSelectedManagerId}>
+              <SelectTrigger><SelectValue placeholder="Choisir un agent" /></SelectTrigger>
+              <SelectContent className="max-h-72 overflow-y-auto">
+                {employees.filter((e) => e.direction_id === managerDialog?.id).map((e) => (
+                  <SelectItem key={e.id} value={e.id}>{e.first_name} {e.last_name} — {e.position || "—"}</SelectItem>
+                ))}
+                {employees.filter((e) => e.direction_id === managerDialog?.id).length === 0 && (
+                  <div className="px-2 py-3 text-xs text-muted-foreground">Aucun agent dans cette direction</div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setManagerDialog(null)}>Annuler</Button>
+            <Button
+              disabled={!selectedManagerId}
+              onClick={async () => {
+                const emp = employees.find((e) => e.id === selectedManagerId);
+                if (!emp || !managerDialog) return;
+                const fullName = `${emp.first_name} ${emp.last_name}`.trim();
+                const { error } = await supabase.from("directions").update({ manager_name: fullName }).eq("id", managerDialog.id);
+                if (error) { toast.error(error.message); return; }
+                toast.success("Manager direct défini");
+                setManagerDialog(null);
+                refresh();
+              }}
+            >
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
