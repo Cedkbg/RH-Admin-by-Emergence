@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Shield, Loader2 } from "lucide-react";
+import { getSetupStatus } from "@/lib/setupStatus";
 
 export default function Auth() {
   const { session, signIn, signUp, loading: authLoading } = useAuth();
@@ -25,20 +26,8 @@ export default function Auth() {
     // Ne rediriger vers /onboarding QUE si l'entreprise n'est pas configurée
     // ET qu'aucun compte admin n'existe encore (bootstrap initial).
     (async () => {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data } = await supabase
-        .from("app_settings")
-        .select("value")
-        .eq("key", "company_onboarded")
-        .maybeSingle();
-      const v: any = data?.value;
-      const done = v === true || (typeof v === "object" && v?.value === true);
-      if (done) return;
-      const { count } = await supabase
-        .from("user_roles")
-        .select("id", { count: "exact", head: true })
-        .eq("role", "admin");
-      if ((count ?? 0) === 0) navigate("/onboarding", { replace: true });
+      const setupStatus = await getSetupStatus();
+      if (!setupStatus.companyConfigured && !setupStatus.adminExists) navigate("/onboarding", { replace: true });
     })();
   }, [session, navigate]);
 
