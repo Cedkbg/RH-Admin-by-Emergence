@@ -27,7 +27,7 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
     const checkCompany = async () => {
       try {
         const setupStatus = await getSetupStatus();
-        setCompanyConfigured(setupStatus.companyConfigured || setupStatus.adminExists);
+        setCompanyConfigured(setupStatus.adminExists);
       } catch (e) {
         console.error("Erreur Protected:", e);
         setCompanyConfigured(true); // En cas d'erreur, on considere configure
