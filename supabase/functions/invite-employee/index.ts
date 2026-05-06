@@ -1,6 +1,7 @@
-// Invite a new employee by email. Sends a Supabase Auth invitation
-// (email containing a magic link to set up the account). Then assigns
-// the 'employee' role and ensures the profile is approved.
+// Crée un compte agent avec un mot de passe temporaire (email auto-confirmé).
+// L'admin reçoit le mot de passe en retour pour le transmettre à l'agent.
+// L'agent se connecte ensuite avec email + mot de passe sur /agent/login
+// (session persistante, jamais d'expiration de lien).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -12,6 +13,19 @@ const corsHeaders = {
 const ALLOWED_ROLES = new Set([
   "admin", "dg", "dga", "manager", "rh", "secretaire", "assistant_direction",
 ]);
+
+function generatePassword(): string {
+  // 12 chars, majuscules + minuscules + chiffres + symbole
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghijkmnpqrstuvwxyz";
+  const digits = "23456789";
+  const symbols = "!@#$%&*";
+  const all = upper + lower + digits + symbols;
+  const pick = (s: string) => s[Math.floor(Math.random() * s.length)];
+  let pwd = pick(upper) + pick(lower) + pick(digits) + pick(symbols);
+  for (let i = 0; i < 8; i++) pwd += pick(all);
+  return pwd.split("").sort(() => Math.random() - 0.5).join("");
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -45,76 +59,89 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, full_name, employee_id, redirect_to } = await req.json();
+    const { email, full_name, employee_id, reset_password } = await req.json();
     if (!email || !full_name) {
       return new Response(JSON.stringify({ error: "Email et nom requis" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Redirige l'agent invité vers la page de définition du mot de passe
-    // sur le site PUBLIÉ (et non sur la preview Lovable, dont les liens
-    // expirent et renvoient vers la connexion Lovable).
-    const PUBLISHED_URL = Deno.env.get("APP_PUBLIC_URL") || "https://emergencedrc-rh.lovable.app";
-    const origin = req.headers.get("origin") || new URL(req.url).origin;
-    const isPreview = /lovableproject\.com|lovable\.dev/i.test(origin);
-    const baseUrl = redirect_to
-      ? redirect_to
-      : isPreview
-        ? `${PUBLISHED_URL}/reset-password`
-        : `${origin}/reset-password`;
-    const redirectUrl = baseUrl;
-
-    // 1) Send invitation (creates user if not exists)
+    const tempPassword = generatePassword();
     let invitedUserId: string | null = null;
-    const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(
-      email,
-      { data: { full_name }, redirectTo: redirectUrl },
-    );
+    let isNew = false;
 
-    if (inviteErr || !invited?.user) {
-      const msg = inviteErr?.message ?? "";
-      const alreadyExists = /already|registered|exists|duplicate/i.test(msg);
-      if (alreadyExists) {
-        const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-        const existing = list?.users.find((u) => (u.email ?? "").toLowerCase() === email.toLowerCase());
-        if (!existing) {
-          return new Response(JSON.stringify({ error: msg || "Utilisateur introuvable" }), {
+    // Cherche l'utilisateur existant
+    const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const existing = list?.users.find((u) => (u.email ?? "").toLowerCase() === email.toLowerCase());
+
+    if (existing) {
+      invitedUserId = existing.id;
+      // Si demandé OU si l'utilisateur n'avait pas confirmé son email : on (re)définit le mot de passe
+      if (reset_password || !existing.email_confirmed_at) {
+        const { error: updErr } = await admin.auth.admin.updateUserById(existing.id, {
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: { ...(existing.user_metadata ?? {}), full_name },
+        });
+        if (updErr) {
+          return new Response(JSON.stringify({ error: updErr.message }), {
             status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        invitedUserId = existing.id;
-        // Re-send invite link (magic link) for existing user
-        await admin.auth.admin.generateLink({
-          type: "magiclink", email, options: { redirectTo: redirectUrl },
-        });
       } else {
-        return new Response(JSON.stringify({ error: msg || "Invitation échouée" }), {
+        // Compte existe déjà et est actif : ne pas écraser le mot de passe
+        return new Response(JSON.stringify({
+          ok: true,
+          user_id: existing.id,
+          already_active: true,
+          message: "Ce compte existe déjà. L'agent doit utiliser son mot de passe actuel ou demander une réinitialisation.",
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    } else {
+      // Création directe avec email confirmé + mot de passe
+      const { data: created, error: createErr } = await admin.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: { full_name },
+      });
+      if (createErr || !created?.user) {
+        return new Response(JSON.stringify({ error: createErr?.message || "Création échouée" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-    } else {
-      invitedUserId = invited.user.id;
+      invitedUserId = created.user.id;
+      isNew = true;
     }
 
-    // 2) Profile approved + email aligned + onboarding completed (invited user skips onboarding wizard)
+    // Profil approuvé + onboarding skip
     await admin.from("profiles").upsert({
       id: invitedUserId, email, full_name, approval_status: "approved", onboarding_completed: true,
     });
 
-    // 3) Remove possible 'admin' default and assign 'employee'
+    // Rôle 'employee' (retire 'admin' éventuel)
     await admin.from("user_roles").delete().eq("user_id", invitedUserId).eq("role", "admin");
     await admin.from("user_roles").upsert(
       { user_id: invitedUserId, role: "employee" },
       { onConflict: "user_id,role" },
     );
 
-    // 4) Optional: link to employees row by email if provided/auto
     if (employee_id) {
       await admin.from("employees").update({ email }).eq("id", employee_id);
     }
 
-    return new Response(JSON.stringify({ ok: true, user_id: invitedUserId }), {
+    // URL de connexion publiée (pas la preview Lovable qui expire)
+    const PUBLISHED_URL = Deno.env.get("APP_PUBLIC_URL") || "https://emergencedrc-rh.lovable.app";
+    const loginUrl = `${PUBLISHED_URL}/agent/login`;
+
+    return new Response(JSON.stringify({
+      ok: true,
+      user_id: invitedUserId,
+      is_new: isNew,
+      email,
+      temp_password: tempPassword,
+      login_url: loginUrl,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
