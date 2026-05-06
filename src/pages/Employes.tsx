@@ -406,7 +406,7 @@ const Employes = () => {
                       <SelectContent>
                         <SelectItem value="M">Masculin</SelectItem>
                         <SelectItem value="F">Féminin</SelectItem>
-                        <SelectItem value="A">Autre</SelectItem>
+                        
                       </SelectContent>
                     </Select>
                   </div>
