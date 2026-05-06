@@ -136,6 +136,7 @@ const Employes = () => {
       email: e.email ?? "", phone: e.phone ?? "", address: e.address ?? "",
       birth_date: e.birth_date ?? "", position: e.position ?? "",
       direction_id: e.direction_id ?? "", department_id: e.department_id ?? "",
+      department_name: departments.find((d) => d.id === e.department_id)?.name ?? "",
       contract_type: e.contract_type ?? "CDI", gender: e.gender ?? "",
       base_salary: e.base_salary?.toString() ?? "", manager_id: e.manager_id ?? "",
       status: e.status, hire_date: e.hire_date ?? "",
