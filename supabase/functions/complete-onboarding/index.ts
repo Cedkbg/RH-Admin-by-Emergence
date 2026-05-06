@@ -59,14 +59,7 @@ Deno.serve(async (req) => {
     const company = (body?.company ?? {}) as CompanyPayload;
     const adminUser = body?.admin as AdminPayload | undefined;
 
-    if (!company.name?.trim()) {
-      return new Response(JSON.stringify({ error: "Le nom de l'entreprise est obligatoire" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-// Bootstrap : public uniquement si AUCUN admin n'existe encore.
+    // Bootstrap : public uniquement si AUCUN admin n'existe encore.
     // Sinon : exige un admin authentifié.
     const { count: adminCount } = await admin
       .from("user_roles").select("*", { count: "exact", head: true }).eq("role", "admin");
@@ -117,17 +110,18 @@ Deno.serve(async (req) => {
       }
     }
 
-    const rows = [
-      { key: "company_name", value: company.name.trim() },
-      { key: "company_logo", value: finalLogoUrl },
-      { key: "company_address", value: company.address ?? "" },
-      { key: "company_phone", value: company.phone ?? "" },
-      { key: "company_email", value: company.email ?? "" },
-      { key: "company_onboarded", value: true },
-    ];
+    // N'enregistrer les infos entreprise que si fournies (configuration via Paramètres après login)
+    const rows: Array<{ key: string; value: any }> = [];
+    if (company.name?.trim()) rows.push({ key: "company_name", value: company.name.trim() });
+    if (finalLogoUrl) rows.push({ key: "company_logo", value: finalLogoUrl });
+    if (company.address) rows.push({ key: "company_address", value: company.address });
+    if (company.phone) rows.push({ key: "company_phone", value: company.phone });
+    if (company.email) rows.push({ key: "company_email", value: company.email });
 
-    const { error: settingsErr } = await admin.from("app_settings").upsert(rows, { onConflict: "key" });
-    if (settingsErr) throw settingsErr;
+    if (rows.length > 0) {
+      const { error: settingsErr } = await admin.from("app_settings").upsert(rows, { onConflict: "key" });
+      if (settingsErr) throw settingsErr;
+    }
 
     if (adminUser) {
       const fullName = adminUser.full_name?.trim();
@@ -169,6 +163,12 @@ Deno.serve(async (req) => {
           .from("user_roles")
           .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
         if (roleErr) throw roleErr;
+
+        // Marquer l'onboarding comme terminé (la config entreprise se fait ensuite dans Paramètres)
+        await admin.from("app_settings").upsert(
+          { key: "company_onboarded", value: true },
+          { onConflict: "key" },
+        );
       }
     }
 
