@@ -53,9 +53,17 @@ Deno.serve(async (req) => {
     }
 
     // Redirige l'agent invité vers la page de définition du mot de passe
-    // (et non vers la racine, qui forcerait l'onboarding entreprise).
+    // sur le site PUBLIÉ (et non sur la preview Lovable, dont les liens
+    // expirent et renvoient vers la connexion Lovable).
+    const PUBLISHED_URL = Deno.env.get("APP_PUBLIC_URL") || "https://emergencedrc-rh.lovable.app";
     const origin = req.headers.get("origin") || new URL(req.url).origin;
-    const redirectUrl = redirect_to || `${origin}/reset-password`;
+    const isPreview = /lovableproject\.com|lovable\.dev/i.test(origin);
+    const baseUrl = redirect_to
+      ? redirect_to
+      : isPreview
+        ? `${PUBLISHED_URL}/reset-password`
+        : `${origin}/reset-password`;
+    const redirectUrl = baseUrl;
 
     // 1) Send invitation (creates user if not exists)
     let invitedUserId: string | null = null;
