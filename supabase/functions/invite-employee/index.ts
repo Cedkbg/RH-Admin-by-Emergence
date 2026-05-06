@@ -15,15 +15,14 @@ const ALLOWED_ROLES = new Set([
 ]);
 
 function generatePassword(): string {
-  // 12 chars, majuscules + minuscules + chiffres + symbole
+  // Mot de passe simple à taper : 10 chars, lettres + chiffres uniquement (pas de symboles ambigus)
   const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
   const lower = "abcdefghijkmnpqrstuvwxyz";
   const digits = "23456789";
-  const symbols = "!@#$%&*";
-  const all = upper + lower + digits + symbols;
+  const all = upper + lower + digits;
   const pick = (s: string) => s[Math.floor(Math.random() * s.length)];
-  let pwd = pick(upper) + pick(lower) + pick(digits) + pick(symbols);
-  for (let i = 0; i < 8; i++) pwd += pick(all);
+  let pwd = pick(upper) + pick(lower) + pick(digits) + pick(digits);
+  for (let i = 0; i < 6; i++) pwd += pick(all);
   return pwd.split("").sort(() => Math.random() - 0.5).join("");
 }
 
@@ -59,14 +58,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, full_name, employee_id, reset_password } = await req.json();
+    const { email: rawEmail, full_name, employee_id, reset_password, custom_password } = await req.json();
+    const email = (rawEmail ?? "").trim().toLowerCase();
     if (!email || !full_name) {
       return new Response(JSON.stringify({ error: "Email et nom requis" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const tempPassword = generatePassword();
+    // Mot de passe : custom (>=6 chars) si fourni, sinon généré
+    const tempPassword = (typeof custom_password === "string" && custom_password.trim().length >= 6)
+      ? custom_password.trim()
+      : generatePassword();
     let invitedUserId: string | null = null;
     let isNew = false;
 

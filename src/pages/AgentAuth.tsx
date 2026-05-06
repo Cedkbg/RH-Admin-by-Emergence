@@ -29,9 +29,12 @@ export default function AgentAuth() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signIn(email, password);
+    // Normalisation : retire espaces invisibles (copier-coller) + email en minuscules
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+    const { error } = await signIn(cleanEmail, cleanPassword);
     setLoading(false);
-    if (error) toast.error(error);
+    if (error) toast.error("Email ou mot de passe incorrect. Vérifiez bien (sans espace au début/fin) ou demandez un nouveau mot de passe à l'admin.");
     else toast.success("Bienvenue !");
   };
 
