@@ -27,7 +27,7 @@ export default function Auth() {
     // ET qu'aucun compte admin n'existe encore (bootstrap initial).
     (async () => {
       const setupStatus = await getSetupStatus();
-      if (!setupStatus.companyConfigured && !setupStatus.adminExists) navigate("/onboarding", { replace: true });
+      if (!setupStatus.adminExists) navigate("/onboarding", { replace: true });
     })();
   }, [session, navigate]);
 
