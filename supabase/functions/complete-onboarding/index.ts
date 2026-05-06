@@ -59,14 +59,7 @@ Deno.serve(async (req) => {
     const company = (body?.company ?? {}) as CompanyPayload;
     const adminUser = body?.admin as AdminPayload | undefined;
 
-    if (!company.name?.trim()) {
-      return new Response(JSON.stringify({ error: "Le nom de l'entreprise est obligatoire" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-// Bootstrap : public uniquement si AUCUN admin n'existe encore.
+    // Bootstrap : public uniquement si AUCUN admin n'existe encore.
     // Sinon : exige un admin authentifié.
     const { count: adminCount } = await admin
       .from("user_roles").select("*", { count: "exact", head: true }).eq("role", "admin");
