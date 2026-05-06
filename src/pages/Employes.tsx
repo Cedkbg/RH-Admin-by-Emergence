@@ -402,13 +402,21 @@ const Employes = () => {
                     </Select>
                   </div>
                   <div>
-                    <Label>Département</Label>
-                    <Select value={form.department_id} onValueChange={(v) => setForm({ ...form, department_id: v })} disabled={!form.direction_id}>
-                      <SelectTrigger><SelectValue placeholder={form.direction_id ? "—" : "Choisir direction"} /></SelectTrigger>
-                      <SelectContent className="max-h-72 overflow-y-auto">
-                        {filteredDepartments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Label>Département <span className="text-xs text-muted-foreground font-normal">(saisir ou choisir)</span></Label>
+                    <Input
+                      list="departments-list"
+                      value={form.department_name}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        const match = filteredDepartments.find((d) => d.name.toLowerCase() === name.toLowerCase());
+                        setForm({ ...form, department_name: name, department_id: match?.id || "" });
+                      }}
+                      disabled={!form.direction_id}
+                      placeholder={form.direction_id ? "Ex: Service paie" : "Choisir direction d'abord"}
+                    />
+                    <datalist id="departments-list">
+                      {filteredDepartments.map((d) => <option key={d.id} value={d.name} />)}
+                    </datalist>
                   </div>
                   <div className="col-span-2">
                     <Label>Poste</Label>
