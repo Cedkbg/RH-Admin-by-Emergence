@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Building2, UserCog, Check, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getSetupStatus } from "@/lib/setupStatus";
 
 type Step = 1 | 2;
 
@@ -51,14 +52,10 @@ export default function Onboarding() {
           navigate(`/reset-password${search}${hash}`, { replace: true });
           return;
         }
-        // Si la configuration est déjà faite OU qu'un admin existe, rediriger vers la connexion
-        const [{ data: cfg }, { count: adminCount }] = await Promise.all([
-          supabase.from("app_settings").select("value").eq("key", "company_onboarded").maybeSingle(),
-          supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin"),
-        ]);
-        const v: any = cfg?.value;
-        const done = v === true || (typeof v === "object" && v?.value === true);
-        if (done || (adminCount ?? 0) > 0) {
+        // Si la configuration est déjà faite OU qu'un compte existe, rediriger vers la connexion.
+        // Important : avant confirmation email, le profil/rôle peut ne pas être visible côté navigateur.
+        const setupStatus = await getSetupStatus();
+        if (setupStatus.companyConfigured || setupStatus.adminExists) {
           setInitialLoading(false);
           navigate("/auth", { replace: true });
           return;
