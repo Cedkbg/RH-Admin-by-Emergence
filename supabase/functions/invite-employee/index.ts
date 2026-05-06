@@ -58,14 +58,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, full_name, employee_id, reset_password } = await req.json();
+    const { email: rawEmail, full_name, employee_id, reset_password, custom_password } = await req.json();
+    const email = (rawEmail ?? "").trim().toLowerCase();
     if (!email || !full_name) {
       return new Response(JSON.stringify({ error: "Email et nom requis" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const tempPassword = generatePassword();
+    // Mot de passe : custom (>=6 chars) si fourni, sinon généré
+    const tempPassword = (typeof custom_password === "string" && custom_password.trim().length >= 6)
+      ? custom_password.trim()
+      : generatePassword();
     let invitedUserId: string | null = null;
     let isNew = false;
 
