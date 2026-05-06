@@ -148,6 +148,30 @@ const Employes = () => {
     ev.preventDefault();
     if (!form.first_name || !form.last_name) { toast.error("Prénom et nom requis"); return; }
     setLoading(true);
+
+    // Création à la volée du département s'il n'existe pas
+    let departmentId = form.department_id || null;
+    const deptName = form.department_name.trim();
+    if (deptName && form.direction_id) {
+      const existing = departments.find(
+        (d) => d.direction_id === form.direction_id && d.name.toLowerCase() === deptName.toLowerCase()
+      );
+      if (existing) {
+        departmentId = existing.id;
+      } else {
+        const { data: newDept, error: deptErr } = await supabase
+          .from("departments")
+          .insert({ name: deptName, direction_id: form.direction_id })
+          .select("id,name,direction_id")
+          .maybeSingle();
+        if (deptErr) { setLoading(false); toast.error("Département : " + deptErr.message); return; }
+        if (newDept) {
+          departmentId = newDept.id;
+          setDepartments((prev) => [...prev, newDept as DepartmentRow]);
+        }
+      }
+    }
+
     const payload = {
       first_name: form.first_name,
       last_name: form.last_name,
