@@ -52,14 +52,15 @@ export default function Onboarding() {
           navigate(`/reset-password${search}${hash}`, { replace: true });
           return;
         }
-        // Si la configuration est déjà faite OU qu'un compte existe, rediriger vers la connexion.
+        // Si un compte existe déjà, rediriger vers la connexion.
         // Important : avant confirmation email, le profil/rôle peut ne pas être visible côté navigateur.
         const setupStatus = await getSetupStatus();
-        if (setupStatus.companyConfigured || setupStatus.adminExists) {
+        if (setupStatus.adminExists) {
           setInitialLoading(false);
           navigate("/auth", { replace: true });
           return;
         }
+        if (setupStatus.companyConfigured) setStep(2);
 
         const { data: settings } = await supabase
           .from("app_settings")
