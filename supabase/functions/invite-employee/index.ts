@@ -15,15 +15,14 @@ const ALLOWED_ROLES = new Set([
 ]);
 
 function generatePassword(): string {
-  // 12 chars, majuscules + minuscules + chiffres + symbole
+  // Mot de passe simple à taper : 10 chars, lettres + chiffres uniquement (pas de symboles ambigus)
   const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
   const lower = "abcdefghijkmnpqrstuvwxyz";
   const digits = "23456789";
-  const symbols = "!@#$%&*";
-  const all = upper + lower + digits + symbols;
+  const all = upper + lower + digits;
   const pick = (s: string) => s[Math.floor(Math.random() * s.length)];
-  let pwd = pick(upper) + pick(lower) + pick(digits) + pick(symbols);
-  for (let i = 0; i < 8; i++) pwd += pick(all);
+  let pwd = pick(upper) + pick(lower) + pick(digits) + pick(digits);
+  for (let i = 0; i < 6; i++) pwd += pick(all);
   return pwd.split("").sort(() => Math.random() - 0.5).join("");
 }
 
