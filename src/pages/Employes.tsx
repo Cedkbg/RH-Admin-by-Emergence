@@ -218,24 +218,37 @@ const Employes = () => {
     refresh();
   };
 
-  const handleInvite = async (e: EmployeeRow) => {
+  const handleInvite = async (e: EmployeeRow, resetPassword = false) => {
     if (!e.email) { toast.error("Cet agent n'a pas d'email."); return; }
     const fullName = `${e.first_name} ${e.last_name}`.trim();
-    const t = toast.loading(`Envoi de l'invitation à ${e.email}…`);
+    const t = toast.loading(`Création du compte pour ${e.email}…`);
     const { data, error } = await supabase.functions.invoke("invite-employee", {
       body: {
         email: e.email,
         full_name: fullName,
         employee_id: e.id,
-        redirect_to: `${window.location.origin}/reset-password`,
+        reset_password: resetPassword,
       },
     });
     toast.dismiss(t);
-    if (error || (data && (data as any).error)) {
-      toast.error((data as any)?.error || error?.message || "Échec de l'envoi");
+    const res = data as any;
+    if (error || (res && res.error)) {
+      toast.error(res?.error || error?.message || "Échec");
       return;
     }
-    toast.success(`Invitation envoyée à ${e.email}`);
+    if (res?.already_active && !resetPassword) {
+      if (confirm(`${e.email} a déjà un compte actif. Voulez-vous générer un nouveau mot de passe (le précédent sera remplacé) ?`)) {
+        return handleInvite(e, true);
+      }
+      return;
+    }
+    setCredentials({
+      email: res.email,
+      password: res.temp_password,
+      loginUrl: res.login_url,
+      isNew: !!res.is_new,
+    });
+    toast.success(`Compte prêt pour ${e.email}`);
   };
 
   const managerOptions = employees.filter((e) => e.id !== editingId);
