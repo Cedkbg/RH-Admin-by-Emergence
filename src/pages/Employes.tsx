@@ -516,6 +516,74 @@ const Employes = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!credentials} onOpenChange={(o) => !o && setCredentials(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Identifiants de l'agent</DialogTitle>
+            <DialogDescription>
+              {credentials?.isNew
+                ? "Compte créé avec succès. Transmettez ces identifiants à l'agent — ils ne expirent pas."
+                : "Nouveau mot de passe généré. Transmettez-le à l'agent."}
+            </DialogDescription>
+          </DialogHeader>
+          {credentials && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Email</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={credentials.email} />
+                  <Button type="button" variant="outline" size="sm"
+                    onClick={() => { navigator.clipboard.writeText(credentials.email); toast.success("Email copié"); }}>
+                    Copier
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Mot de passe temporaire</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={credentials.password} className="font-mono" />
+                  <Button type="button" variant="outline" size="sm"
+                    onClick={() => { navigator.clipboard.writeText(credentials.password); toast.success("Mot de passe copié"); }}>
+                    Copier
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Lien de connexion</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={credentials.loginUrl} />
+                  <Button type="button" variant="outline" size="sm"
+                    onClick={() => { navigator.clipboard.writeText(credentials.loginUrl); toast.success("Lien copié"); }}>
+                    Copier
+                  </Button>
+                </div>
+              </div>
+              <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                <p className="font-medium mb-1">À envoyer à l'agent :</p>
+                <pre className="whitespace-pre-wrap text-xs">{`Bonjour,
+Votre compte est prêt sur la plateforme RH.
+Lien : ${credentials.loginUrl}
+Email : ${credentials.email}
+Mot de passe : ${credentials.password}
+
+Vous pouvez vous connecter à tout moment, le lien n'expire pas.`}</pre>
+                <Button type="button" size="sm" className="mt-2"
+                  onClick={() => {
+                    const msg = `Bonjour,\nVotre compte est prêt sur la plateforme RH.\nLien : ${credentials.loginUrl}\nEmail : ${credentials.email}\nMot de passe : ${credentials.password}\n\nVous pouvez vous connecter à tout moment, le lien n'expire pas.`;
+                    navigator.clipboard.writeText(msg);
+                    toast.success("Message complet copié");
+                  }}>
+                  Copier le message complet
+                </Button>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setCredentials(null)}>Fermer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
