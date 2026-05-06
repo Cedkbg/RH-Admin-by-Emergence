@@ -181,7 +181,7 @@ const Employes = () => {
       birth_date: form.birth_date || null,
       position: form.position || null,
       direction_id: form.direction_id || null,
-      department_id: form.department_id || null,
+      department_id: departmentId,
       contract_type: form.contract_type || null,
       gender: form.gender || null,
       base_salary: form.base_salary ? Number(form.base_salary) : 0,
