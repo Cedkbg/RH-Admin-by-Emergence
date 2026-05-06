@@ -86,6 +86,7 @@ const Employes = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState(blankForm);
+  const [credentials, setCredentials] = useState<{ email: string; password: string; loginUrl: string; isNew: boolean } | null>(null);
 
   useEffect(() => { setQuery(params.get("q") || ""); }, [params]);
 
@@ -217,24 +218,37 @@ const Employes = () => {
     refresh();
   };
 
-  const handleInvite = async (e: EmployeeRow) => {
+  const handleInvite = async (e: EmployeeRow, resetPassword = false) => {
     if (!e.email) { toast.error("Cet agent n'a pas d'email."); return; }
     const fullName = `${e.first_name} ${e.last_name}`.trim();
-    const t = toast.loading(`Envoi de l'invitation à ${e.email}…`);
+    const t = toast.loading(`Création du compte pour ${e.email}…`);
     const { data, error } = await supabase.functions.invoke("invite-employee", {
       body: {
         email: e.email,
         full_name: fullName,
         employee_id: e.id,
-        redirect_to: `${window.location.origin}/reset-password`,
+        reset_password: resetPassword,
       },
     });
     toast.dismiss(t);
-    if (error || (data && (data as any).error)) {
-      toast.error((data as any)?.error || error?.message || "Échec de l'envoi");
+    const res = data as any;
+    if (error || (res && res.error)) {
+      toast.error(res?.error || error?.message || "Échec");
       return;
     }
-    toast.success(`Invitation envoyée à ${e.email}`);
+    if (res?.already_active && !resetPassword) {
+      if (confirm(`${e.email} a déjà un compte actif. Voulez-vous générer un nouveau mot de passe (le précédent sera remplacé) ?`)) {
+        return handleInvite(e, true);
+      }
+      return;
+    }
+    setCredentials({
+      email: res.email,
+      password: res.temp_password,
+      loginUrl: res.login_url,
+      isNew: !!res.is_new,
+    });
+    toast.success(`Compte prêt pour ${e.email}`);
   };
 
   const managerOptions = employees.filter((e) => e.id !== editingId);
@@ -500,6 +514,74 @@ const Employes = () => {
               <Button type="submit" disabled={loading}>{loading ? "…" : (editingId ? "Enregistrer" : "Ajouter")}</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!credentials} onOpenChange={(o) => !o && setCredentials(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Identifiants de l'agent</DialogTitle>
+            <DialogDescription>
+              {credentials?.isNew
+                ? "Compte créé avec succès. Transmettez ces identifiants à l'agent — ils ne expirent pas."
+                : "Nouveau mot de passe généré. Transmettez-le à l'agent."}
+            </DialogDescription>
+          </DialogHeader>
+          {credentials && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Email</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={credentials.email} />
+                  <Button type="button" variant="outline" size="sm"
+                    onClick={() => { navigator.clipboard.writeText(credentials.email); toast.success("Email copié"); }}>
+                    Copier
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Mot de passe temporaire</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={credentials.password} className="font-mono" />
+                  <Button type="button" variant="outline" size="sm"
+                    onClick={() => { navigator.clipboard.writeText(credentials.password); toast.success("Mot de passe copié"); }}>
+                    Copier
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Lien de connexion</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={credentials.loginUrl} />
+                  <Button type="button" variant="outline" size="sm"
+                    onClick={() => { navigator.clipboard.writeText(credentials.loginUrl); toast.success("Lien copié"); }}>
+                    Copier
+                  </Button>
+                </div>
+              </div>
+              <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                <p className="font-medium mb-1">À envoyer à l'agent :</p>
+                <pre className="whitespace-pre-wrap text-xs">{`Bonjour,
+Votre compte est prêt sur la plateforme RH.
+Lien : ${credentials.loginUrl}
+Email : ${credentials.email}
+Mot de passe : ${credentials.password}
+
+Vous pouvez vous connecter à tout moment, le lien n'expire pas.`}</pre>
+                <Button type="button" size="sm" className="mt-2"
+                  onClick={() => {
+                    const msg = `Bonjour,\nVotre compte est prêt sur la plateforme RH.\nLien : ${credentials.loginUrl}\nEmail : ${credentials.email}\nMot de passe : ${credentials.password}\n\nVous pouvez vous connecter à tout moment, le lien n'expire pas.`;
+                    navigator.clipboard.writeText(msg);
+                    toast.success("Message complet copié");
+                  }}>
+                  Copier le message complet
+                </Button>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setCredentials(null)}>Fermer</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
