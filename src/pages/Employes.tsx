@@ -63,7 +63,7 @@ const statusLabel: Record<EmployeeRow["status"], string> = {
 
 const blankForm = {
   first_name: "", last_name: "", email: "", phone: "", address: "",
-  birth_date: "", position: "", direction_id: "", department_id: "",
+  birth_date: "", position: "", direction_id: "", department_id: "", department_name: "",
   contract_type: "CDI", gender: "", base_salary: "", manager_id: "",
   status: "active" as EmployeeRow["status"], hire_date: "",
 };
@@ -136,6 +136,7 @@ const Employes = () => {
       email: e.email ?? "", phone: e.phone ?? "", address: e.address ?? "",
       birth_date: e.birth_date ?? "", position: e.position ?? "",
       direction_id: e.direction_id ?? "", department_id: e.department_id ?? "",
+      department_name: departments.find((d) => d.id === e.department_id)?.name ?? "",
       contract_type: e.contract_type ?? "CDI", gender: e.gender ?? "",
       base_salary: e.base_salary?.toString() ?? "", manager_id: e.manager_id ?? "",
       status: e.status, hire_date: e.hire_date ?? "",
@@ -147,6 +148,30 @@ const Employes = () => {
     ev.preventDefault();
     if (!form.first_name || !form.last_name) { toast.error("Prénom et nom requis"); return; }
     setLoading(true);
+
+    // Création à la volée du département s'il n'existe pas
+    let departmentId = form.department_id || null;
+    const deptName = form.department_name.trim();
+    if (deptName && form.direction_id) {
+      const existing = departments.find(
+        (d) => d.direction_id === form.direction_id && d.name.toLowerCase() === deptName.toLowerCase()
+      );
+      if (existing) {
+        departmentId = existing.id;
+      } else {
+        const { data: newDept, error: deptErr } = await supabase
+          .from("departments")
+          .insert({ name: deptName, direction_id: form.direction_id })
+          .select("id,name,direction_id")
+          .maybeSingle();
+        if (deptErr) { setLoading(false); toast.error("Département : " + deptErr.message); return; }
+        if (newDept) {
+          departmentId = newDept.id;
+          setDepartments((prev) => [...prev, newDept as DepartmentRow]);
+        }
+      }
+    }
+
     const payload = {
       first_name: form.first_name,
       last_name: form.last_name,
@@ -156,7 +181,7 @@ const Employes = () => {
       birth_date: form.birth_date || null,
       position: form.position || null,
       direction_id: form.direction_id || null,
-      department_id: form.department_id || null,
+      department_id: departmentId,
       contract_type: form.contract_type || null,
       gender: form.gender || null,
       base_salary: form.base_salary ? Number(form.base_salary) : 0,
@@ -402,13 +427,21 @@ const Employes = () => {
                     </Select>
                   </div>
                   <div>
-                    <Label>Département</Label>
-                    <Select value={form.department_id} onValueChange={(v) => setForm({ ...form, department_id: v })} disabled={!form.direction_id}>
-                      <SelectTrigger><SelectValue placeholder={form.direction_id ? "—" : "Choisir direction"} /></SelectTrigger>
-                      <SelectContent className="max-h-72 overflow-y-auto">
-                        {filteredDepartments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Label>Département <span className="text-xs text-muted-foreground font-normal">(saisir ou choisir)</span></Label>
+                    <Input
+                      list="departments-list"
+                      value={form.department_name}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        const match = filteredDepartments.find((d) => d.name.toLowerCase() === name.toLowerCase());
+                        setForm({ ...form, department_name: name, department_id: match?.id || "" });
+                      }}
+                      disabled={!form.direction_id}
+                      placeholder={form.direction_id ? "Ex: Service paie" : "Choisir direction d'abord"}
+                    />
+                    <datalist id="departments-list">
+                      {filteredDepartments.map((d) => <option key={d.id} value={d.name} />)}
+                    </datalist>
                   </div>
                   <div className="col-span-2">
                     <Label>Poste</Label>
