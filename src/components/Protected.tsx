@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { Navigate, useLocation } from "react-router-dom";
 import { ReactNode, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getSetupStatus } from "@/lib/setupStatus";
 
 export const Protected = ({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) => {
   const { session, loading } = useAuth();
@@ -26,24 +26,8 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
     
     const checkCompany = async () => {
       try {
-        const { data } = await supabase
-          .from("app_settings")
-          .select("value")
-          .eq("key", "company_onboarded")
-          .maybeSingle();
-        
-        const v: any = data?.value;
-        const done = v === true || (typeof v === "object" && v?.value === true);
-        
-        if (done) {
-          setCompanyConfigured(true);
-        } else {
-          const { count } = await supabase
-            .from("user_roles")
-            .select("id", { count: "exact", head: true })
-            .eq("role", "admin");
-          setCompanyConfigured((count ?? 0) > 0);
-        }
+        const setupStatus = await getSetupStatus();
+        setCompanyConfigured(setupStatus.adminExists);
       } catch (e) {
         console.error("Erreur Protected:", e);
         setCompanyConfigured(true); // En cas d'erreur, on considere configure

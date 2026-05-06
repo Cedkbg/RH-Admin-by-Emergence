@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
 type CompanyPayload = {
@@ -17,14 +17,14 @@ type CompanyPayload = {
   email?: string;
 };
 
+type AdminPayload = {
+  full_name?: string;
+  email?: string;
+  password?: string;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Méthode non autorisée" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -33,8 +33,31 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
+    if (req.method === "GET") {
+      const [{ data: company }, { data: users }] = await Promise.all([
+        admin.from("app_settings").select("value").eq("key", "company_onboarded").maybeSingle(),
+        admin.auth.admin.listUsers({ page: 1, perPage: 1 }),
+      ]);
+      const value: any = company?.value;
+      const companyConfigured = value === true || (typeof value === "object" && value?.value === true);
+      return new Response(JSON.stringify({
+        companyConfigured,
+        adminExists: (users?.users?.length ?? 0) > 0,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (req.method !== "POST") {
+      return new Response(JSON.stringify({ error: "Méthode non autorisée" }), {
+        status: 405,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body = await req.json();
     const company = (body?.company ?? {}) as CompanyPayload;
+    const adminUser = body?.admin as AdminPayload | undefined;
 
     if (!company.name?.trim()) {
       return new Response(JSON.stringify({ error: "Le nom de l'entreprise est obligatoire" }), {
@@ -105,6 +128,49 @@ Deno.serve(async (req) => {
 
     const { error: settingsErr } = await admin.from("app_settings").upsert(rows, { onConflict: "key" });
     if (settingsErr) throw settingsErr;
+
+    if (adminUser) {
+      const fullName = adminUser.full_name?.trim();
+      const email = adminUser.email?.trim().toLowerCase();
+      const password = adminUser.password ?? "";
+
+      if (!fullName || !email || password.length < 8) {
+        return new Response(JSON.stringify({ error: "Nom, email et mot de passe (8+ caractères) requis" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { count: currentAdmins } = await admin
+        .from("user_roles")
+        .select("id", { count: "exact", head: true })
+        .eq("role", "admin");
+
+      if ((currentAdmins ?? 0) === 0) {
+        const { data: created, error: createErr } = await admin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name: fullName },
+        });
+        if (createErr || !created?.user) throw createErr ?? new Error("Création admin échouée");
+
+        const userId = created.user.id;
+        const { error: profileErr } = await admin.from("profiles").upsert({
+          id: userId,
+          email,
+          full_name: fullName,
+          approval_status: "approved",
+          onboarding_completed: true,
+        });
+        if (profileErr) throw profileErr;
+
+        const { error: roleErr } = await admin
+          .from("user_roles")
+          .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
+        if (roleErr) throw roleErr;
+      }
+    }
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

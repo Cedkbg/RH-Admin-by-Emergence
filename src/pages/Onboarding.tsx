@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Building2, UserCog, Check, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getSetupStatus } from "@/lib/setupStatus";
 
 type Step = 1 | 2;
 
@@ -51,18 +52,15 @@ export default function Onboarding() {
           navigate(`/reset-password${search}${hash}`, { replace: true });
           return;
         }
-        // Si la configuration est déjà faite OU qu'un admin existe, rediriger vers la connexion
-        const [{ data: cfg }, { count: adminCount }] = await Promise.all([
-          supabase.from("app_settings").select("value").eq("key", "company_onboarded").maybeSingle(),
-          supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin"),
-        ]);
-        const v: any = cfg?.value;
-        const done = v === true || (typeof v === "object" && v?.value === true);
-        if (done || (adminCount ?? 0) > 0) {
+        // Si un compte existe déjà, rediriger vers la connexion.
+        // Important : avant confirmation email, le profil/rôle peut ne pas être visible côté navigateur.
+        const setupStatus = await getSetupStatus();
+        if (setupStatus.adminExists) {
           setInitialLoading(false);
           navigate("/auth", { replace: true });
           return;
         }
+        if (setupStatus.companyConfigured) setStep(2);
 
         const { data: settings } = await supabase
           .from("app_settings")
@@ -157,34 +155,42 @@ export default function Onboarding() {
     }
     setSaving(true);
 
-    const redirectUrl = `${window.location.origin}/`;
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: admin.email.trim(),
-      password: admin.password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: { full_name: admin.full_name.trim() },
+    const { data, error } = await supabase.functions.invoke("complete-onboarding", {
+      body: {
+        company: {
+          name: company.name,
+          logoUrl: company.logoUrl,
+          address: company.address,
+          phone: company.phone,
+          email: company.email,
+        },
+        admin: {
+          full_name: admin.full_name.trim(),
+          email: admin.email.trim(),
+          password: admin.password,
+        },
       },
     });
 
-    if (signUpError) {
+    if (error || (data as any)?.error) {
       setSaving(false);
-      toast.error(signUpError.message);
+      toast.error((data as any)?.error || error?.message || "Création échouée");
       return;
     }
 
-    // Si la session est immédiatement disponible (auto-confirm), marquer onboarding terminé
-    if (signUpData.session && signUpData.user) {
-      await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", signUpData.user.id);
-      setSaving(false);
-      toast.success("Compte administrateur créé — bienvenue !");
-      navigate("/", { replace: true });
-      return;
-    }
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: admin.email.trim(),
+      password: admin.password,
+    });
 
     setSaving(false);
-    toast.success("Compte créé. Vérifiez votre email pour confirmer puis connectez-vous.");
-    navigate("/auth", { replace: true });
+    if (signInError) {
+      toast.success("Compte administrateur créé. Connectez-vous avec l'email et le mot de passe.");
+      navigate("/auth", { replace: true });
+      return;
+    }
+    toast.success("Compte administrateur créé — bienvenue !");
+    navigate("/", { replace: true });
   };
 
   return (
