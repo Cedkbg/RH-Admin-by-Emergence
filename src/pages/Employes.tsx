@@ -63,7 +63,7 @@ const statusLabel: Record<EmployeeRow["status"], string> = {
 
 const blankForm = {
   first_name: "", last_name: "", email: "", phone: "", address: "",
-  birth_date: "", position: "", direction_id: "", department_id: "",
+  birth_date: "", position: "", direction_id: "", department_id: "", department_name: "",
   contract_type: "CDI", gender: "", base_salary: "", manager_id: "",
   status: "active" as EmployeeRow["status"], hire_date: "",
 };
