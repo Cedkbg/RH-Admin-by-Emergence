@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
 type CompanyPayload = {
@@ -19,12 +19,6 @@ type CompanyPayload = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Méthode non autorisée" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -32,6 +26,28 @@ Deno.serve(async (req) => {
     const ANON_KEY = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY")!;
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+
+    if (req.method === "GET") {
+      const [{ data: company }, { data: users }] = await Promise.all([
+        admin.from("app_settings").select("value").eq("key", "company_onboarded").maybeSingle(),
+        admin.auth.admin.listUsers({ page: 1, perPage: 1 }),
+      ]);
+      const value: any = company?.value;
+      const companyConfigured = value === true || (typeof value === "object" && value?.value === true);
+      return new Response(JSON.stringify({
+        companyConfigured,
+        adminExists: (users?.users?.length ?? 0) > 0,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (req.method !== "POST") {
+      return new Response(JSON.stringify({ error: "Méthode non autorisée" }), {
+        status: 405,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const body = await req.json();
     const company = (body?.company ?? {}) as CompanyPayload;
