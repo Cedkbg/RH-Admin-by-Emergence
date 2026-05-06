@@ -112,14 +112,16 @@ export default function AgentAuth() {
             </form>
           )}
 
-          <div className="mt-6 pt-4 border-t text-center">
-            <button
+          <div className="mt-6 pt-4 border-t text-center space-y-2">
+            <p className="text-xs text-muted-foreground">Vous êtes administrateur RH ?</p>
+            <Button
               type="button"
+              variant="outline"
+              className="w-full"
               onClick={() => navigate("/auth")}
-              className="text-xs text-muted-foreground hover:text-primary hover:underline"
             >
-              Vous êtes administrateur RH ? Connexion entreprise
-            </button>
+              Connexion administrateur
+            </Button>
           </div>
         </CardContent>
       </Card>
