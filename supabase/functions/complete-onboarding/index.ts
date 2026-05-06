@@ -163,6 +163,12 @@ Deno.serve(async (req) => {
           .from("user_roles")
           .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
         if (roleErr) throw roleErr;
+
+        // Marquer l'onboarding comme terminé (la config entreprise se fait ensuite dans Paramètres)
+        await admin.from("app_settings").upsert(
+          { key: "company_onboarded", value: true },
+          { onConflict: "key" },
+        );
       }
     }
 
