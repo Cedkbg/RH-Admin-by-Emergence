@@ -86,6 +86,7 @@ const Employes = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState(blankForm);
+  const [credentials, setCredentials] = useState<{ email: string; password: string; loginUrl: string; isNew: boolean } | null>(null);
 
   useEffect(() => { setQuery(params.get("q") || ""); }, [params]);
 
