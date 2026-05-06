@@ -154,34 +154,42 @@ export default function Onboarding() {
     }
     setSaving(true);
 
-    const redirectUrl = `${window.location.origin}/`;
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: admin.email.trim(),
-      password: admin.password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: { full_name: admin.full_name.trim() },
+    const { data, error } = await supabase.functions.invoke("complete-onboarding", {
+      body: {
+        company: {
+          name: company.name,
+          logoUrl: company.logoUrl,
+          address: company.address,
+          phone: company.phone,
+          email: company.email,
+        },
+        admin: {
+          full_name: admin.full_name.trim(),
+          email: admin.email.trim(),
+          password: admin.password,
+        },
       },
     });
 
-    if (signUpError) {
+    if (error || (data as any)?.error) {
       setSaving(false);
-      toast.error(signUpError.message);
+      toast.error((data as any)?.error || error?.message || "Création échouée");
       return;
     }
 
-    // Si la session est immédiatement disponible (auto-confirm), marquer onboarding terminé
-    if (signUpData.session && signUpData.user) {
-      await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", signUpData.user.id);
-      setSaving(false);
-      toast.success("Compte administrateur créé — bienvenue !");
-      navigate("/", { replace: true });
-      return;
-    }
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: admin.email.trim(),
+      password: admin.password,
+    });
 
     setSaving(false);
-    toast.success("Compte créé. Vérifiez votre email pour confirmer puis connectez-vous.");
-    navigate("/auth", { replace: true });
+    if (signInError) {
+      toast.success("Compte administrateur créé. Connectez-vous avec l'email et le mot de passe.");
+      navigate("/auth", { replace: true });
+      return;
+    }
+    toast.success("Compte administrateur créé — bienvenue !");
+    navigate("/", { replace: true });
   };
 
   return (
