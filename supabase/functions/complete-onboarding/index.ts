@@ -110,17 +110,18 @@ Deno.serve(async (req) => {
       }
     }
 
-    const rows = [
-      { key: "company_name", value: company.name.trim() },
-      { key: "company_logo", value: finalLogoUrl },
-      { key: "company_address", value: company.address ?? "" },
-      { key: "company_phone", value: company.phone ?? "" },
-      { key: "company_email", value: company.email ?? "" },
-      { key: "company_onboarded", value: true },
-    ];
+    // N'enregistrer les infos entreprise que si fournies (configuration via Paramètres après login)
+    const rows: Array<{ key: string; value: any }> = [];
+    if (company.name?.trim()) rows.push({ key: "company_name", value: company.name.trim() });
+    if (finalLogoUrl) rows.push({ key: "company_logo", value: finalLogoUrl });
+    if (company.address) rows.push({ key: "company_address", value: company.address });
+    if (company.phone) rows.push({ key: "company_phone", value: company.phone });
+    if (company.email) rows.push({ key: "company_email", value: company.email });
 
-    const { error: settingsErr } = await admin.from("app_settings").upsert(rows, { onConflict: "key" });
-    if (settingsErr) throw settingsErr;
+    if (rows.length > 0) {
+      const { error: settingsErr } = await admin.from("app_settings").upsert(rows, { onConflict: "key" });
+      if (settingsErr) throw settingsErr;
+    }
 
     if (adminUser) {
       const fullName = adminUser.full_name?.trim();
