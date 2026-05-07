@@ -84,7 +84,8 @@ Deno.serve(async (req) => {
         // Find existing user by email
         const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
         if (listErr) {
-          return new Response(JSON.stringify({ error: listErr.message }), {
+          console.error("[admin-create-user] listUsers", listErr);
+          return new Response(JSON.stringify({ error: "Impossible de vérifier l'utilisateur existant" }), {
             status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
