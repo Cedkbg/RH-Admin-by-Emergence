@@ -1,0 +1,1 @@
+UPDATE public.attendance_locations SET radius_meters = 150 WHERE radius_meters < 100;
