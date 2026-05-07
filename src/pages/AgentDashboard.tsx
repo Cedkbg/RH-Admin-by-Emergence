@@ -11,6 +11,14 @@ import { toast } from "sonner";
 interface Direction { id: string; name: string; code: string | null; manager_name: string | null; description: string | null; }
 interface Employee { id: string; first_name: string; last_name: string; position: string | null; email: string | null; direction_id: string | null; }
 interface Attendance { id: string; date: string; check_in: string | null; check_out: string | null; status: string; }
+interface PaySlip {
+  id: string; period: string; net_pay: number; status: string; paid_at: string | null;
+  base_salary: number; deductions: number; total_avantages: number; bonus: number; bonus_type: string | null;
+  contract_type: string | null; days_worked: number; hours_worked: number; hourly_rate: number; daily_rate: number;
+  transport: number; communication: number; loyer: number; allocation_familiale: number;
+  cnss: number; ipr: number; inpp: number; onem: number; other_deductions: number;
+}
+const fmt = (n: any) => Number(n || 0).toLocaleString("fr-FR");
 
 // Heure limite d'arrivee (configurable plus tard via app_settings)
 const ARRIVAL_DEADLINE_HOUR = 9; // 09:00
@@ -23,6 +31,7 @@ const AgentDashboard = () => {
   const [allDirections, setAllDirections] = useState<Direction[]>([]);
   const [showAllDirections, setShowAllDirections] = useState(false);
   const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
+  const [payslips, setPayslips] = useState<PaySlip[]>([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(new Date());
 
