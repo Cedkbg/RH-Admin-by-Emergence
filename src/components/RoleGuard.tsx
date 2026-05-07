@@ -7,10 +7,7 @@ interface Props {
   children: ReactNode;
 }
 
-/**
- * Restreint l'accès d'une page aux rôles listés.
- * Timeout de sécurité pour éviter le blocage.
- */
+/** Restreint l'accès d'une page aux rôles listés. */
 export function RoleGuard({ allowed, children }: Props) {
   const { hasAny, loading } = useUserRoles();
 
