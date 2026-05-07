@@ -101,7 +101,11 @@ const AgentDashboard = () => {
           setDirection(dir as Direction | null);
           setColleagues((cols as Employee[]) || []);
         }
-        if (emp?.id) await loadAttendance(emp.id);
+        if (emp?.id) {
+          await loadAttendance(emp.id);
+          const { data: ps } = await supabase.from("payroll").select("*").eq("employee_id", emp.id).order("period", { ascending: false }).limit(12);
+          setPayslips((ps as PaySlip[]) || []);
+        }
       } catch (err) {
         console.error("Erreur AgentDashboard:", err);
       } finally {
