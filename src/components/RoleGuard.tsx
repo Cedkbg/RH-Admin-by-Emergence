@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode } from "react";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { AccessDenied } from "@/components/AccessDenied";
 
@@ -7,24 +7,11 @@ interface Props {
   children: ReactNode;
 }
 
-/**
- * Restreint l'accès d'une page aux rôles listés.
- * Timeout de sécurité pour éviter le blocage.
- */
+/** Restreint l'accès d'une page aux rôles listés. */
 export function RoleGuard({ allowed, children }: Props) {
   const { hasAny, loading } = useUserRoles();
-  const [timeoutReached, setTimeoutReached] = useState(false);
 
-  // Timeout de 8 secondes - après ça on traite comme agent simple
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setTimeoutReached(true);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Si loading et pas encore timeout, on affiche le message
-  if (loading && !timeoutReached) {
+  if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center text-muted-foreground">
         Vérification des accès…
@@ -32,8 +19,7 @@ export function RoleGuard({ allowed, children }: Props) {
     );
   }
 
-  // Si timeout atteint ou pas de rôle, on autorise (sinon ça bloque tout)
-  const canAccess = !loading && hasAny(allowed);
+  const canAccess = hasAny(allowed);
   
   if (!canAccess) {
     return (

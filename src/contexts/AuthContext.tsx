@@ -5,6 +5,8 @@ import type { Session, User } from "@supabase/supabase-js";
 interface AuthContextValue {
   session: Session | null;
   user: User | null;
+  roles: string[];
+  rolesLoading: boolean;
   isAdmin: boolean;
   isSecretary: boolean;
   approvalStatus: "pending" | "approved" | "rejected" | null;
@@ -26,6 +28,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSecretary, setIsSecretary] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
@@ -35,23 +39,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const refreshUserData = async (uid: string | undefined) => {
     if (!uid) {
       if (!mountedRef.current) return;
+      setRoles([]);
+      setRolesLoading(false);
       setIsAdmin(false);
       setIsSecretary(false);
       setApprovalStatus(null);
       return;
     }
+    setRolesLoading(true);
     try {
       const [{ data: roles }, { data: profileData }] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", uid),
         supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
       ]);
       if (!mountedRef.current) return;
-      const roleSet = new Set((roles || []).map((r: any) => r.role));
+      const roleSet = new Set<string>((roles || []).map((r: any) => r.role));
+      setRoles(Array.from(roleSet));
       setIsAdmin(roleSet.has("admin"));
       setIsSecretary(roleSet.has("secretaire") || roleSet.has("admin"));
       setApprovalStatus((profileData?.approval_status as any) ?? "pending");
     } catch (e) {
       console.error("Erreur refreshUserData:", e);
+      if (mountedRef.current) setRoles([]);
+    } finally {
+      if (mountedRef.current) setRolesLoading(false);
     }
   };
 
@@ -72,6 +83,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setSession(newSession);
       setUser(newSession?.user ?? null);
+      setRolesLoading(!!newSession?.user?.id);
       setLoading(false);
       clearTimeout(safety);
 
@@ -79,6 +91,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (newSession?.user?.id) {
         setTimeout(() => { refreshUserData(newSession.user.id); }, 0);
       } else {
+        setRoles([]);
+        setRolesLoading(false);
         setIsAdmin(false);
         setIsSecretary(false);
         setApprovalStatus(null);
@@ -94,6 +108,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!data.session) {
           setSession(null);
           setUser(null);
+          setRoles([]);
+          setRolesLoading(false);
           setLoading(false);
           clearTimeout(safety);
           return;
@@ -109,6 +125,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           await supabase.auth.signOut({ scope: "local" }).catch(() => {});
           setSession(null);
           setUser(null);
+          setRoles([]);
+          setRolesLoading(false);
           setLoading(false);
           clearTimeout(safety);
           return;
@@ -116,6 +134,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setSession(data.session);
         setUser(userData.user);
+        setRolesLoading(true);
         setLoading(false);
         clearTimeout(safety);
         setTimeout(() => { refreshUserData(userData.user.id); }, 0);
@@ -162,6 +181,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (error) await supabase.auth.signOut({ scope: "local" }).catch(() => {});
     setSession(null);
     setUser(null);
+    setRoles([]);
+    setRolesLoading(false);
     setIsAdmin(false);
     setIsSecretary(false);
     setApprovalStatus(null);
@@ -169,7 +190,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, isAdmin, isSecretary, approvalStatus, loading, signIn, signUp, signOut, refreshApproval }}>
+    <AuthContext.Provider value={{ session, user, roles, rolesLoading, isAdmin, isSecretary, approvalStatus, loading, signIn, signUp, signOut, refreshApproval }}>
       {children}
     </AuthContext.Provider>
   );
