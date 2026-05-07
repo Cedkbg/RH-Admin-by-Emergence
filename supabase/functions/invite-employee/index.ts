@@ -87,7 +87,8 @@ Deno.serve(async (req) => {
           user_metadata: { ...(existing.user_metadata ?? {}), full_name },
         });
         if (updErr) {
-          return new Response(JSON.stringify({ error: updErr.message }), {
+          console.error("[invite-employee] update", updErr);
+          return new Response(JSON.stringify({ error: "Mise à jour du compte échouée" }), {
             status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
