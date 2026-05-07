@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
       ]);
       if (!mountedRef.current) return;
-      const roleSet = new Set((roles || []).map((r: any) => r.role));
+      const roleSet = new Set<string>((roles || []).map((r: any) => r.role));
       setRoles(Array.from(roleSet));
       setIsAdmin(roleSet.has("admin"));
       setIsSecretary(roleSet.has("secretaire") || roleSet.has("admin"));
@@ -181,6 +181,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (error) await supabase.auth.signOut({ scope: "local" }).catch(() => {});
     setSession(null);
     setUser(null);
+    setRoles([]);
+    setRolesLoading(false);
     setIsAdmin(false);
     setIsSecretary(false);
     setApprovalStatus(null);
