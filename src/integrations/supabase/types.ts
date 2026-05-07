@@ -510,6 +510,7 @@ export type Database = {
           first_name: string
           gender: string | null
           hire_date: string | null
+          hourly_rate: number | null
           id: string
           last_name: string
           manager_id: string | null
@@ -531,6 +532,7 @@ export type Database = {
           first_name: string
           gender?: string | null
           hire_date?: string | null
+          hourly_rate?: number | null
           id?: string
           last_name: string
           manager_id?: string | null
@@ -552,6 +554,7 @@ export type Database = {
           first_name?: string
           gender?: string | null
           hire_date?: string | null
+          hourly_rate?: number | null
           id?: string
           last_name?: string
           manager_id?: string | null
@@ -786,11 +789,19 @@ export type Database = {
         Row: {
           base_salary: number
           bonus: number
+          cnss: number
+          contract_type: string | null
           created_at: string
           deductions: number
           employee_id: string
+          hourly_rate: number
+          hours_worked: number
           id: string
+          inpp: number
+          ipr: number
           net_pay: number | null
+          onem: number
+          other_deductions: number
           paid_at: string | null
           period: string
           status: string
@@ -799,11 +810,19 @@ export type Database = {
         Insert: {
           base_salary?: number
           bonus?: number
+          cnss?: number
+          contract_type?: string | null
           created_at?: string
           deductions?: number
           employee_id: string
+          hourly_rate?: number
+          hours_worked?: number
           id?: string
+          inpp?: number
+          ipr?: number
           net_pay?: number | null
+          onem?: number
+          other_deductions?: number
           paid_at?: string | null
           period: string
           status?: string
@@ -812,11 +831,19 @@ export type Database = {
         Update: {
           base_salary?: number
           bonus?: number
+          cnss?: number
+          contract_type?: string | null
           created_at?: string
           deductions?: number
           employee_id?: string
+          hourly_rate?: number
+          hours_worked?: number
           id?: string
+          inpp?: number
+          ipr?: number
           net_pay?: number | null
+          onem?: number
+          other_deductions?: number
           paid_at?: string | null
           period?: string
           status?: string
