@@ -101,7 +101,8 @@ Deno.serve(async (req) => {
           password, email_confirm: true, user_metadata: { full_name },
         });
       } else {
-        return new Response(JSON.stringify({ error: msg || "Création échouée" }), {
+        console.error("[admin-create-user] createUser", createErr);
+        return new Response(JSON.stringify({ error: "Création utilisateur échouée" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
