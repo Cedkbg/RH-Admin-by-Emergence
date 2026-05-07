@@ -77,6 +77,8 @@ Deno.serve(async (req) => {
     const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     const existing = list?.users.find((u) => (u.email ?? "").toLowerCase() === email.toLowerCase());
 
+    let alreadyActive = false;
+
     if (existing) {
       invitedUserId = existing.id;
       // Si demandé OU si l'utilisateur n'avait pas confirmé son email : on (re)définit le mot de passe
@@ -93,13 +95,9 @@ Deno.serve(async (req) => {
           });
         }
       } else {
-        // Compte existe déjà et est actif : ne pas écraser le mot de passe
-        return new Response(JSON.stringify({
-          ok: true,
-          user_id: existing.id,
-          already_active: true,
-          message: "Ce compte existe déjà. L'agent doit utiliser son mot de passe actuel ou demander une réinitialisation.",
-        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        // Compte existe déjà et est actif : ne pas écraser le mot de passe,
+        // mais continuer pour approuver le profil, lier la fiche agent et préserver ses rôles existants.
+        alreadyActive = true;
       }
     } else {
       // Création directe avec email confirmé + mot de passe
@@ -124,8 +122,7 @@ Deno.serve(async (req) => {
       id: invitedUserId, email, full_name, approval_status: "approved", onboarding_completed: true,
     });
 
-    // Rôle 'employee' (retire 'admin' éventuel)
-    await admin.from("user_roles").delete().eq("user_id", invitedUserId).eq("role", "admin");
+    // Rôle 'employee' ajouté sans retirer les rôles existants (admin/RH/DG/etc.).
     await admin.from("user_roles").upsert(
       { user_id: invitedUserId, role: "employee" },
       { onConflict: "user_id,role" },
@@ -142,10 +139,14 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       user_id: invitedUserId,
+      already_active: alreadyActive,
       is_new: isNew,
       email,
-      temp_password: tempPassword,
+      temp_password: alreadyActive && !reset_password ? null : tempPassword,
       login_url: loginUrl,
+      message: alreadyActive
+        ? "Ce compte existe déjà. L'agent doit utiliser son mot de passe actuel ou demander une réinitialisation."
+        : undefined,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
