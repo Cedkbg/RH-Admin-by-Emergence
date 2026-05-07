@@ -245,6 +245,7 @@ const PaieForm = ({
 };
 
 // === Bulletin de paie imprimable ===
+const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const printBulletin = (pay: Pay, emp: Employee | undefined, dir: string | null, dep: string | null) => {
   const w = window.open("", "_blank", "width=800,height=900");
   if (!w) return;
