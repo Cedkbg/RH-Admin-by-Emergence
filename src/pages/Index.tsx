@@ -12,39 +12,8 @@ import AgentDashboard from "./AgentDashboard";
 const STAFF_ROLES = ["admin", "dg", "dga", "manager", "rh", "secretaire", "assistant_direction"];
 
 const Index = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, roles, rolesLoading } = useAuth();
   const [stats, setStats] = useState({ employees: 0, directions: 0, jobs: 0, documents: 0 });
-  const [roles, setRoles] = useState<string[]>([]);
-  const [rolesLoading, setRolesLoading] = useState(true);
-
-  // Chargement direct des roles avec timeout court (3 secondes max)
-  useEffect(() => {
-    if (!user || authLoading) return;
-    
-    const timer = setTimeout(() => {
-      setRolesLoading(false);
-    }, 3000);
-    
-    const fetchRoles = async () => {
-      try {
-        const { data } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id);
-        
-        setRoles((data || []).map((r: any) => r.role));
-      } catch (e) {
-        console.error("Erreur roles:", e);
-        setRoles([]);
-      } finally {
-        setRolesLoading(false);
-        clearTimeout(timer);
-      }
-    };
-    
-    fetchRoles();
-    return () => clearTimeout(timer);
-  }, [user?.id, authLoading]);
 
   // Si auth pas pret, on attend un peu
   if (authLoading) {
@@ -61,8 +30,15 @@ const Index = () => {
     return null;
   }
 
-  // Determiner si staff (avec timeout)
-  const isStaff = !rolesLoading && roles.length > 0 && roles.some((r: string) => STAFF_ROLES.includes(r));
+  if (rolesLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-muted-foreground">Vérification des accès...</div>
+      </div>
+    );
+  }
+
+  const isStaff = roles.some((r: string) => STAFF_ROLES.includes(r));
 
   // Charger les stats si staff
   useEffect(() => {
