@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Shield, ShieldOff, Check, X, Clock, RotateCcw, ArrowLeft } from "lucide-react";
+import { Shield, ShieldOff, Check, X, Clock, RotateCcw, ArrowLeft, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +22,8 @@ const Admin = () => {
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -35,6 +37,32 @@ const Admin = () => {
   };
 
   useEffect(() => { refresh(); }, []);
+
+  const loadAudit = async () => {
+    setAuditLoading(true);
+    const { data, error } = await supabase
+      .from("role_audit_log" as any)
+      .select("*")
+      .order("performed_at", { ascending: false })
+      .limit(200);
+    if (error) { toast.error("Impossible de charger le journal"); setAuditLoading(false); return; }
+    const logs = (data as any[]) || [];
+    const userIds = Array.from(new Set([
+      ...logs.map(l => l.target_user_id),
+      ...logs.map(l => l.performed_by).filter(Boolean),
+    ]));
+    let profMap = new Map<string, any>();
+    if (userIds.length) {
+      const { data: profs } = await supabase.from("profiles").select("id,full_name,email").in("id", userIds);
+      (profs || []).forEach((p: any) => profMap.set(p.id, p));
+    }
+    setAuditLogs(logs.map(l => ({
+      ...l,
+      target: profMap.get(l.target_user_id),
+      performer: l.performed_by ? profMap.get(l.performed_by) : null,
+    })));
+    setAuditLoading(false);
+  };
 
   const pending = useMemo(() => profiles.filter((p) => p.approval_status === "pending"), [profiles]);
   const approved = useMemo(() => profiles.filter((p) => p.approval_status === "approved"), [profiles]);
@@ -155,7 +183,7 @@ const Admin = () => {
         <p className="text-sm text-muted-foreground">Validation des comptes et gestion des rôles.</p>
       </div>
 
-      <Tabs defaultValue="pending">
+      <Tabs defaultValue="pending" onValueChange={(v) => { if (v === "audit") loadAudit(); }}>
         <TabsList>
           <TabsTrigger value="pending" className="relative">
             <Clock className="mr-2 h-4 w-4" /> En attente
@@ -171,6 +199,9 @@ const Admin = () => {
           <TabsTrigger value="rejected">
             <X className="mr-2 h-4 w-4" /> Refusés ({rejected.length})
           </TabsTrigger>
+          <TabsTrigger value="audit">
+            <History className="mr-2 h-4 w-4" /> Journal des rôles
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending">
@@ -181,6 +212,52 @@ const Admin = () => {
         </TabsContent>
         <TabsContent value="rejected">
           <Table rows={rejected} mode="rejected" emptyText="Aucun compte refusé." />
+        </TabsContent>
+        <TabsContent value="audit">
+          <section className="rounded-xl border bg-card shadow-sm overflow-hidden mt-4">
+            {auditLoading ? (
+              <div className="p-12 text-center text-muted-foreground">Chargement…</div>
+            ) : auditLogs.length === 0 ? (
+              <div className="p-12 text-center text-muted-foreground">Aucune modification de rôle enregistrée.</div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-secondary/40 text-left text-xs uppercase text-muted-foreground">
+                    <th className="p-4">Date</th>
+                    <th className="p-4">Utilisateur cible</th>
+                    <th className="p-4">Rôle</th>
+                    <th className="p-4">Action</th>
+                    <th className="p-4">Effectué par</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditLogs.map((l) => (
+                    <tr key={l.id} className="border-b hover:bg-muted/50">
+                      <td className="p-4 text-sm">{new Date(l.performed_at).toLocaleString("fr-FR")}</td>
+                      <td className="p-4">
+                        <div className="font-medium">{l.target?.full_name || "—"}</div>
+                        <div className="text-xs text-muted-foreground">{l.target?.email || l.target_user_id}</div>
+                      </td>
+                      <td className="p-4"><Badge variant="outline">{l.role}</Badge></td>
+                      <td className="p-4">
+                        {l.action === "granted"
+                          ? <Badge>Attribué</Badge>
+                          : <Badge variant="secondary">Retiré</Badge>}
+                      </td>
+                      <td className="p-4 text-sm">
+                        {l.performer ? (
+                          <>
+                            <div className="font-medium">{l.performer.full_name || "—"}</div>
+                            <div className="text-xs text-muted-foreground">{l.performer.email}</div>
+                          </>
+                        ) : <span className="text-muted-foreground">Système</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
         </TabsContent>
       </Tabs>
     </div>
