@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, Users, QrCode, CalendarDays, Mail, ChevronDown, Network, CheckCircle2, Clock, AlertTriangle, Smartphone, LogIn, LogOut } from "lucide-react";
+import { Building2, Users, QrCode, CalendarDays, Mail, ChevronDown, Network, CheckCircle2, Clock, AlertTriangle, Smartphone, LogIn, LogOut, Wallet, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -11,6 +11,14 @@ import { toast } from "sonner";
 interface Direction { id: string; name: string; code: string | null; manager_name: string | null; description: string | null; }
 interface Employee { id: string; first_name: string; last_name: string; position: string | null; email: string | null; direction_id: string | null; }
 interface Attendance { id: string; date: string; check_in: string | null; check_out: string | null; status: string; }
+interface PaySlip {
+  id: string; period: string; net_pay: number; status: string; paid_at: string | null;
+  base_salary: number; deductions: number; total_avantages: number; bonus: number; bonus_type: string | null;
+  contract_type: string | null; days_worked: number; hours_worked: number; hourly_rate: number; daily_rate: number;
+  transport: number; communication: number; loyer: number; allocation_familiale: number;
+  cnss: number; ipr: number; inpp: number; onem: number; other_deductions: number;
+}
+const fmt = (n: any) => Number(n || 0).toLocaleString("fr-FR");
 
 // Heure limite d'arrivee (configurable plus tard via app_settings)
 const ARRIVAL_DEADLINE_HOUR = 9; // 09:00
@@ -23,6 +31,7 @@ const AgentDashboard = () => {
   const [allDirections, setAllDirections] = useState<Direction[]>([]);
   const [showAllDirections, setShowAllDirections] = useState(false);
   const [todayAttendance, setTodayAttendance] = useState<Attendance | null>(null);
+  const [payslips, setPayslips] = useState<PaySlip[]>([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(new Date());
 
@@ -92,7 +101,11 @@ const AgentDashboard = () => {
           setDirection(dir as Direction | null);
           setColleagues((cols as Employee[]) || []);
         }
-        if (emp?.id) await loadAttendance(emp.id);
+        if (emp?.id) {
+          await loadAttendance(emp.id);
+          const { data: ps } = await supabase.from("payroll").select("*").eq("employee_id", emp.id).order("period", { ascending: false }).limit(12);
+          setPayslips((ps as PaySlip[]) || []);
+        }
       } catch (err) {
         console.error("Erreur AgentDashboard:", err);
       } finally {
@@ -297,6 +310,43 @@ const AgentDashboard = () => {
           </div>
         </Link>
       </section>
+
+      {payslips.length > 0 && (
+        <section className="rounded-xl border bg-card shadow-sm overflow-hidden">
+          <header className="border-b p-4 flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-primary" />
+            <h2 className="font-semibold">Mes bulletins de paie</h2>
+            <Badge variant="secondary" className="ml-1">{payslips.length}</Badge>
+          </header>
+          <ul className="divide-y">
+            {payslips.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-3 p-3 hover:bg-muted/30">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Période {p.period}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Net : <span className="font-bold text-primary">{fmt(p.net_pay)} FC</span>
+                    {" • "}<Badge variant="outline" className="text-[10px]">{p.status}</Badge>
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => {
+                  const w = window.open("", "_blank", "width=800,height=900");
+                  if (!w) return;
+                  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Bulletin ${p.period}</title>
+<style>body{font-family:Arial;padding:32px;color:#222;max-width:780px;margin:auto}h1{margin:0 0 4px;font-size:20px}h2{font-size:14px;margin:18px 0 6px;border-bottom:2px solid #333}table{width:100%;border-collapse:collapse}td{padding:4px 6px;border-bottom:1px solid #eee;font-size:13px}.r{text-align:right}.tot{font-weight:bold;background:#f0f4ff}</style>
+</head><body>
+<h1>BULLETIN DE PAIE</h1><p>Période : <b>${p.period}</b> &nbsp;|&nbsp; ${me?.first_name} ${me?.last_name} &nbsp;|&nbsp; Contrat : ${p.contract_type || "—"}</p>
+<h2>Présence</h2><table><tr><td>Jours prestés</td><td class="r">${fmt(p.days_worked)}</td></tr><tr><td>Heures</td><td class="r">${fmt(p.hours_worked)} h</td></tr><tr class="tot"><td>Salaire brut</td><td class="r">${fmt(p.base_salary)} FC</td></tr></table>
+<h2>Avantages</h2><table><tr><td>Transport</td><td class="r">${fmt(p.transport)}</td></tr><tr><td>Communication</td><td class="r">${fmt(p.communication)}</td></tr><tr><td>Loyer</td><td class="r">${fmt(p.loyer)}</td></tr><tr><td>Allocation familiale</td><td class="r">${fmt(p.allocation_familiale)}</td></tr><tr><td>Prime ${p.bonus_type || ""}</td><td class="r">${fmt(p.bonus)}</td></tr><tr class="tot"><td>Total</td><td class="r">+ ${fmt(p.total_avantages)} FC</td></tr></table>
+<h2>Retenues</h2><table><tr><td>CNSS</td><td class="r">${fmt(p.cnss)}</td></tr><tr><td>IPR</td><td class="r">${fmt(p.ipr)}</td></tr><tr><td>INPP</td><td class="r">${fmt(p.inpp)}</td></tr><tr><td>ONEM</td><td class="r">${fmt(p.onem)}</td></tr><tr><td>Autres</td><td class="r">${fmt(p.other_deductions)}</td></tr><tr class="tot"><td>Total</td><td class="r">- ${fmt(p.deductions)} FC</td></tr></table>
+<h2>Net à payer</h2><table><tr class="tot" style="background:#dbeafe;font-size:18px"><td>SALAIRE NET</td><td class="r">${fmt(p.net_pay)} FC</td></tr></table>
+<script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`);
+                  w.document.close();
+                }}><Printer className="h-3.5 w-3.5 mr-1" /> Bulletin</Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {colleagues.length > 0 && (
         <section className="rounded-xl border bg-card shadow-sm overflow-hidden">
