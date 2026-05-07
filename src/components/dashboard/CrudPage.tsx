@@ -173,7 +173,7 @@ export function CrudPage<T extends { id: string }>({
       </section>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Modifier" : "Nouveau"} — {title}</DialogTitle>
             <DialogDescription>{editingId ? "Mettez à jour les informations." : "Renseignez les informations."}</DialogDescription>
