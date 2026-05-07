@@ -28,13 +28,15 @@ const AGENT_ALLOWED_PATHS = new Set(["/", "/presence"]);
 
 export function AppSidebar() {
   const location = useLocation();
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, user, roles } = useAuth();
   const [logoUrl, setLogoUrl] = useState<string>(companyLogo);
   const [companyName, setCompanyName] = useState<string>("EMERGENCE DRC");
-  const [canManageCabinets, setCanManageCabinets] = useState(false);
-  const [hasOpsAccess, setHasOpsAccess] = useState(false);
-  const [isExecutiveOnly, setIsExecutiveOnly] = useState(false);
-  const [isAgentOnly, setIsAgentOnly] = useState(false);
+  const canManageCabinets = roles.some((r) => CABINET_ROLES.has(r));
+  const hasOpsAccess = roles.some((r) => OPS_ROLES.has(r));
+  const hasField = roles.some((r) => ["admin", "manager", "rh", "assistant_direction"].includes(r));
+  const hasExec = roles.some((r) => EXECUTIVE_ROLES.has(r));
+  const isExecutiveOnly = hasExec && !hasField;
+  const isAgentOnly = !!user && !roles.some((r) => STAFF_ROLES.has(r));
 
   useEffect(() => {
     (async () => {
@@ -49,21 +51,6 @@ export function AppSidebar() {
       });
     })();
   }, []);
-
-  useEffect(() => {
-    if (!user) { setCanManageCabinets(false); setHasOpsAccess(false); setIsExecutiveOnly(false); setIsAgentOnly(false); return; }
-    (async () => {
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
-      const roles = (data || []).map((r: any) => r.role);
-      setCanManageCabinets(roles.some((r) => CABINET_ROLES.has(r)));
-      setHasOpsAccess(roles.some((r) => OPS_ROLES.has(r)));
-      const hasField = roles.some((r) => ["admin", "manager", "rh", "assistant_direction"].includes(r));
-      const hasExec = roles.some((r) => EXECUTIVE_ROLES.has(r));
-      setIsExecutiveOnly(hasExec && !hasField);
-      // Agent = aucun rôle staff
-      setIsAgentOnly(!roles.some((r) => STAFF_ROLES.has(r)));
-    })();
-  }, [user]);
 
   return (
     <Sidebar collapsible="icon">
