@@ -110,7 +110,8 @@ Deno.serve(async (req) => {
         user_metadata: { full_name },
       });
       if (createErr || !created?.user) {
-        return new Response(JSON.stringify({ error: createErr?.message || "Création échouée" }), {
+        console.error("[invite-employee] create", createErr);
+        return new Response(JSON.stringify({ error: "Création du compte échouée" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
