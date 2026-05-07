@@ -38,6 +38,32 @@ const Admin = () => {
 
   useEffect(() => { refresh(); }, []);
 
+  const loadAudit = async () => {
+    setAuditLoading(true);
+    const { data, error } = await supabase
+      .from("role_audit_log" as any)
+      .select("*")
+      .order("performed_at", { ascending: false })
+      .limit(200);
+    if (error) { toast.error("Impossible de charger le journal"); setAuditLoading(false); return; }
+    const logs = (data as any[]) || [];
+    const userIds = Array.from(new Set([
+      ...logs.map(l => l.target_user_id),
+      ...logs.map(l => l.performed_by).filter(Boolean),
+    ]));
+    let profMap = new Map<string, any>();
+    if (userIds.length) {
+      const { data: profs } = await supabase.from("profiles").select("id,full_name,email").in("id", userIds);
+      (profs || []).forEach((p: any) => profMap.set(p.id, p));
+    }
+    setAuditLogs(logs.map(l => ({
+      ...l,
+      target: profMap.get(l.target_user_id),
+      performer: l.performed_by ? profMap.get(l.performed_by) : null,
+    })));
+    setAuditLoading(false);
+  };
+
   const pending = useMemo(() => profiles.filter((p) => p.approval_status === "pending"), [profiles]);
   const approved = useMemo(() => profiles.filter((p) => p.approval_status === "approved"), [profiles]);
   const rejected = useMemo(() => profiles.filter((p) => p.approval_status === "rejected"), [profiles]);
