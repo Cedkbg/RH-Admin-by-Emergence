@@ -791,6 +791,7 @@ export type Database = {
           assiette_ipr: number
           base_salary: number
           bonus: number
+          bonus_type: string | null
           cnss: number
           cnss_patronal: number
           communication: number
@@ -821,6 +822,7 @@ export type Database = {
           assiette_ipr?: number
           base_salary?: number
           bonus?: number
+          bonus_type?: string | null
           cnss?: number
           cnss_patronal?: number
           communication?: number
@@ -851,6 +853,7 @@ export type Database = {
           assiette_ipr?: number
           base_salary?: number
           bonus?: number
+          bonus_type?: string | null
           cnss?: number
           cnss_patronal?: number
           communication?: number
