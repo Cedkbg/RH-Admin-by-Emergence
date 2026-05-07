@@ -14,6 +14,27 @@ const STAFF_ROLES = ["admin", "dg", "dga", "manager", "rh", "secretaire", "assis
 const Index = () => {
   const { user, loading: authLoading, roles, rolesLoading } = useAuth();
   const [stats, setStats] = useState({ employees: 0, directions: 0, jobs: 0, documents: 0 });
+  const isStaff = roles.some((r: string) => STAFF_ROLES.includes(r));
+
+  // Charger les stats si staff
+  useEffect(() => {
+    if (authLoading || rolesLoading || !isStaff) return;
+    
+    (async () => {
+      const [emp, dir, jobs, docs] = await Promise.all([
+        supabase.from("employees").select("*", { count: "exact", head: true }),
+        supabase.from("directions").select("*", { count: "exact", head: true }),
+        supabase.from("job_offers").select("*", { count: "exact", head: true }).eq("status", "open"),
+        supabase.from("documents").select("*", { count: "exact", head: true }),
+      ]);
+      setStats({
+        employees: emp.count ?? 0,
+        directions: dir.count ?? 0,
+        jobs: jobs.count ?? 0,
+        documents: docs.count ?? 0,
+      });
+    })();
+  }, [authLoading, rolesLoading, isStaff]);
 
   // Si auth pas pret, on attend un peu
   if (authLoading) {
@@ -37,28 +58,6 @@ const Index = () => {
       </div>
     );
   }
-
-  const isStaff = roles.some((r: string) => STAFF_ROLES.includes(r));
-
-  // Charger les stats si staff
-  useEffect(() => {
-    if (!isStaff) return;
-    
-    (async () => {
-      const [emp, dir, jobs, docs] = await Promise.all([
-        supabase.from("employees").select("*", { count: "exact", head: true }),
-        supabase.from("directions").select("*", { count: "exact", head: true }),
-        supabase.from("job_offers").select("*", { count: "exact", head: true }).eq("status", "open"),
-        supabase.from("documents").select("*", { count: "exact", head: true }),
-      ]);
-      setStats({
-        employees: emp.count ?? 0,
-        directions: dir.count ?? 0,
-        jobs: jobs.count ?? 0,
-        documents: docs.count ?? 0,
-      });
-    })();
-  }, [isStaff]);
 
   // Afficher dashboard agent si:
   // - Pas staff (pas de roles staff)
