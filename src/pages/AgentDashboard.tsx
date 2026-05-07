@@ -19,6 +19,7 @@ interface PaySlip {
   cnss: number; ipr: number; inpp: number; onem: number; other_deductions: number;
 }
 const fmt = (n: any) => Number(n || 0).toLocaleString("fr-FR");
+const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
 // Heure limite d'arrivee (configurable plus tard via app_settings)
 const ARRIVAL_DEADLINE_HOUR = 9; // 09:00
