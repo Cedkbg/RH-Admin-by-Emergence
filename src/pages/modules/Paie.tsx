@@ -250,7 +250,7 @@ const printBulletin = (pay: Pay, emp: Employee | undefined, dir: string | null, 
   const w = window.open("", "_blank", "width=800,height=900");
   if (!w) return;
   const html = `
-<!doctype html><html><head><meta charset="utf-8"><title>Bulletin ${pay.period} — ${emp?.first_name} ${emp?.last_name}</title>
+<!doctype html><html><head><meta charset="utf-8"><title>Bulletin ${esc(pay.period)} — ${esc(emp?.first_name)} ${esc(emp?.last_name)}</title>
 <style>
 body{font-family:Arial,sans-serif;padding:32px;color:#222;max-width:780px;margin:auto}
 h1{margin:0 0 4px;font-size:20px}h2{font-size:14px;margin:18px 0 6px;border-bottom:2px solid #333;padding-bottom:2px}
@@ -259,14 +259,14 @@ table{width:100%;border-collapse:collapse;margin:6px 0}td{padding:4px 6px;border
 .head{display:flex;justify-content:space-between;border-bottom:3px solid #1e40af;padding-bottom:8px;margin-bottom:12px}
 .box{border:1px solid #ddd;padding:10px;border-radius:6px;font-size:12px;margin-bottom:10px}
 </style></head><body>
-<div class="head"><div><h1>BULLETIN DE PAIE</h1><div>Période : <b>${pay.period}</b></div></div>
-<div style="text-align:right;font-size:12px"><div><b>Statut :</b> ${pay.status}</div>${pay.paid_at ? `<div>Payé le ${pay.paid_at}</div>` : ""}</div></div>
+<div class="head"><div><h1>BULLETIN DE PAIE</h1><div>Période : <b>${esc(pay.period)}</b></div></div>
+<div style="text-align:right;font-size:12px"><div><b>Statut :</b> ${esc(pay.status)}</div>${pay.paid_at ? `<div>Payé le ${esc(pay.paid_at)}</div>` : ""}</div></div>
 
 <div class="box">
-<b>${emp?.first_name} ${emp?.last_name}</b><br/>
-Matricule : ${emp?.matricule || "—"} &nbsp;|&nbsp; Fonction : ${emp?.position || "—"}<br/>
-Direction : ${dir || "—"} &nbsp;|&nbsp; Département : ${dep || "—"}<br/>
-Contrat : ${pay.contract_type || "—"}
+<b>${esc(emp?.first_name)} ${esc(emp?.last_name)}</b><br/>
+Matricule : ${esc(emp?.matricule || "—")} &nbsp;|&nbsp; Fonction : ${esc(emp?.position || "—")}<br/>
+Direction : ${esc(dir || "—")} &nbsp;|&nbsp; Département : ${esc(dep || "—")}<br/>
+Contrat : ${esc(pay.contract_type || "—")}
 </div>
 
 <h2>Présence & Rémunération de base</h2>
