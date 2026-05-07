@@ -284,7 +284,7 @@ Contrat : ${esc(pay.contract_type || "—")}
 <tr><td>Communication</td><td class="r">${fmt(pay.communication)}</td></tr>
 <tr><td>Loyer</td><td class="r">${fmt(pay.loyer)}</td></tr>
 <tr><td>Allocation familiale</td><td class="r">${fmt(pay.allocation_familiale)}</td></tr>
-<tr><td>Prime ${pay.bonus_type ? `(${pay.bonus_type})` : ""}</td><td class="r">${fmt(pay.bonus)}</td></tr>
+<tr><td>Prime ${pay.bonus_type ? `(${esc(pay.bonus_type)})` : ""}</td><td class="r">${fmt(pay.bonus)}</td></tr>
 <tr class="tot"><td>Total avantages</td><td class="r">+ ${fmt(pay.total_avantages)} FC</td></tr>
 </table>
 
