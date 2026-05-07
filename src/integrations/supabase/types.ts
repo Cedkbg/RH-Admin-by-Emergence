@@ -787,11 +787,17 @@ export type Database = {
       }
       payroll: {
         Row: {
+          allocation_familiale: number
+          assiette_ipr: number
           base_salary: number
           bonus: number
           cnss: number
+          cnss_patronal: number
+          communication: number
           contract_type: string | null
           created_at: string
+          daily_rate: number
+          days_worked: number
           deductions: number
           employee_id: string
           hourly_rate: number
@@ -799,20 +805,29 @@ export type Database = {
           id: string
           inpp: number
           ipr: number
+          loyer: number
           net_pay: number | null
           onem: number
           other_deductions: number
           paid_at: string | null
           period: string
           status: string
+          total_avantages: number
+          transport: number
           updated_at: string
         }
         Insert: {
+          allocation_familiale?: number
+          assiette_ipr?: number
           base_salary?: number
           bonus?: number
           cnss?: number
+          cnss_patronal?: number
+          communication?: number
           contract_type?: string | null
           created_at?: string
+          daily_rate?: number
+          days_worked?: number
           deductions?: number
           employee_id: string
           hourly_rate?: number
@@ -820,20 +835,29 @@ export type Database = {
           id?: string
           inpp?: number
           ipr?: number
+          loyer?: number
           net_pay?: number | null
           onem?: number
           other_deductions?: number
           paid_at?: string | null
           period: string
           status?: string
+          total_avantages?: number
+          transport?: number
           updated_at?: string
         }
         Update: {
+          allocation_familiale?: number
+          assiette_ipr?: number
           base_salary?: number
           bonus?: number
           cnss?: number
+          cnss_patronal?: number
+          communication?: number
           contract_type?: string | null
           created_at?: string
+          daily_rate?: number
+          days_worked?: number
           deductions?: number
           employee_id?: string
           hourly_rate?: number
@@ -841,12 +865,15 @@ export type Database = {
           id?: string
           inpp?: number
           ipr?: number
+          loyer?: number
           net_pay?: number | null
           onem?: number
           other_deductions?: number
           paid_at?: string | null
           period?: string
           status?: string
+          total_avantages?: number
+          transport?: number
           updated_at?: string
         }
         Relationships: [
