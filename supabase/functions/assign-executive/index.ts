@@ -72,7 +72,8 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .upsert({ user_id, role }, { onConflict: "user_id,role" });
     if (roleErr) {
-      return new Response(JSON.stringify({ error: roleErr.message }), {
+      console.error("[assign-executive] role", roleErr);
+      return new Response(JSON.stringify({ error: "Attribution du rôle échouée" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

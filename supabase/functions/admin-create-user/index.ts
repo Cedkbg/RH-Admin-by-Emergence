@@ -84,7 +84,8 @@ Deno.serve(async (req) => {
         // Find existing user by email
         const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
         if (listErr) {
-          return new Response(JSON.stringify({ error: listErr.message }), {
+          console.error("[admin-create-user] listUsers", listErr);
+          return new Response(JSON.stringify({ error: "Impossible de vérifier l'utilisateur existant" }), {
             status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
@@ -100,7 +101,8 @@ Deno.serve(async (req) => {
           password, email_confirm: true, user_metadata: { full_name },
         });
       } else {
-        return new Response(JSON.stringify({ error: msg || "Création échouée" }), {
+        console.error("[admin-create-user] createUser", createErr);
+        return new Response(JSON.stringify({ error: "Création utilisateur échouée" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -121,7 +123,8 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
     if (roleErr) {
-      return new Response(JSON.stringify({ error: roleErr.message }), {
+      console.error("[admin-create-user] role assign", roleErr);
+      return new Response(JSON.stringify({ error: "Attribution du rôle échouée" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

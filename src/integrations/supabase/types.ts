@@ -198,10 +198,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "attendance_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "attendance_location_id_fkey"
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "attendance_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_locations_public"
             referencedColumns: ["id"]
           },
         ]
@@ -495,6 +509,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "documents_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       employees: {
@@ -664,6 +685,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -887,6 +915,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "payroll_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       performance_reviews: {
@@ -926,6 +961,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_reviews_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -993,6 +1035,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "talents_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       tasks: {
@@ -1035,6 +1084,13 @@ export type Database = {
             columns: ["assignee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -1129,11 +1185,100 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "wellbeing_surveys_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      attendance_locations_public: {
+        Row: {
+          active: boolean | null
+          address: string | null
+          created_at: string | null
+          id: string | null
+          latitude: number | null
+          longitude: number | null
+          name: string | null
+          radius_meters: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          address?: string | null
+          created_at?: string | null
+          id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string | null
+          radius_meters?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          address?: string | null
+          created_at?: string | null
+          id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string | null
+          radius_meters?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      employees_directory: {
+        Row: {
+          department_id: string | null
+          direction_id: string | null
+          email: string | null
+          first_name: string | null
+          gender: string | null
+          id: string | null
+          last_name: string | null
+          matricule: string | null
+          position: string | null
+          status: string | null
+        }
+        Insert: {
+          department_id?: string | null
+          direction_id?: string | null
+          email?: string | null
+          first_name?: string | null
+          gender?: string | null
+          id?: string | null
+          last_name?: string | null
+          matricule?: string | null
+          position?: string | null
+          status?: string | null
+        }
+        Update: {
+          department_id?: string | null
+          direction_id?: string | null
+          email?: string | null
+          first_name?: string | null
+          gender?: string | null
+          id?: string | null
+          last_name?: string | null
+          matricule?: string | null
+          position?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_direction_id_fkey"
+            columns: ["direction_id"]
+            isOneToOne: false
+            referencedRelation: "directions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_access_direction: {

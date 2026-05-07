@@ -32,9 +32,9 @@ const PresenceLocations = () => {
 
   const refresh = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("attendance_locations").select("*").order("name");
+    const { data, error } = await supabase.from("attendance_locations_public" as any).select("*").order("name");
     if (error) toast.error(error.message);
-    setRows((data as Loc[]) || []);
+    setRows(((data as unknown) as Loc[]) || []);
     setLoading(false);
   };
   useEffect(() => { refresh(); }, []);
