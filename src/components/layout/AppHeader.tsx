@@ -28,7 +28,7 @@ const ROLE_PRIORITY = ["admin", "dg", "dga", "rh", "manager", "assistant_directi
 
 export function AppHeader({ title }: AppHeaderProps) {
   const { user, isAdmin, signOut } = useAuth();
-  const { roles } = useUserRoles();
+  const { roles, loading: rolesLoading } = useUserRoles();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
 
@@ -104,7 +104,7 @@ export function AppHeader({ title }: AppHeaderProps) {
           <DropdownMenuSeparator />
           <div className="px-2 py-2 text-xs text-muted-foreground">
             <p className="font-medium text-foreground">Diagnostic profil</p>
-            <p>Rôle : {roleLabel || "Agent"}</p>
+            <p>Rôle : {rolesLoading ? "Vérification..." : roleLabel || "Agent"}</p>
             <p>Dernière mise à jour : {formattedLastUpdated}</p>
           </div>
           <DropdownMenuSeparator />

@@ -28,7 +28,7 @@ const AGENT_ALLOWED_PATHS = new Set(["/", "/presence"]);
 
 export function AppSidebar() {
   const location = useLocation();
-  const { isAdmin, user, roles } = useAuth();
+  const { isAdmin, user, roles, rolesLoading } = useAuth();
   const [logoUrl, setLogoUrl] = useState<string>(companyLogo);
   const [companyName, setCompanyName] = useState<string>("EMERGENCE DRC");
   const canManageCabinets = roles.some((r) => CABINET_ROLES.has(r));
@@ -36,7 +36,7 @@ export function AppSidebar() {
   const hasField = roles.some((r) => ["admin", "manager", "rh", "assistant_direction"].includes(r));
   const hasExec = roles.some((r) => EXECUTIVE_ROLES.has(r));
   const isExecutiveOnly = hasExec && !hasField;
-  const isAgentOnly = !!user && !roles.some((r) => STAFF_ROLES.has(r));
+  const isAgentOnly = !!user && !rolesLoading && !roles.some((r) => STAFF_ROLES.has(r));
 
   useEffect(() => {
     (async () => {

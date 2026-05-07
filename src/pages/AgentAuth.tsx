@@ -9,8 +9,8 @@ import { toast } from "sonner";
 import { UserCircle2, Loader2 } from "lucide-react";
 
 /**
- * Espace de connexion réservé aux AGENTS (employés).
- * - Pas de création de compte (les agents sont créés par l'administration RH).
+ * Espace de connexion professionnel.
+ * - Pas de création publique de compte (les comptes sont créés par l'administration RH).
  * - Session persistante (localStorage) : rester connecté après fermeture du navigateur.
  */
 export default function AgentAuth() {
@@ -66,8 +66,8 @@ export default function AgentAuth() {
           <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
             <UserCircle2 className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl tracking-tight">Espace Agent</CardTitle>
-          <CardDescription>Connectez-vous avec votre compte agent</CardDescription>
+          <CardTitle className="text-2xl tracking-tight">Connexion EMERGENCE DRC</CardTitle>
+          <CardDescription>Connectez-vous avec votre compte professionnel</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignIn} className="space-y-4">
