@@ -999,6 +999,33 @@ export type Database = {
         }
         Relationships: []
       }
+      role_audit_log: {
+        Row: {
+          action: string
+          id: string
+          performed_at: string
+          performed_by: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          target_user_id: string
+        }
+        Insert: {
+          action: string
+          id?: string
+          performed_at?: string
+          performed_by?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          target_user_id: string
+        }
+        Update: {
+          action?: string
+          id?: string
+          performed_at?: string
+          performed_by?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       talents: {
         Row: {
           career_plan: string | null
