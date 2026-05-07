@@ -22,6 +22,8 @@ const Admin = () => {
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
