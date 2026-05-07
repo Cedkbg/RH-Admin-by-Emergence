@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, Users, QrCode, CalendarDays, Mail, ChevronDown, Network, CheckCircle2, Clock, AlertTriangle, Smartphone, LogIn, LogOut } from "lucide-react";
+import { Building2, Users, QrCode, CalendarDays, Mail, ChevronDown, Network, CheckCircle2, Clock, AlertTriangle, Smartphone, LogIn, LogOut, Wallet, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
