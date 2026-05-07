@@ -74,6 +74,7 @@ Deno.serve(async (req) => {
 
     // 1) Create user (idempotent: reuse if already exists)
     let newUserId: string | null = null;
+    let createdNewUser = false;
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email, password, email_confirm: true, user_metadata: { full_name },
     });
@@ -108,6 +109,7 @@ Deno.serve(async (req) => {
       }
     } else {
       newUserId = created.user.id;
+      createdNewUser = true;
     }
 
     // Ensure profile exists / approved
@@ -115,8 +117,11 @@ Deno.serve(async (req) => {
       id: newUserId, email, full_name, approval_status: "approved",
     });
 
-    // Remove default 'admin' role auto-assigned by handle_new_user trigger (unless caller wanted admin)
-    await admin.from("user_roles").delete().eq("user_id", newUserId).eq("role", "admin");
+    // Remove only the bootstrap 'admin' role auto-assigned to a newly-created subordinate account.
+    // Never remove roles from an existing account.
+    if (createdNewUser) {
+      await admin.from("user_roles").delete().eq("user_id", newUserId).eq("role", "admin");
+    }
 
     // 2) Assign requested role (ignore duplicate)
     const { error: roleErr } = await admin
