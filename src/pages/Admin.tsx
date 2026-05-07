@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Shield, ShieldOff, Check, X, Clock, RotateCcw, ArrowLeft } from "lucide-react";
+import { Shield, ShieldOff, Check, X, Clock, RotateCcw, ArrowLeft, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
