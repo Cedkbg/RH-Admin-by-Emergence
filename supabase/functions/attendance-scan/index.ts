@@ -102,8 +102,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Aucune fiche agent liée à votre compte. Contactez la RH." }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const nowTime = new Date().toTimeString().slice(0, 8);
+    // Heure locale RDC (Africa/Kinshasa, UTC+1)
+    const TZ = "Africa/Kinshasa";
+    const fmtDate = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+    const fmtTime = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+    const today = fmtDate.format(new Date());
+    const nowTime = fmtTime.format(new Date());
 
     // Pointage du jour existant ?
     const { data: existing } = await admin
