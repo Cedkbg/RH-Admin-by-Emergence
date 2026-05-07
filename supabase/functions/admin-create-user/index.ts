@@ -123,7 +123,8 @@ Deno.serve(async (req) => {
       .from("user_roles")
       .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
     if (roleErr) {
-      return new Response(JSON.stringify({ error: roleErr.message }), {
+      console.error("[admin-create-user] role assign", roleErr);
+      return new Response(JSON.stringify({ error: "Attribution du rôle échouée" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
