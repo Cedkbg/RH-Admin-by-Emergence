@@ -36,16 +36,20 @@ export const TextField = ({
   placeholder,
   min,
   step,
+  disabled,
+  hint,
 }: FieldBase & {
   type?: string;
   placeholder?: string;
   min?: string | number;
   step?: string | number;
+  disabled?: boolean;
+  hint?: string;
 }) => (
   <div className={`space-y-1.5 ${className ?? ""}`}>
-    <Label>
-      {label}
-      {required && <span className="text-destructive"> *</span>}
+    <Label className="flex items-center gap-1.5">
+      <span>{label}{required && <span className="text-destructive"> *</span>}</span>
+      {disabled && <span className="text-[10px] uppercase tracking-wide text-muted-foreground bg-muted px-1.5 py-0.5 rounded">auto</span>}
     </Label>
     <Input
       type={type}
@@ -55,7 +59,12 @@ export const TextField = ({
       placeholder={placeholder}
       min={min}
       step={step}
+      disabled={disabled}
+      readOnly={disabled}
+      className={disabled ? "bg-muted/60 cursor-not-allowed text-muted-foreground" : undefined}
+      title={hint}
     />
+    {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
   </div>
 );
 
