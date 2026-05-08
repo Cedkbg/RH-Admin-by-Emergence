@@ -17,6 +17,7 @@ interface PaySlip {
   contract_type: string | null; days_worked: number; hours_worked: number; hourly_rate: number; daily_rate: number;
   transport: number; communication: number; loyer: number; allocation_familiale: number;
   cnss: number; ipr: number; inpp: number; onem: number; other_deductions: number;
+  bonus_details?: { label?: string; type?: string; amount?: number }[] | null;
 }
 const fmt = (n: any) => Number(n || 0).toLocaleString("fr-FR");
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -332,12 +333,15 @@ const AgentDashboard = () => {
                 <Button size="sm" variant="outline" onClick={() => {
                   const w = window.open("", "_blank", "width=800,height=900");
                   if (!w) return;
+                  const primes = Array.isArray(p.bonus_details) && p.bonus_details.length > 0
+                    ? p.bonus_details.map((b: any) => `<tr><td>Prime ${esc(b.label || b.type || "")}</td><td class="r">${fmt(b.amount)}</td></tr>`).join("")
+                    : `<tr><td>Prime ${esc(p.bonus_type || "")}</td><td class="r">${fmt(p.bonus)}</td></tr>`;
                   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Bulletin ${esc(p.period)}</title>
 <style>body{font-family:Arial;padding:32px;color:#222;max-width:780px;margin:auto}h1{margin:0 0 4px;font-size:20px}h2{font-size:14px;margin:18px 0 6px;border-bottom:2px solid #333}table{width:100%;border-collapse:collapse}td{padding:4px 6px;border-bottom:1px solid #eee;font-size:13px}.r{text-align:right}.tot{font-weight:bold;background:#f0f4ff}</style>
 </head><body>
 <h1>BULLETIN DE PAIE</h1><p>Période : <b>${esc(p.period)}</b> &nbsp;|&nbsp; ${esc(me?.first_name)} ${esc(me?.last_name)} &nbsp;|&nbsp; Contrat : ${esc(p.contract_type || "—")}</p>
 <h2>Présence</h2><table><tr><td>Jours prestés</td><td class="r">${fmt(p.days_worked)}</td></tr><tr><td>Heures</td><td class="r">${fmt(p.hours_worked)} h</td></tr><tr class="tot"><td>Salaire brut</td><td class="r">${fmt(p.base_salary)} FC</td></tr></table>
-<h2>Avantages</h2><table><tr><td>Transport</td><td class="r">${fmt(p.transport)}</td></tr><tr><td>Communication</td><td class="r">${fmt(p.communication)}</td></tr><tr><td>Loyer</td><td class="r">${fmt(p.loyer)}</td></tr><tr><td>Allocation familiale</td><td class="r">${fmt(p.allocation_familiale)}</td></tr><tr><td>Prime ${esc(p.bonus_type || "")}</td><td class="r">${fmt(p.bonus)}</td></tr><tr class="tot"><td>Total</td><td class="r">+ ${fmt(p.total_avantages)} FC</td></tr></table>
+<h2>Avantages</h2><table><tr><td>Transport</td><td class="r">${fmt(p.transport)}</td></tr><tr><td>Communication</td><td class="r">${fmt(p.communication)}</td></tr><tr><td>Loyer</td><td class="r">${fmt(p.loyer)}</td></tr><tr><td>Allocation familiale</td><td class="r">${fmt(p.allocation_familiale)}</td></tr>${primes}<tr class="tot"><td>Total</td><td class="r">+ ${fmt(p.total_avantages)} FC</td></tr></table>
 <h2>Retenues</h2><table><tr><td>CNSS</td><td class="r">${fmt(p.cnss)}</td></tr><tr><td>IPR</td><td class="r">${fmt(p.ipr)}</td></tr><tr><td>INPP</td><td class="r">${fmt(p.inpp)}</td></tr><tr><td>ONEM</td><td class="r">${fmt(p.onem)}</td></tr><tr><td>Autres</td><td class="r">${fmt(p.other_deductions)}</td></tr><tr class="tot"><td>Total</td><td class="r">- ${fmt(p.deductions)} FC</td></tr></table>
 <h2>Net à payer</h2><table><tr class="tot" style="background:#dbeafe;font-size:18px"><td>SALAIRE NET</td><td class="r">${fmt(p.net_pay)} FC</td></tr></table>
 <script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`);
