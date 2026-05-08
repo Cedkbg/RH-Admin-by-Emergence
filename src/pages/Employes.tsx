@@ -96,7 +96,7 @@ const Employes = () => {
       supabase.from("departments").select("id,name,direction_id").order("name"),
       supabase.from("employees").select("*").order("created_at", { ascending: false }),
     ]);
-    setDirections((d.data && d.data.length > 0 ? d.data : DEFAULT_DIRECTIONS) as DirectionRow[]);
+    setDirections(((d.data as DirectionRow[]) || []));
     setDepartments((dep.data as DepartmentRow[]) || []);
     setEmployees((e.data as EmployeeRow[]) || []);
   };
