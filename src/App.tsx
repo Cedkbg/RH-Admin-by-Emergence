@@ -75,10 +75,19 @@ const Ops = ({ children }: { children: JSX.Element }) => (
 
 // Modules opérationnels terrain : masqués au DG/DGA/Secrétaire (cabinet exécutif)
 // pour préserver l'autonomie des équipes. Manager, RH, Assistant de direction y accèdent.
-// Modules terrain : aussi accessibles aux agents (employee) pour pointer/voir leurs congés
-const FIELD_ROLES = ["admin", "manager", "rh", "assistant_direction", "employee"];
+const FIELD_ROLES = ["admin", "manager", "rh", "assistant_direction"];
 const Field = ({ children }: { children: JSX.Element }) => (
   <RoleGuard allowed={FIELD_ROLES}>{children}</RoleGuard>
+);
+// Module Présence : accessible aux agents en plus du staff terrain
+const PRESENCE_ROLES = [...FIELD_ROLES, "employee"];
+const PresenceGuard = ({ children }: { children: JSX.Element }) => (
+  <RoleGuard allowed={PRESENCE_ROLES}>{children}</RoleGuard>
+);
+// Pages structurelles (organigramme, employés, cabinets, install) : staff uniquement
+const STAFF_ROLES = ["admin", "dg", "dga", "manager", "rh", "secretaire", "assistant_direction"];
+const Staff = ({ children }: { children: JSX.Element }) => (
+  <RoleGuard allowed={STAFF_ROLES}>{children}</RoleGuard>
 );
 
 const App = () => (
@@ -98,16 +107,16 @@ const App = () => (
             <Route path="/presence/kiosk/:locationId" element={<PresenceKiosk />} />
             <Route element={<Protected><AppLayout /></Protected>}>
               <Route index element={<Index />} />
-              <Route path="/organigramme" element={<Organigramme />} />
-              <Route path="/direction/:code" element={<DirectionDetail />} />
-              <Route path="/employes" element={<Employes />} />
-              <Route path="/install" element={<Install />} />
+              <Route path="/organigramme" element={<Staff><Organigramme /></Staff>} />
+              <Route path="/direction/:code" element={<Staff><DirectionDetail /></Staff>} />
+              <Route path="/employes" element={<Staff><Employes /></Staff>} />
+              <Route path="/install" element={<Staff><Install /></Staff>} />
               <Route path="/recrutement" element={<Ops><Recrutement /></Ops>} />
               <Route path="/taches" element={<Field><Taches /></Field>} />
               <Route path="/performance" element={<Ops><Performance /></Ops>} />
               <Route path="/formation" element={<Ops><Formation /></Ops>} />
               <Route path="/paie" element={<Ops><Paie /></Ops>} />
-              <Route path="/presence" element={<Field><Presence /></Field>} />
+              <Route path="/presence" element={<PresenceGuard><Presence /></PresenceGuard>} />
               <Route path="/presence/scan" element={<PresenceScan />} />
               <Route path="/presence/locations" element={<Field><PresenceLocations /></Field>} />
               <Route path="/documents" element={<Ops><Documents /></Ops>} />
@@ -121,7 +130,7 @@ const App = () => (
               <Route path="/assistant" element={<Ops><Assistant /></Ops>} />
               <Route path="/manager" element={<Ops><ManagerGeneral /></Ops>} />
               <Route path="/parametres" element={<Ops><Parametres /></Ops>} />
-              <Route path="/admin/cabinets" element={<AdminCabinets />} />
+              <Route path="/admin/cabinets" element={<Staff><AdminCabinets /></Staff>} />
               <Route path="/admin" element={<Protected adminOnly><Admin /></Protected>} />
             </Route>
             <Route path="*" element={<NotFound />} />
