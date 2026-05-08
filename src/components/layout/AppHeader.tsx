@@ -75,17 +75,17 @@ export function AppHeader({ title }: AppHeaderProps) {
               {initials}
             </div>
             <div className="hidden text-left sm:block">
-              <p className="text-sm font-semibold leading-tight text-foreground flex items-center gap-2">
-                {user?.user_metadata?.full_name || user?.email}
+              <div className="text-sm font-semibold leading-tight text-foreground flex items-center gap-2">
+                <span>{user?.user_metadata?.full_name || user?.email}</span>
                 {roleLabel && (
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                     {roleLabel}
                   </Badge>
                 )}
-              </p>
-              <p className="text-xs leading-tight text-muted-foreground truncate max-w-[220px]">
+              </div>
+              <div className="text-xs leading-tight text-muted-foreground truncate max-w-[220px]">
                 {user?.email}
-              </p>
+              </div>
             </div>
           </Button>
         </DropdownMenuTrigger>
