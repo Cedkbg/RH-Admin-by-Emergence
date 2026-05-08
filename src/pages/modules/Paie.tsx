@@ -207,8 +207,8 @@ const PaieForm = ({
       <div className="md:col-span-2 mt-1 text-xs font-semibold uppercase text-muted-foreground">Présence (auto depuis pointage)</div>
       <TextField label={`Jours prestés${loadingHours ? " (calcul…)" : ""}`} value={String(form.days_worked ?? 0)} onChange={(v) => setForm({ ...form, days_worked: Number(v) as any })} type="number" />
       <TextField label="Heures travaillées (mois)" value={String(form.hours_worked ?? 0)} onChange={(v) => setForm({ ...form, hours_worked: Number(v) as any })} type="number" />
-      <TextField label="Taux horaire (FC/h)" value={String(form.hourly_rate ?? 0)} onChange={(v) => setForm({ ...form, hourly_rate: Number(v) as any })} type="number" />
-      <TextField label="Taux journalier (FC/jour)" value={String(form.daily_rate ?? 0)} onChange={(v) => setForm({ ...form, daily_rate: Number(v) as any })} type="number" />
+      <TextField label="Taux horaire (USD/h)" value={String(form.hourly_rate ?? 0)} onChange={(v) => setForm({ ...form, hourly_rate: Number(v) as any })} type="number" />
+      <TextField label="Taux journalier (USD/jour)" value={String(form.daily_rate ?? 0)} onChange={(v) => setForm({ ...form, daily_rate: Number(v) as any })} type="number" />
       <TextField label="Salaire de base imposable" value={String(form.base_salary ?? 0)} onChange={(v) => setForm({ ...form, base_salary: Number(v) as any })} type="number" span={2} />
       <TextField label="Assiette IPR" value={String(form.assiette_ipr ?? 0)} onChange={(v) => setForm({ ...form, assiette_ipr: Number(v) as any })} type="number" span={2} />
 
@@ -227,10 +227,10 @@ const PaieForm = ({
       <TextField label="Allocation familiale" value={String(form.allocation_familiale ?? 0)} onChange={(v) => setForm({ ...form, allocation_familiale: Number(v) as any })} type="number" />
 
       <div className="md:col-span-2 rounded-lg border-2 border-primary/40 bg-primary/5 p-3 text-sm space-y-1">
-        <div className="flex justify-between"><span className="text-muted-foreground">Salaire brut</span><span className="font-semibold">{fmt(computedBrut)} FC</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Total avantages</span><span className="font-semibold">+ {fmt(totalAvantages)} FC</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Total retenues</span><span className="font-semibold">- {fmt(totalRetenues)} FC</span></div>
-        <div className="flex justify-between text-base border-t pt-1 mt-1"><span className="font-semibold">Salaire net à payer</span><span className="font-bold text-primary">{fmt(net)} FC</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Salaire brut</span><span className="font-semibold">{fmt(computedBrut)} USD</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Total avantages</span><span className="font-semibold">+ {fmt(totalAvantages)} USD</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Total retenues</span><span className="font-semibold">- {fmt(totalRetenues)} USD</span></div>
+        <div className="flex justify-between text-base border-t pt-1 mt-1"><span className="font-semibold">Salaire net à payer</span><span className="font-bold text-primary">{fmt(net)} USD</span></div>
       </div>
 
       <SelectField
@@ -273,9 +273,9 @@ Contrat : ${esc(pay.contract_type || "—")}
 <table>
 <tr><td>Jours prestés</td><td class="r">${fmt(pay.days_worked)}</td></tr>
 <tr><td>Heures travaillées</td><td class="r">${fmt(pay.hours_worked)} h</td></tr>
-<tr><td>Taux horaire</td><td class="r">${fmt(pay.hourly_rate)} FC</td></tr>
-<tr><td>Taux journalier</td><td class="r">${fmt(pay.daily_rate)} FC</td></tr>
-<tr class="tot"><td>Salaire brut</td><td class="r">${fmt(pay.base_salary)} FC</td></tr>
+<tr><td>Taux horaire</td><td class="r">${fmt(pay.hourly_rate)} USD</td></tr>
+<tr><td>Taux journalier</td><td class="r">${fmt(pay.daily_rate)} USD</td></tr>
+<tr class="tot"><td>Salaire brut</td><td class="r">${fmt(pay.base_salary)} USD</td></tr>
 </table>
 
 <h2>Avantages</h2>
@@ -285,7 +285,7 @@ Contrat : ${esc(pay.contract_type || "—")}
 <tr><td>Loyer</td><td class="r">${fmt(pay.loyer)}</td></tr>
 <tr><td>Allocation familiale</td><td class="r">${fmt(pay.allocation_familiale)}</td></tr>
 <tr><td>Prime ${pay.bonus_type ? `(${esc(pay.bonus_type)})` : ""}</td><td class="r">${fmt(pay.bonus)}</td></tr>
-<tr class="tot"><td>Total avantages</td><td class="r">+ ${fmt(pay.total_avantages)} FC</td></tr>
+<tr class="tot"><td>Total avantages</td><td class="r">+ ${fmt(pay.total_avantages)} USD</td></tr>
 </table>
 
 <h2>Retenues</h2>
@@ -295,11 +295,11 @@ Contrat : ${esc(pay.contract_type || "—")}
 <tr><td>INPP (3%)</td><td class="r">${fmt(pay.inpp)}</td></tr>
 <tr><td>ONEM (0.2%)</td><td class="r">${fmt(pay.onem)}</td></tr>
 <tr><td>Autres</td><td class="r">${fmt(pay.other_deductions)}</td></tr>
-<tr class="tot"><td>Total retenues</td><td class="r">- ${fmt(pay.deductions)} FC</td></tr>
+<tr class="tot"><td>Total retenues</td><td class="r">- ${fmt(pay.deductions)} USD</td></tr>
 </table>
 
 <h2>Net à payer</h2>
-<table><tr class="tot" style="background:#dbeafe;font-size:18px"><td>SALAIRE NET</td><td class="r">${fmt(pay.net_pay)} FC</td></tr></table>
+<table><tr class="tot" style="background:#dbeafe;font-size:18px"><td>SALAIRE NET</td><td class="r">${fmt(pay.net_pay)} USD</td></tr></table>
 
 <div style="margin-top:30px;display:flex;justify-content:space-between;font-size:12px">
 <div>Signature employé<br/>____________________</div>
