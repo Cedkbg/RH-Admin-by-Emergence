@@ -17,6 +17,7 @@ interface PaySlip {
   contract_type: string | null; days_worked: number; hours_worked: number; hourly_rate: number; daily_rate: number;
   transport: number; communication: number; loyer: number; allocation_familiale: number;
   cnss: number; ipr: number; inpp: number; onem: number; other_deductions: number;
+  bonus_details?: { label?: string; type?: string; amount?: number }[] | null;
 }
 const fmt = (n: any) => Number(n || 0).toLocaleString("fr-FR");
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
