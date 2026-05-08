@@ -1,0 +1,1 @@
+ALTER TABLE public.payroll ADD COLUMN IF NOT EXISTS bonus_details jsonb DEFAULT '[]'::jsonb;
