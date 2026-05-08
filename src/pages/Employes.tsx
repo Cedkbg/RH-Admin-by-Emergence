@@ -465,7 +465,15 @@ const Employes = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div><Label>Date de naissance</Label><Input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} /></div>
+                  <div>
+                    <Label>Date de naissance</Label>
+                    <SafeDateField
+                      value={form.birth_date}
+                      onChange={(v) => setForm({ ...form, birth_date: v })}
+                      placeholder="Choisir la date de naissance"
+                      disabledFuture
+                    />
+                  </div>
                   <div className="col-span-2"><Label>Adresse</Label><Textarea rows={2} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
                 </div>
               </TabsContent>
