@@ -1,7 +1,48 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, UserPlus, Mail, Trash2, Filter, Pencil, ArrowLeft, Send } from "lucide-react";
+import { Search, UserPlus, Mail, Trash2, Filter, Pencil, ArrowLeft, Send, CalendarIcon } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { fr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+
+/** Champ date sûr dans une Dialog Radix : Popover + Calendar (évite le conflit
+ *  focus-trap avec le picker natif <input type="date"> qui faisait "bégayer"
+ *  tout le formulaire dès qu'on cliquait sur la date de naissance). */
+function SafeDateField({
+  value, onChange, placeholder = "Choisir une date", disabledFuture = false,
+}: { value: string; onChange: (v: string) => void; placeholder?: string; disabledFuture?: boolean }) {
+  const date = value ? parseISO(value) : undefined;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date ? format(date, "dd MMMM yyyy", { locale: fr }) : placeholder}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 z-[60]" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={(d) => onChange(d ? format(d, "yyyy-MM-dd") : "")}
+          captionLayout="dropdown-buttons"
+          fromYear={1940}
+          toYear={new Date().getFullYear() + 1}
+          disabled={disabledFuture ? (d) => d > new Date() : undefined}
+          initialFocus
+          className={cn("p-3 pointer-events-auto")}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
