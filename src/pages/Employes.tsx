@@ -524,7 +524,14 @@ const Employes = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div><Label>Date d'embauche</Label><Input type="date" value={form.hire_date} onChange={(e) => setForm({ ...form, hire_date: e.target.value })} /></div>
+                  <div>
+                    <Label>Date d'embauche</Label>
+                    <SafeDateField
+                      value={form.hire_date}
+                      onChange={(v) => setForm({ ...form, hire_date: v })}
+                      placeholder="Choisir la date d'embauche"
+                    />
+                  </div>
                   <div><Label>Salaire de base (USD)</Label><Input type="number" min="0" step="0.01" value={form.base_salary} onChange={(e) => setForm({ ...form, base_salary: e.target.value })} /></div>
                   <div>
                     <Label>Statut</Label>
