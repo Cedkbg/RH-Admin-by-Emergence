@@ -160,31 +160,41 @@ const PaieForm = ({
   const fillFromAttendance = useCallback(async (empId: string, period: string) => {
     if (!empId || !period || !/^\d{4}-\d{2}$/.test(period)) return null;
     setLoadingHours(true);
-    const start = `${period}-01`;
-    const [y, m] = period.split("-").map(Number);
-    const endDate = new Date(y, m, 0).toISOString().slice(0, 10);
-    const { data } = await supabase
-      .from("attendance")
-      .select("check_in,check_out,date")
-      .eq("employee_id", empId)
-      .gte("date", start)
-      .lte("date", endDate);
-    setLoadingHours(false);
-    let totalMinutes = 0;
-    const days = new Set<string>();
-    for (const r of (data as any[]) || []) {
-      if (!r.check_in || !r.check_out) continue;
-      const [h1, m1] = r.check_in.split(":").map(Number);
-      const [h2, m2] = r.check_out.split(":").map(Number);
-      const diff = h2 * 60 + m2 - (h1 * 60 + m1);
-      if (diff > 0) {
-        totalMinutes += diff;
-        days.add(r.date);
+    try {
+      const start = `${period}-01`;
+      const [y, m] = period.split("-").map(Number);
+      const endDate = new Date(y, m, 0).toISOString().slice(0, 10);
+      const { data, error } = await supabase
+        .from("attendance")
+        .select("check_in,check_out,date")
+        .eq("employee_id", empId)
+        .gte("date", start)
+        .lte("date", endDate);
+      if (error) {
+        console.warn("[Paie] attendance fetch:", error.message);
+        return { hours_worked: 0, days_worked: 0, overtime_hours: 0 };
       }
+      let totalMinutes = 0;
+      const days = new Set<string>();
+      for (const r of (data as any[]) || []) {
+        if (!r.check_in || !r.check_out) continue;
+        const [h1, m1] = r.check_in.split(":").map(Number);
+        const [h2, m2] = r.check_out.split(":").map(Number);
+        const diff = h2 * 60 + m2 - (h1 * 60 + m1);
+        if (diff > 0) {
+          totalMinutes += diff;
+          days.add(r.date);
+        }
+      }
+      const hours = +(totalMinutes / 60).toFixed(2);
+      const overtime = +Math.max(0, hours - STD_MONTHLY_HOURS).toFixed(2);
+      return { hours_worked: hours, days_worked: days.size, overtime_hours: overtime };
+    } catch (e: any) {
+      console.error("[Paie] fillFromAttendance error:", e);
+      return { hours_worked: 0, days_worked: 0, overtime_hours: 0 };
+    } finally {
+      setLoadingHours(false);
     }
-    const hours = +(totalMinutes / 60).toFixed(2);
-    const overtime = +Math.max(0, hours - STD_MONTHLY_HOURS).toFixed(2);
-    return { hours_worked: hours, days_worked: days.size, overtime_hours: overtime };
   }, []);
 
   const recomputeAttendance = async () => {
@@ -199,11 +209,12 @@ const PaieForm = ({
   };
 
   const handleSelectEmployee = async (empId: string) => {
+    if (!empId) return;
     const emp = employees.find((e) => e.id === empId);
     if (!emp) return;
     const period = form.period || currentPeriod();
-    const att = await fillFromAttendance(empId, period);
-    // Prime ancienneté auto (2% par année, max 25%) sur salaire de base
+
+    // 1) Mise à jour immédiate (ne BLOQUE PAS pendant l'await réseau)
     const years = yearsBetween(emp.hire_date, new Date());
     const ancienneteRate = Math.min(0.25, Math.floor(years) * 0.02);
     const base = Number(emp.base_salary ?? 0);
@@ -219,12 +230,17 @@ const PaieForm = ({
       contract_type: emp.contract_type || "CDI",
       hourly_rate: Number(emp.hourly_rate ?? 0),
       base_salary: base,
-      hours_worked: att?.hours_worked ?? 0,
-      days_worked: att?.days_worked ?? 0,
-      overtime_hours: att?.overtime_hours ?? 0,
       bonus_details: newBonuses,
       bonus: newBonuses.reduce((s, b) => s + b.amount, 0),
     });
+
+    // 2) Récupération présence en arrière-plan (non bloquant)
+    try {
+      const att = await fillFromAttendance(empId, period);
+      if (att) setForm((prev: any) => ({ ...prev, ...att }));
+    } catch (e) {
+      console.error("[Paie] handleSelectEmployee:", e);
+    }
   };
 
   // === Calculs auto en temps réel ===
