@@ -115,8 +115,16 @@ const App = () => (
               <Route path="/taches" element={<Field><Taches /></Field>} />
               <Route path="/performance" element={<Ops><Performance /></Ops>} />
               <Route path="/formation" element={<Ops><Formation /></Ops>} />
+              <Route path="/organigramme" element={<Staff><Organigramme /></Staff>} />
+              <Route path="/direction/:code" element={<Staff><DirectionDetail /></Staff>} />
+              <Route path="/employes" element={<Staff><Employes /></Staff>} />
+              <Route path="/install" element={<Staff><Install /></Staff>} />
+              <Route path="/recrutement" element={<Ops><Recrutement /></Ops>} />
+              <Route path="/taches" element={<Field><Taches /></Field>} />
+              <Route path="/performance" element={<Ops><Performance /></Ops>} />
+              <Route path="/formation" element={<Ops><Formation /></Ops>} />
               <Route path="/paie" element={<Ops><Paie /></Ops>} />
-              <Route path="/presence" element={<Field><Presence /></Field>} />
+              <Route path="/presence" element={<PresenceGuard><Presence /></PresenceGuard>} />
               <Route path="/presence/scan" element={<PresenceScan />} />
               <Route path="/presence/locations" element={<Field><PresenceLocations /></Field>} />
               <Route path="/documents" element={<Ops><Documents /></Ops>} />
@@ -130,7 +138,7 @@ const App = () => (
               <Route path="/assistant" element={<Ops><Assistant /></Ops>} />
               <Route path="/manager" element={<Ops><ManagerGeneral /></Ops>} />
               <Route path="/parametres" element={<Ops><Parametres /></Ops>} />
-              <Route path="/admin/cabinets" element={<AdminCabinets />} />
+              <Route path="/admin/cabinets" element={<Staff><AdminCabinets /></Staff>} />
               <Route path="/admin" element={<Protected adminOnly><Admin /></Protected>} />
             </Route>
             <Route path="*" element={<NotFound />} />
