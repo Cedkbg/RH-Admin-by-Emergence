@@ -314,9 +314,9 @@ const PaieForm = ({
           Recalculer
         </Button>
       </div>
-      <TextField label="Jours prestés" value={String(form.days_worked ?? 0)} onChange={(v) => setForm({ ...form, days_worked: Number(v) })} type="number" />
-      <TextField label="Heures travaillées" value={String(form.hours_worked ?? 0)} onChange={(v) => setForm({ ...form, hours_worked: Number(v) })} type="number" />
-      <TextField label="Heures supplémentaires" value={String(form.overtime_hours ?? 0)} onChange={(v) => setForm({ ...form, overtime_hours: Number(v) })} type="number" />
+      <TextField label="Jours prestés" value={String(form.days_worked ?? 0)} onChange={() => {}} type="number" disabled hint="Calculé depuis le pointage de présence" />
+      <TextField label="Heures travaillées" value={String(form.hours_worked ?? 0)} onChange={() => {}} type="number" disabled hint="Calculé depuis le pointage de présence" />
+      <TextField label="Heures supplémentaires" value={String(form.overtime_hours ?? 0)} onChange={() => {}} type="number" disabled hint="Calculé depuis le pointage de présence" />
       <TextField label="Taux horaire (USD/h)" value={String(form.hourly_rate ?? 0)} onChange={(v) => setForm({ ...form, hourly_rate: Number(v) })} type="number" />
       <TextField label="Taux journalier (USD/j)" value={String(form.daily_rate ?? 0)} onChange={(v) => setForm({ ...form, daily_rate: Number(v) })} type="number" />
       <TextField label="Salaire de base mensuel" value={String(form.base_salary ?? 0)} onChange={(v) => setForm({ ...form, base_salary: Number(v) })} type="number" span={2} />
