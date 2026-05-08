@@ -75,10 +75,19 @@ const Ops = ({ children }: { children: JSX.Element }) => (
 
 // Modules opérationnels terrain : masqués au DG/DGA/Secrétaire (cabinet exécutif)
 // pour préserver l'autonomie des équipes. Manager, RH, Assistant de direction y accèdent.
-// Modules terrain : aussi accessibles aux agents (employee) pour pointer/voir leurs congés
-const FIELD_ROLES = ["admin", "manager", "rh", "assistant_direction", "employee"];
+const FIELD_ROLES = ["admin", "manager", "rh", "assistant_direction"];
 const Field = ({ children }: { children: JSX.Element }) => (
   <RoleGuard allowed={FIELD_ROLES}>{children}</RoleGuard>
+);
+// Module Présence : accessible aux agents en plus du staff terrain
+const PRESENCE_ROLES = [...FIELD_ROLES, "employee"];
+const PresenceGuard = ({ children }: { children: JSX.Element }) => (
+  <RoleGuard allowed={PRESENCE_ROLES}>{children}</RoleGuard>
+);
+// Pages structurelles (organigramme, employés, cabinets, install) : staff uniquement
+const STAFF_ROLES = ["admin", "dg", "dga", "manager", "rh", "secretaire", "assistant_direction"];
+const Staff = ({ children }: { children: JSX.Element }) => (
+  <RoleGuard allowed={STAFF_ROLES}>{children}</RoleGuard>
 );
 
 const App = () => (
