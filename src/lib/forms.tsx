@@ -107,16 +107,20 @@ export const SelectField = ({
       {label}
       {required && <span className="text-destructive"> *</span>}
     </Label>
-    <Select value={value ? value : undefined} onValueChange={onChange}>
+    <Select value={value || undefined} defaultValue={undefined} onValueChange={(v) => onChange(v)}>
       <SelectTrigger>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
+      <SelectContent className="max-h-72">
+        {options.length === 0 ? (
+          <div className="px-3 py-4 text-xs text-muted-foreground text-center">Aucune option disponible</div>
+        ) : (
+          options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))
+        )}
       </SelectContent>
     </Select>
   </div>
