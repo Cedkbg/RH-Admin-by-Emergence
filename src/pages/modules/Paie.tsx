@@ -2,9 +2,11 @@ import { CrudPage } from "@/components/dashboard/CrudPage";
 import { TextField, SelectField, FormGrid, cleanForm } from "@/lib/forms";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Lock, Printer } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Lock, Printer, Plus, Trash2, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -21,9 +23,12 @@ interface Employee {
   direction_id: string | null;
   department_id: string | null;
   email: string | null;
+  hire_date: string | null;
 }
 interface Direction { id: string; name: string; }
 interface Department { id: string; name: string; }
+
+interface BonusItem { type: string; label?: string; amount: number; }
 
 interface Pay {
   id: string;
@@ -38,6 +43,7 @@ interface Pay {
   assiette_ipr: number;
   bonus: number;
   bonus_type: string | null;
+  bonus_details: BonusItem[] | null;
   ipr: number;
   inpp: number;
   cnss: number;
@@ -55,7 +61,7 @@ interface Pay {
   paid_at: string | null;
 }
 
-const fmt = (n: any) => Number(n || 0).toLocaleString("fr-FR");
+const fmt = (n: any) => Number(n || 0).toLocaleString("fr-FR", { maximumFractionDigits: 2 });
 const num = (v: any) => Number(v || 0);
 const currentPeriod = () => {
   const d = new Date();
@@ -72,7 +78,6 @@ const CONTRACT_OPTIONS = [
 ];
 
 const BONUS_TYPES = [
-  { value: "aucune", label: "Aucune prime" },
   { value: "mensuelle", label: "Prime mensuelle" },
   { value: "journaliere", label: "Prime journalière" },
   { value: "performance", label: "Prime de performance" },
@@ -82,6 +87,9 @@ const BONUS_TYPES = [
   { value: "fin_annee", label: "Prime de fin d'année (13e mois)" },
   { value: "exceptionnelle", label: "Prime exceptionnelle" },
   { value: "mission", label: "Prime de mission" },
+  { value: "responsabilite", label: "Prime de responsabilité" },
+  { value: "logement", label: "Prime de logement" },
+  { value: "risque", label: "Prime de risque" },
 ];
 
 const STATUS_OPTIONS = [
@@ -91,19 +99,66 @@ const STATUS_OPTIONS = [
   { value: "annule", label: "Annulé" },
 ];
 
+// === Barème IPR RDC (mensuel, USD - simplifié, tranches officielles converties) ===
+// Annuel CDF -> on travaille en USD ; les tranches ci-dessous sont mensuelles indicatives.
+const IPR_BRACKETS = [
+  { upTo: 162, rate: 0.03 },
+  { upTo: 1800, rate: 0.15 },
+  { upTo: 3600, rate: 0.30 },
+  { upTo: Infinity, rate: 0.40 },
+];
+
+const computeIPR = (assiette: number) => {
+  let remaining = Math.max(0, assiette);
+  let prev = 0;
+  let tax = 0;
+  for (const b of IPR_BRACKETS) {
+    if (remaining <= 0) break;
+    const slice = Math.min(remaining, b.upTo - prev);
+    if (slice > 0) {
+      tax += slice * b.rate;
+      remaining -= slice;
+    }
+    prev = b.upTo;
+  }
+  return +tax.toFixed(2);
+};
+
+const yearsBetween = (from: string | null | undefined, to: Date) => {
+  if (!from) return 0;
+  const d = new Date(from);
+  if (isNaN(d.getTime())) return 0;
+  return Math.max(0, (to.getTime() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+};
+
+// === Heures théoriques mensuelles ===
+const STD_MONTHLY_HOURS = 173.33; // 40h/sem
+const OVERTIME_RATE = 1.3; // majoration heures sup
+
 const PaieForm = ({
   form, setForm, employees, directions, departments,
 }: {
-  form: Partial<Pay>;
-  setForm: (f: Partial<Pay>) => void;
+  form: Partial<Pay> & { children_count?: number; overtime_hours?: number; advance?: number };
+  setForm: (f: any) => void;
   employees: Employee[];
   directions: Map<string, Direction>;
   departments: Map<string, Department>;
 }) => {
   const [loadingHours, setLoadingHours] = useState(false);
+  const bonuses: BonusItem[] = (form.bonus_details as any) || [];
 
-  const fillFromAttendance = async (empId: string, period: string) => {
-    if (!empId || !period || !/^\d{4}-\d{2}$/.test(period)) return;
+  const setBonuses = (next: BonusItem[]) =>
+    setForm({ ...form, bonus_details: next, bonus: next.reduce((s, b) => s + num(b.amount), 0) });
+
+  const addBonus = () =>
+    setBonuses([...bonuses, { type: "mensuelle", amount: 0 }]);
+  const updateBonus = (i: number, patch: Partial<BonusItem>) =>
+    setBonuses(bonuses.map((b, idx) => (idx === i ? { ...b, ...patch } : b)));
+  const removeBonus = (i: number) =>
+    setBonuses(bonuses.filter((_, idx) => idx !== i));
+
+  const fillFromAttendance = useCallback(async (empId: string, period: string) => {
+    if (!empId || !period || !/^\d{4}-\d{2}$/.test(period)) return null;
     setLoadingHours(true);
     const start = `${period}-01`;
     const [y, m] = period.split("-").map(Number);
@@ -128,7 +183,19 @@ const PaieForm = ({
       }
     }
     const hours = +(totalMinutes / 60).toFixed(2);
-    return { hours_worked: hours, days_worked: days.size };
+    const overtime = +Math.max(0, hours - STD_MONTHLY_HOURS).toFixed(2);
+    return { hours_worked: hours, days_worked: days.size, overtime_hours: overtime };
+  }, []);
+
+  const recomputeAttendance = async () => {
+    if (!form.employee_id || !form.period) {
+      toast.error("Sélectionnez l'agent et la période");
+      return;
+    }
+    const att = await fillFromAttendance(form.employee_id, form.period);
+    if (!att) return;
+    setForm({ ...form, ...att });
+    toast.success(`Présence recalculée : ${att.days_worked} jours, ${att.hours_worked} h`);
   };
 
   const handleSelectEmployee = async (empId: string) => {
@@ -136,29 +203,77 @@ const PaieForm = ({
     if (!emp) return;
     const period = form.period || currentPeriod();
     const att = await fillFromAttendance(empId, period);
+    // Prime ancienneté auto (2% par année, max 25%) sur salaire de base
+    const years = yearsBetween(emp.hire_date, new Date());
+    const ancienneteRate = Math.min(0.25, Math.floor(years) * 0.02);
+    const base = Number(emp.base_salary ?? 0);
+    const ancienneteAmount = +(base * ancienneteRate).toFixed(2);
+    const newBonuses: BonusItem[] = ancienneteAmount > 0
+      ? [{ type: "anciennete", label: `${Math.floor(years)} an(s) — ${(ancienneteRate * 100).toFixed(0)}%`, amount: ancienneteAmount }]
+      : [];
+
     setForm({
       ...form,
       employee_id: empId,
       period,
       contract_type: emp.contract_type || "CDI",
       hourly_rate: Number(emp.hourly_rate ?? 0),
-      base_salary: form.base_salary || Number(emp.base_salary ?? 0),
+      base_salary: base,
       hours_worked: att?.hours_worked ?? 0,
       days_worked: att?.days_worked ?? 0,
+      overtime_hours: att?.overtime_hours ?? 0,
+      bonus_details: newBonuses,
+      bonus: newBonuses.reduce((s, b) => s + b.amount, 0),
     });
   };
 
-  const computedBrut = useMemo(() => {
-    if (num(form.hours_worked) > 0 && num(form.hourly_rate) > 0)
-      return num(form.hours_worked) * num(form.hourly_rate);
-    if (num(form.days_worked) > 0 && num(form.daily_rate) > 0)
-      return num(form.days_worked) * num(form.daily_rate);
-    return num(form.base_salary);
-  }, [form.hours_worked, form.hourly_rate, form.days_worked, form.daily_rate, form.base_salary]);
+  // === Calculs auto en temps réel ===
+  const baseFromHours = num(form.hours_worked) > 0 && num(form.hourly_rate) > 0
+    ? num(form.hours_worked) * num(form.hourly_rate)
+    : null;
+  const baseFromDays = num(form.days_worked) > 0 && num(form.daily_rate) > 0
+    ? num(form.days_worked) * num(form.daily_rate)
+    : null;
+  const computedBrut = baseFromHours ?? baseFromDays ?? num(form.base_salary);
 
-  const totalAvantages = num(form.transport) + num(form.communication) + num(form.loyer) + num(form.allocation_familiale) + num(form.bonus);
-  const totalRetenues = num(form.ipr) + num(form.inpp) + num(form.cnss) + num(form.onem) + num(form.other_deductions);
+  const overtimePay = num(form.overtime_hours) * num(form.hourly_rate) * OVERTIME_RATE;
+
+  const childrenCount = num(form.children_count);
+  const allocFamPerChild = 5; // USD/enfant indicatif
+  const allocFam = num(form.allocation_familiale) || childrenCount * allocFamPerChild;
+
+  const totalPrimes = bonuses.reduce((s, b) => s + num(b.amount), 0);
+  const totalAvantages =
+    num(form.transport) + num(form.communication) + num(form.loyer) +
+    allocFam + totalPrimes + overtimePay;
+
+  // Assiette (= salaire imposable) : brut + primes imposables (hors familial / transport plafonné)
+  const assiette = num(form.assiette_ipr) || (computedBrut + totalPrimes + overtimePay);
+
+  const ipr = num(form.ipr) || computeIPR(assiette);
+  const cnss = num(form.cnss) || +(computedBrut * 0.05).toFixed(2);
+  const cnssPatronal = num(form.cnss_patronal) || +(computedBrut * 0.13).toFixed(2);
+  const inpp = num(form.inpp) || +(computedBrut * 0.03).toFixed(2);
+  const onem = num(form.onem) || +(computedBrut * 0.002).toFixed(2);
+  const advance = num(form.advance);
+
+  const totalRetenues = ipr + inpp + cnss + onem + num(form.other_deductions) + advance;
   const net = computedBrut + totalAvantages - totalRetenues;
+
+  // Auto-remplissage cotisations à chaque changement du brut
+  useEffect(() => {
+    setForm((f: any) => ({
+      ...f,
+      cnss: +(computedBrut * 0.05).toFixed(2),
+      cnss_patronal: +(computedBrut * 0.13).toFixed(2),
+      inpp: +(computedBrut * 0.03).toFixed(2),
+      onem: +(computedBrut * 0.002).toFixed(2),
+      assiette_ipr: +(computedBrut + totalPrimes + overtimePay).toFixed(2),
+      ipr: computeIPR(computedBrut + totalPrimes + overtimePay),
+      allocation_familiale: childrenCount > 0 ? childrenCount * allocFamPerChild : f.allocation_familiale,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [computedBrut, totalPrimes, overtimePay, childrenCount]);
 
   const emp = employees.find((e) => e.id === form.employee_id);
   const dir = emp?.direction_id ? directions.get(emp.direction_id)?.name : null;
@@ -172,19 +287,14 @@ const PaieForm = ({
         onChange={handleSelectEmployee}
         options={employees.map((e) => ({ value: e.id, label: `${e.first_name} ${e.last_name}${e.matricule ? ` — ${e.matricule}` : ""}` }))}
       />
-      <TextField
-        label="Matricule"
-        value={emp?.matricule || ""}
-        onChange={() => {}}
-        placeholder="Auto"
-      />
+      <TextField label="Matricule" value={emp?.matricule || ""} onChange={() => {}} placeholder="Auto" />
 
       {emp && (
         <div className="md:col-span-2 grid grid-cols-2 gap-2 rounded-lg border bg-secondary/30 p-3 text-xs">
           <div><span className="text-muted-foreground">Direction:</span> <strong>{dir || "—"}</strong></div>
           <div><span className="text-muted-foreground">Département:</span> <strong>{dep || "—"}</strong></div>
           <div><span className="text-muted-foreground">Fonction:</span> <strong>{emp.position || "—"}</strong></div>
-          <div><span className="text-muted-foreground">Email:</span> <strong>{emp.email || "—"}</strong></div>
+          <div><span className="text-muted-foreground">Embauche:</span> <strong>{emp.hire_date || "—"}</strong></div>
         </div>
       )}
 
@@ -196,38 +306,86 @@ const PaieForm = ({
         options={CONTRACT_OPTIONS}
       />
 
-      <SelectField
-        label="Type de prime"
-        value={form.bonus_type || "aucune"}
-        onChange={(v) => setForm({ ...form, bonus_type: v })}
-        options={BONUS_TYPES}
-      />
-      <TextField label="Montant prime" value={String(form.bonus ?? 0)} onChange={(v) => setForm({ ...form, bonus: Number(v) as any })} type="number" />
+      {/* === PRÉSENCE === */}
+      <div className="md:col-span-2 mt-1 flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase text-muted-foreground">Présence (auto depuis pointage)</span>
+        <Button type="button" size="sm" variant="outline" onClick={recomputeAttendance} disabled={loadingHours}>
+          <RefreshCw className={`h-3.5 w-3.5 mr-1 ${loadingHours ? "animate-spin" : ""}`} />
+          Recalculer
+        </Button>
+      </div>
+      <TextField label="Jours prestés" value={String(form.days_worked ?? 0)} onChange={(v) => setForm({ ...form, days_worked: Number(v) })} type="number" />
+      <TextField label="Heures travaillées" value={String(form.hours_worked ?? 0)} onChange={(v) => setForm({ ...form, hours_worked: Number(v) })} type="number" />
+      <TextField label="Heures supplémentaires" value={String(form.overtime_hours ?? 0)} onChange={(v) => setForm({ ...form, overtime_hours: Number(v) })} type="number" />
+      <TextField label="Taux horaire (USD/h)" value={String(form.hourly_rate ?? 0)} onChange={(v) => setForm({ ...form, hourly_rate: Number(v) })} type="number" />
+      <TextField label="Taux journalier (USD/j)" value={String(form.daily_rate ?? 0)} onChange={(v) => setForm({ ...form, daily_rate: Number(v) })} type="number" />
+      <TextField label="Salaire de base mensuel" value={String(form.base_salary ?? 0)} onChange={(v) => setForm({ ...form, base_salary: Number(v) })} type="number" span={2} />
+      <TextField label="Assiette" value={String(form.assiette_ipr ?? 0)} onChange={(v) => setForm({ ...form, assiette_ipr: Number(v) })} type="number" span={2} />
 
-      <div className="md:col-span-2 mt-1 text-xs font-semibold uppercase text-muted-foreground">Présence (auto depuis pointage)</div>
-      <TextField label={`Jours prestés${loadingHours ? " (calcul…)" : ""}`} value={String(form.days_worked ?? 0)} onChange={(v) => setForm({ ...form, days_worked: Number(v) as any })} type="number" />
-      <TextField label="Heures travaillées (mois)" value={String(form.hours_worked ?? 0)} onChange={(v) => setForm({ ...form, hours_worked: Number(v) as any })} type="number" />
-      <TextField label="Taux horaire (USD/h)" value={String(form.hourly_rate ?? 0)} onChange={(v) => setForm({ ...form, hourly_rate: Number(v) as any })} type="number" />
-      <TextField label="Taux journalier (USD/jour)" value={String(form.daily_rate ?? 0)} onChange={(v) => setForm({ ...form, daily_rate: Number(v) as any })} type="number" />
-      <TextField label="Salaire de base imposable" value={String(form.base_salary ?? 0)} onChange={(v) => setForm({ ...form, base_salary: Number(v) as any })} type="number" span={2} />
-      <TextField label="Assiette IPR" value={String(form.assiette_ipr ?? 0)} onChange={(v) => setForm({ ...form, assiette_ipr: Number(v) as any })} type="number" span={2} />
+      {/* === MULTI-PRIMES === */}
+      <div className="md:col-span-2 mt-1 flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase text-muted-foreground">Primes (multiples)</span>
+        <Button type="button" size="sm" variant="outline" onClick={addBonus}>
+          <Plus className="h-3.5 w-3.5 mr-1" />Ajouter une prime
+        </Button>
+      </div>
+      <div className="md:col-span-2 space-y-2">
+        {bonuses.length === 0 && (
+          <p className="text-xs text-muted-foreground italic">Aucune prime. Cliquez sur « Ajouter une prime ».</p>
+        )}
+        {bonuses.map((b, i) => (
+          <div key={i} className="grid grid-cols-12 gap-2 items-end rounded-lg border bg-secondary/20 p-2">
+            <div className="col-span-5">
+              <Label className="text-xs">Type</Label>
+              <select
+                className="w-full h-9 rounded-md border bg-background px-2 text-sm"
+                value={b.type}
+                onChange={(e) => updateBonus(i, { type: e.target.value })}
+              >
+                {BONUS_TYPES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div className="col-span-4">
+              <Label className="text-xs">Libellé</Label>
+              <Input value={b.label || ""} onChange={(e) => updateBonus(i, { label: e.target.value })} placeholder="optionnel" />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs">Montant</Label>
+              <Input type="number" value={b.amount} onChange={(e) => updateBonus(i, { amount: Number(e.target.value) })} />
+            </div>
+            <div className="col-span-1">
+              <Button type="button" size="icon" variant="ghost" onClick={() => removeBonus(i)}>
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          </div>
+        ))}
+        <div className="text-right text-xs text-muted-foreground">Total primes : <strong>{fmt(totalPrimes)} USD</strong></div>
+      </div>
 
-      <div className="md:col-span-2 mt-1 text-xs font-semibold uppercase text-muted-foreground">Retenues</div>
-      <TextField label="CNSS Ouvrier (5%)" value={String(form.cnss ?? 0)} onChange={(v) => setForm({ ...form, cnss: Number(v) as any })} type="number" />
-      <TextField label="CNSS Patronal (13%)" value={String(form.cnss_patronal ?? 0)} onChange={(v) => setForm({ ...form, cnss_patronal: Number(v) as any })} type="number" />
-      <TextField label="IPR" value={String(form.ipr ?? 0)} onChange={(v) => setForm({ ...form, ipr: Number(v) as any })} type="number" />
-      <TextField label="INPP (3%)" value={String(form.inpp ?? 0)} onChange={(v) => setForm({ ...form, inpp: Number(v) as any })} type="number" />
-      <TextField label="ONEM (0.2%)" value={String(form.onem ?? 0)} onChange={(v) => setForm({ ...form, onem: Number(v) as any })} type="number" />
-      <TextField label="Autres retenues" value={String(form.other_deductions ?? 0)} onChange={(v) => setForm({ ...form, other_deductions: Number(v) as any })} type="number" />
+      {/* === RETENUES (auto) === */}
+      <div className="md:col-span-2 mt-1 text-xs font-semibold uppercase text-muted-foreground">Retenues (calcul auto, modifiable)</div>
+      <TextField label="CNSS Ouvrier (5%)" value={String(form.cnss ?? 0)} onChange={(v) => setForm({ ...form, cnss: Number(v) })} type="number" />
+      <TextField label="CNSS Patronal (13%)" value={String(form.cnss_patronal ?? 0)} onChange={(v) => setForm({ ...form, cnss_patronal: Number(v) })} type="number" />
+      <TextField label="IPR (barème RDC)" value={String(form.ipr ?? 0)} onChange={(v) => setForm({ ...form, ipr: Number(v) })} type="number" />
+      <TextField label="INPP (3%)" value={String(form.inpp ?? 0)} onChange={(v) => setForm({ ...form, inpp: Number(v) })} type="number" />
+      <TextField label="ONEM (0.2%)" value={String(form.onem ?? 0)} onChange={(v) => setForm({ ...form, onem: Number(v) })} type="number" />
+      <TextField label="Avance / Acompte" value={String(form.advance ?? 0)} onChange={(v) => setForm({ ...form, advance: Number(v) })} type="number" />
+      <TextField label="Autres retenues" value={String(form.other_deductions ?? 0)} onChange={(v) => setForm({ ...form, other_deductions: Number(v) })} type="number" span={2} />
 
+      {/* === AVANTAGES === */}
       <div className="md:col-span-2 mt-1 text-xs font-semibold uppercase text-muted-foreground">Avantages</div>
-      <TextField label="Transport" value={String(form.transport ?? 0)} onChange={(v) => setForm({ ...form, transport: Number(v) as any })} type="number" />
-      <TextField label="Communication" value={String(form.communication ?? 0)} onChange={(v) => setForm({ ...form, communication: Number(v) as any })} type="number" />
-      <TextField label="Loyer" value={String(form.loyer ?? 0)} onChange={(v) => setForm({ ...form, loyer: Number(v) as any })} type="number" />
-      <TextField label="Allocation familiale" value={String(form.allocation_familiale ?? 0)} onChange={(v) => setForm({ ...form, allocation_familiale: Number(v) as any })} type="number" />
+      <TextField label="Transport" value={String(form.transport ?? 0)} onChange={(v) => setForm({ ...form, transport: Number(v) })} type="number" />
+      <TextField label="Communication" value={String(form.communication ?? 0)} onChange={(v) => setForm({ ...form, communication: Number(v) })} type="number" />
+      <TextField label="Loyer" value={String(form.loyer ?? 0)} onChange={(v) => setForm({ ...form, loyer: Number(v) })} type="number" />
+      <TextField label="Nombre d'enfants" value={String(form.children_count ?? 0)} onChange={(v) => setForm({ ...form, children_count: Number(v) })} type="number" />
+      <TextField label="Allocation familiale" value={String(form.allocation_familiale ?? 0)} onChange={(v) => setForm({ ...form, allocation_familiale: Number(v) })} type="number" span={2} />
 
+      {/* === RÉCAP === */}
       <div className="md:col-span-2 rounded-lg border-2 border-primary/40 bg-primary/5 p-3 text-sm space-y-1">
         <div className="flex justify-between"><span className="text-muted-foreground">Salaire brut</span><span className="font-semibold">{fmt(computedBrut)} USD</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Heures sup. ({fmt(form.overtime_hours)} h × {OVERTIME_RATE})</span><span>+ {fmt(overtimePay)} USD</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Total primes ({bonuses.length})</span><span>+ {fmt(totalPrimes)} USD</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Total avantages</span><span className="font-semibold">+ {fmt(totalAvantages)} USD</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Total retenues</span><span className="font-semibold">- {fmt(totalRetenues)} USD</span></div>
         <div className="flex justify-between text-base border-t pt-1 mt-1"><span className="font-semibold">Salaire net à payer</span><span className="font-bold text-primary">{fmt(net)} USD</span></div>
@@ -244,20 +402,26 @@ const PaieForm = ({
   );
 };
 
-// === Bulletin de paie imprimable ===
+// === Bulletin imprimable ===
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const printBulletin = (pay: Pay, emp: Employee | undefined, dir: string | null, dep: string | null) => {
-  const w = window.open("", "_blank", "width=800,height=900");
+  const w = window.open("", "_blank", "width=820,height=900");
   if (!w) return;
+  const bonuses: BonusItem[] = (pay.bonus_details as any) || [];
+  const bonusRows = bonuses.length
+    ? bonuses.map((b) => `<tr><td>Prime — ${esc(BONUS_TYPES.find((x) => x.value === b.type)?.label || b.type)}${b.label ? ` (${esc(b.label)})` : ""}</td><td class="r">${fmt(b.amount)}</td></tr>`).join("")
+    : `<tr><td>Prime</td><td class="r">${fmt(pay.bonus)}</td></tr>`;
+
   const html = `
 <!doctype html><html><head><meta charset="utf-8"><title>Bulletin ${esc(pay.period)} — ${esc(emp?.first_name)} ${esc(emp?.last_name)}</title>
 <style>
 body{font-family:Arial,sans-serif;padding:32px;color:#222;max-width:780px;margin:auto}
-h1{margin:0 0 4px;font-size:20px}h2{font-size:14px;margin:18px 0 6px;border-bottom:2px solid #333;padding-bottom:2px}
-table{width:100%;border-collapse:collapse;margin:6px 0}td{padding:4px 6px;border-bottom:1px solid #eee;font-size:13px}
-.r{text-align:right}.tot{font-weight:bold;background:#f0f4ff;font-size:14px}
+h1{margin:0 0 4px;font-size:20px}h2{font-size:13px;margin:16px 0 4px;border-bottom:2px solid #333;padding-bottom:2px;text-transform:uppercase}
+table{width:100%;border-collapse:collapse;margin:4px 0}td{padding:4px 6px;border-bottom:1px solid #eee;font-size:12px}
+.r{text-align:right}.tot{font-weight:bold;background:#f0f4ff}
 .head{display:flex;justify-content:space-between;border-bottom:3px solid #1e40af;padding-bottom:8px;margin-bottom:12px}
 .box{border:1px solid #ddd;padding:10px;border-radius:6px;font-size:12px;margin-bottom:10px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 </style></head><body>
 <div class="head"><div><h1>BULLETIN DE PAIE</h1><div>Période : <b>${esc(pay.period)}</b></div></div>
 <div style="text-align:right;font-size:12px"><div><b>Statut :</b> ${esc(pay.status)}</div>${pay.paid_at ? `<div>Payé le ${esc(pay.paid_at)}</div>` : ""}</div></div>
@@ -269,25 +433,29 @@ Direction : ${esc(dir || "—")} &nbsp;|&nbsp; Département : ${esc(dep || "—"
 Contrat : ${esc(pay.contract_type || "—")}
 </div>
 
-<h2>Présence & Rémunération de base</h2>
+<div class="cols">
+<div>
+<h2>Présence & Base</h2>
 <table>
 <tr><td>Jours prestés</td><td class="r">${fmt(pay.days_worked)}</td></tr>
 <tr><td>Heures travaillées</td><td class="r">${fmt(pay.hours_worked)} h</td></tr>
 <tr><td>Taux horaire</td><td class="r">${fmt(pay.hourly_rate)} USD</td></tr>
-<tr><td>Taux journalier</td><td class="r">${fmt(pay.daily_rate)} USD</td></tr>
-<tr class="tot"><td>Salaire brut</td><td class="r">${fmt(pay.base_salary)} USD</td></tr>
+<tr class="tot"><td>Salaire brut</td><td class="r">${fmt(pay.base_salary)}</td></tr>
+<tr><td>Assiette imposable</td><td class="r">${fmt(pay.assiette_ipr)}</td></tr>
 </table>
 
-<h2>Avantages</h2>
+<h2>Avantages & Primes</h2>
 <table>
 <tr><td>Transport</td><td class="r">${fmt(pay.transport)}</td></tr>
 <tr><td>Communication</td><td class="r">${fmt(pay.communication)}</td></tr>
 <tr><td>Loyer</td><td class="r">${fmt(pay.loyer)}</td></tr>
 <tr><td>Allocation familiale</td><td class="r">${fmt(pay.allocation_familiale)}</td></tr>
-<tr><td>Prime ${pay.bonus_type ? `(${esc(pay.bonus_type)})` : ""}</td><td class="r">${fmt(pay.bonus)}</td></tr>
-<tr class="tot"><td>Total avantages</td><td class="r">+ ${fmt(pay.total_avantages)} USD</td></tr>
+${bonusRows}
+<tr class="tot"><td>Total avantages</td><td class="r">+ ${fmt(pay.total_avantages)}</td></tr>
 </table>
+</div>
 
+<div>
 <h2>Retenues</h2>
 <table>
 <tr><td>CNSS Ouvrier (5%)</td><td class="r">${fmt(pay.cnss)}</td></tr>
@@ -295,15 +463,22 @@ Contrat : ${esc(pay.contract_type || "—")}
 <tr><td>INPP (3%)</td><td class="r">${fmt(pay.inpp)}</td></tr>
 <tr><td>ONEM (0.2%)</td><td class="r">${fmt(pay.onem)}</td></tr>
 <tr><td>Autres</td><td class="r">${fmt(pay.other_deductions)}</td></tr>
-<tr class="tot"><td>Total retenues</td><td class="r">- ${fmt(pay.deductions)} USD</td></tr>
+<tr class="tot"><td>Total retenues</td><td class="r">- ${fmt(pay.deductions)}</td></tr>
 </table>
 
+<h2>Charges patronales</h2>
+<table>
+<tr><td>CNSS Patronal (13%)</td><td class="r">${fmt(pay.cnss_patronal)}</td></tr>
+</table>
+</div>
+</div>
+
 <h2>Net à payer</h2>
-<table><tr class="tot" style="background:#dbeafe;font-size:18px"><td>SALAIRE NET</td><td class="r">${fmt(pay.net_pay)} USD</td></tr></table>
+<table><tr class="tot" style="background:#dbeafe;font-size:16px"><td>SALAIRE NET</td><td class="r">${fmt(pay.net_pay)} USD</td></tr></table>
 
 <div style="margin-top:30px;display:flex;justify-content:space-between;font-size:12px">
-<div>Signature employé<br/>____________________</div>
-<div>Signature employeur<br/>____________________</div>
+<div>Signature employé<br/><br/>____________________</div>
+<div>Signature employeur<br/><br/>____________________</div>
 </div>
 <script>window.onload=()=>setTimeout(()=>window.print(),300)</script>
 </body></html>`;
@@ -321,7 +496,7 @@ const Paie = () => {
     if (!isAdmin) return;
     (async () => {
       const [{ data: emp }, { data: dir }, { data: dep }] = await Promise.all([
-        supabase.from("employees").select("id,first_name,last_name,matricule,gender,position,contract_type,hourly_rate,base_salary,direction_id,department_id,email").order("last_name"),
+        supabase.from("employees").select("id,first_name,last_name,matricule,gender,position,contract_type,hourly_rate,base_salary,direction_id,department_id,email,hire_date").order("last_name"),
         supabase.from("directions").select("id,name"),
         supabase.from("departments").select("id,name"),
       ]);
@@ -361,16 +536,20 @@ const Paie = () => {
       defaultForm={{
         employee_id: "", period: currentPeriod(), contract_type: "CDI",
         hours_worked: 0, hourly_rate: 0, days_worked: 0, daily_rate: 0,
-        base_salary: 0, assiette_ipr: 0, bonus: 0, bonus_type: "aucune",
+        base_salary: 0, assiette_ipr: 0, bonus: 0, bonus_type: null, bonus_details: [],
         ipr: 0, inpp: 0, cnss: 0, cnss_patronal: 0, onem: 0, other_deductions: 0,
         transport: 0, communication: 0, loyer: 0, allocation_familiale: 0,
         status: "en_attente", paid_at: "",
-      }}
+        // extras non persistés
+        children_count: 0, overtime_hours: 0, advance: 0,
+      } as any}
       validate={(f) => (!f.employee_id || !f.period ? "Agent et période requis" : null)}
-      prepare={(f) => {
-        const c = cleanForm(f as any);
+      prepare={(f: any) => {
+        const c = cleanForm(f);
         delete c.net_pay; delete c.deductions; delete c.total_avantages;
+        delete c.children_count; delete c.overtime_hours; delete c.advance;
         ["hours_worked","hourly_rate","days_worked","daily_rate","base_salary","assiette_ipr","bonus","ipr","inpp","cnss","cnss_patronal","onem","other_deductions","transport","communication","loyer","allocation_familiale"].forEach((k) => { c[k] = Number(c[k] || 0); });
+        if (!Array.isArray(c.bonus_details)) c.bonus_details = [];
         return c;
       }}
       columns={[
@@ -380,11 +559,13 @@ const Paie = () => {
         }},
         { key: "contract_type", label: "Contrat", render: (r) => r.contract_type || "—" },
         { key: "period", label: "Période" },
-        { key: "base_salary", label: "Salaire brut", render: (r) => fmt(r.base_salary) },
-        { key: "hours_worked", label: "T/T (h)", render: (r) => `${fmt(r.hours_worked)} h` },
-        { key: "days_worked", label: "T/t (jrs)", render: (r) => fmt(r.days_worked) },
-        { key: "deductions", label: "Retenue", render: (r) => fmt(r.deductions) },
-        { key: "net_pay", label: "Salaire net", render: (r) => <span className="font-bold text-primary">{fmt(r.net_pay)}</span> },
+        { key: "base_salary", label: "Brut", render: (r) => fmt(r.base_salary) },
+        { key: "bonus", label: "Primes", render: (r) => {
+          const n = Array.isArray(r.bonus_details) ? r.bonus_details.length : 0;
+          return <span>{fmt(r.bonus)}{n > 0 && <span className="text-xs text-muted-foreground"> ({n})</span>}</span>;
+        }},
+        { key: "deductions", label: "Retenues", render: (r) => fmt(r.deductions) },
+        { key: "net_pay", label: "Net", render: (r) => <span className="font-bold text-primary">{fmt(r.net_pay)}</span> },
         { key: "status", label: "Statut", render: (r) => {
           const variant = r.status === "paye" ? "default" : r.status === "valide" ? "secondary" : r.status === "annule" ? "destructive" : "outline";
           return <Badge variant={variant as any}>{STATUS_OPTIONS.find((s) => s.value === r.status)?.label || r.status}</Badge>;
@@ -397,7 +578,7 @@ const Paie = () => {
         }},
       ]}
       renderForm={(form, setForm) => (
-        <PaieForm form={form as Partial<Pay>} setForm={setForm as any} employees={employees} directions={directions} departments={departments} />
+        <PaieForm form={form as any} setForm={setForm as any} employees={employees} directions={directions} departments={departments} />
       )}
     />
   );
