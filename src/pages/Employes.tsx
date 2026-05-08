@@ -27,7 +27,14 @@ function SafeDateField({
           {date ? format(date, "dd MMMM yyyy", { locale: fr }) : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 z-[60]" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <PopoverContent
+        className="w-auto p-0 z-[100] pointer-events-auto"
+        align="start"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.stopPropagation()}
+        onPointerDownOutside={(e) => e.stopPropagation()}
+      >
         <Calendar
           mode="single"
           selected={date}
@@ -35,8 +42,8 @@ function SafeDateField({
           captionLayout="dropdown-buttons"
           fromYear={1940}
           toYear={new Date().getFullYear() + 1}
+          defaultMonth={date ?? new Date(1990, 0)}
           disabled={disabledFuture ? (d) => d > new Date() : undefined}
-          initialFocus
           className={cn("p-3 pointer-events-auto")}
         />
       </PopoverContent>
