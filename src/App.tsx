@@ -107,14 +107,6 @@ const App = () => (
             <Route path="/presence/kiosk/:locationId" element={<PresenceKiosk />} />
             <Route element={<Protected><AppLayout /></Protected>}>
               <Route index element={<Index />} />
-              <Route path="/organigramme" element={<Organigramme />} />
-              <Route path="/direction/:code" element={<DirectionDetail />} />
-              <Route path="/employes" element={<Employes />} />
-              <Route path="/install" element={<Install />} />
-              <Route path="/recrutement" element={<Ops><Recrutement /></Ops>} />
-              <Route path="/taches" element={<Field><Taches /></Field>} />
-              <Route path="/performance" element={<Ops><Performance /></Ops>} />
-              <Route path="/formation" element={<Ops><Formation /></Ops>} />
               <Route path="/organigramme" element={<Staff><Organigramme /></Staff>} />
               <Route path="/direction/:code" element={<Staff><DirectionDetail /></Staff>} />
               <Route path="/employes" element={<Staff><Employes /></Staff>} />
