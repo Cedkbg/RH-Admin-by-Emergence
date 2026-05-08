@@ -7,35 +7,43 @@ import { supabase } from "@/integrations/supabase/client";
 import { Camera, CheckCircle2, MapPin, AlertTriangle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-type Status = "idle" | "locating" | "scanning" | "validating" | "success" | "error";
+type Status = "idle" | "scanning" | "validating" | "success" | "error";
 
 const PresenceScan = () => {
   const navigate = useNavigate();
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const coordsRef = useRef<GeolocationCoordinates | null>(null);
+  const gpsErrorRef = useRef<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string>("");
+  const [gpsMsg, setGpsMsg] = useState<string>("Recherche GPS…");
   const [result, setResult] = useState<any>(null);
-  const [coords, setCoords] = useState<GeolocationCoordinates | null>(null);
 
-  // Demande GPS au démarrage du scan
+  // IMPORTANT iOS Safari : getUserMedia DOIT être appelé dans le même tick que le clic.
+  // On démarre donc la caméra EN PREMIER (sans await avant), puis on demande le GPS en parallèle.
   const startScan = async () => {
-    setStatus("locating");
-    setMessage("Récupération de votre position GPS…");
-    if (!navigator.geolocation) { setStatus("error"); setMessage("GPS non disponible sur cet appareil."); return; }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { setCoords(pos.coords); launchCamera(pos.coords); },
-      (err) => { setStatus("error"); setMessage("Position GPS refusée : " + err.message); },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  };
-
-  const launchCamera = async (gps: GeolocationCoordinates) => {
     setStatus("scanning");
     setMessage("Pointez la caméra vers le QR code…");
-    // Wait for the #qr-reader div to be mounted
-    await new Promise((r) => setTimeout(r, 100));
+    setGpsMsg("Recherche GPS…");
+    coordsRef.current = null;
+    gpsErrorRef.current = null;
+
+    // Demande GPS en parallèle (n'interrompt pas la chaîne de gesture caméra)
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { coordsRef.current = pos.coords; setGpsMsg("Position GPS acquise"); },
+        (err) => { gpsErrorRef.current = err.message; setGpsMsg("GPS refusé : " + err.message); },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
+      );
+    } else {
+      gpsErrorRef.current = "GPS non disponible";
+      setGpsMsg("GPS non disponible sur cet appareil");
+    }
+
+    // Lance la caméra immédiatement (gesture user encore actif sur iOS)
     try {
+      // Attend juste le mount du div #qr-reader (rendu au même render)
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
       let handled = false;
@@ -46,19 +54,42 @@ const PresenceScan = () => {
           if (handled) return;
           handled = true;
           await scanner.stop().catch(() => {});
-          await validate(decoded, gps);
+          await waitAndValidate(decoded);
         },
         () => {},
       );
     } catch (e: any) {
       setStatus("error");
-      setMessage("Caméra inaccessible : " + (e?.message || e));
+      const msg = e?.message || String(e);
+      if (/NotAllowed|Permission/i.test(msg)) {
+        setMessage("Accès caméra refusé. Activez-le dans Réglages Safari → Caméra.");
+      } else if (/NotFound|Devices/i.test(msg)) {
+        setMessage("Aucune caméra détectée sur cet appareil.");
+      } else if (/NotReadable|TrackStart/i.test(msg)) {
+        setMessage("Caméra utilisée par une autre application. Fermez les autres apps.");
+      } else {
+        setMessage("Caméra inaccessible : " + msg);
+      }
     }
   };
 
-  const validate = async (qrToken: string, gps: GeolocationCoordinates) => {
+  const waitAndValidate = async (qrToken: string) => {
     setStatus("validating");
     setMessage("Validation en cours…");
+    // Attend jusqu'à 10s que le GPS arrive (si pas déjà là)
+    const start = Date.now();
+    while (!coordsRef.current && !gpsErrorRef.current && Date.now() - start < 10000) {
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    if (!coordsRef.current) {
+      setStatus("error");
+      setMessage("Position GPS introuvable. Activez la localisation dans Réglages Safari → Position et réessayez.");
+      return;
+    }
+    await validate(qrToken, coordsRef.current);
+  };
+
+  const validate = async (qrToken: string, gps: GeolocationCoordinates) => {
     const { data, error } = await supabase.functions.invoke("attendance-scan", {
       body: { qr_token: qrToken, gps_lat: gps.latitude, gps_lng: gps.longitude },
     });
@@ -69,14 +100,13 @@ const PresenceScan = () => {
     }
     setResult(data);
     setStatus("success");
-    // Pose un drapeau pour afficher une notif au retour sur le dashboard agent
     try { sessionStorage.setItem("attendance:justScanned", data.action); } catch {}
   };
 
   useEffect(() => {
     return () => {
       const s = scannerRef.current;
-      if (s && s.getState && s.getState() === 2 /* SCANNING */) {
+      if (s && s.getState && s.getState() === 2) {
         s.stop().catch(() => {}).then(() => s.clear?.()).catch(() => {});
       }
       scannerRef.current = null;
@@ -99,7 +129,7 @@ const PresenceScan = () => {
             </Button>
           )}
 
-          {(status === "locating" || status === "validating") && (
+          {status === "validating" && (
             <div className="flex items-center gap-3 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" /> {message}
             </div>
@@ -107,7 +137,7 @@ const PresenceScan = () => {
 
           <div className={status === "scanning" ? "space-y-3" : "hidden"}>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4" /> Position acquise
+              <MapPin className="h-4 w-4" /> {gpsMsg}
             </div>
             <div id="qr-reader" className="overflow-hidden rounded-lg border min-h-[280px] bg-black/5" />
             <p className="text-sm text-muted-foreground">{message}</p>
