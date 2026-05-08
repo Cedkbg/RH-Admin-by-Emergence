@@ -34,10 +34,9 @@ export function useOnboarding() {
     let cancelled = false;
     const safety = setTimeout(() => {
       if (!cancelled) {
-        console.warn("[Onboarding] Safety timeout");
         setLoading(false);
       }
-    }, 3000);
+    }, 1000);
 
     (async () => {
       try {
