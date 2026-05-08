@@ -98,7 +98,7 @@ export const SelectField = ({
       {label}
       {required && <span className="text-destructive"> *</span>}
     </Label>
-    <Select value={value || undefined} onValueChange={onChange}>
+    <Select value={value ? value : undefined} onValueChange={onChange}>
       <SelectTrigger>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
