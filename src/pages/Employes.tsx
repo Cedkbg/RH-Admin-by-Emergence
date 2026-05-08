@@ -436,7 +436,9 @@ const Employes = () => {
                     <Select value={form.direction_id} onValueChange={(v) => setForm({ ...form, direction_id: v, department_id: "" })}>
                       <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                       <SelectContent className={DIRECTION_MENU_CLASS}>
-                        {directions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                        {directions
+                          .filter((d) => !["DG", "DGA"].includes((d.code || "").toUpperCase()))
+                          .map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
