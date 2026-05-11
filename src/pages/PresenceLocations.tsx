@@ -40,17 +40,49 @@ const PresenceLocations = () => {
   useEffect(() => { refresh(); }, []);
 
   const useMyPosition = () => {
-    if (!navigator.geolocation) { toast.error("Géolocalisation indisponible"); return; }
-    setGpsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setForm((f) => ({ ...f, latitude: pos.coords.latitude.toFixed(6), longitude: pos.coords.longitude.toFixed(6) }));
-        toast.success("Position GPS récupérée");
-        setGpsLoading(false);
-      },
-      (err) => { toast.error("Position refusée : " + err.message); setGpsLoading(false); },
-      { enableHighAccuracy: true, timeout: 10_000 },
-    );
+    try {
+      if (typeof window === "undefined" || !("geolocation" in navigator)) {
+        toast.error("Géolocalisation non supportée par ce navigateur");
+        return;
+      }
+      if (!window.isSecureContext) {
+        toast.error("La géolocalisation requiert HTTPS. Ouvrez l'app en https://…");
+        return;
+      }
+      setGpsLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          try {
+            const lat = Number(pos?.coords?.latitude);
+            const lng = Number(pos?.coords?.longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+              toast.error("Coordonnées GPS invalides");
+            } else {
+              setForm((f) => ({ ...f, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }));
+              toast.success("Position GPS récupérée");
+            }
+          } catch (e: any) {
+            toast.error("Erreur GPS : " + (e?.message || "inconnue"));
+          } finally {
+            setGpsLoading(false);
+          }
+        },
+        (err) => {
+          const code = err?.code;
+          const msg =
+            code === 1 ? "Permission refusée. Autorisez la localisation dans le navigateur."
+            : code === 2 ? "Position indisponible. Vérifiez le GPS / réseau."
+            : code === 3 ? "Délai dépassé. Réessayez à l'extérieur."
+            : (err?.message || "Erreur inconnue");
+          toast.error("Position : " + msg);
+          setGpsLoading(false);
+        },
+        { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
+      );
+    } catch (e: any) {
+      setGpsLoading(false);
+      toast.error("Géolocalisation : " + (e?.message || "erreur"));
+    }
   };
 
   const reset = () => setForm({ name: "", address: "", latitude: "", longitude: "", radius_meters: "50" });
@@ -139,7 +171,7 @@ const PresenceLocations = () => {
                 <Badge variant={r.active ? "default" : "secondary"}>{r.active ? "Actif" : "Inactif"}</Badge>
               </div>
               <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                <p className="font-mono">{r.latitude.toFixed(5)}, {r.longitude.toFixed(5)}</p>
+                <p className="font-mono">{Number(r.latitude).toFixed(5)}, {Number(r.longitude).toFixed(5)}</p>
                 <p>Rayon : <b>{r.radius_meters} m</b></p>
               </div>
               <div className="mt-4 flex gap-2">
