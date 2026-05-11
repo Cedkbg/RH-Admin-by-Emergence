@@ -35,74 +35,85 @@ const PresenceScan = () => {
   const [gpsMsg, setGpsMsg] = useState<string>("Recherche GPS…");
   const [result, setResult] = useState<any>(null);
 
-  // IMPORTANT iOS Safari : getUserMedia DOIT être appelé dans le même tick que le clic.
-  // On démarre donc la caméra EN PREMIER (sans await avant), puis on demande le GPS en parallèle.
-  const startScan = async () => {
-    setStatus("scanning");
-    setMessage("Pointez la caméra vers le QR code…");
+  const stopScanner = async () => {
+    const scanner = scannerRef.current;
+    if (!scanner) return;
+    scannerRef.current = null;
+    try {
+      if (scanner.getState && scanner.getState() === 2) await scanner.stop();
+      scanner.clear?.();
+    } catch {}
+  };
+
+  // iOS Safari est fragile avec les permissions : on demande d'abord le GPS
+  // directement sur un clic, puis la caméra directement sur un second clic.
+  const startGps = () => {
+    setStatus("gps");
+    setMessage("Autorisez la localisation pour confirmer votre présence sur site.");
     setGpsMsg("Recherche GPS…");
     coordsRef.current = null;
-    gpsErrorRef.current = null;
 
-    // Demande GPS en parallèle (n'interrompt pas la chaîne de gesture caméra)
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => { coordsRef.current = pos.coords; setGpsMsg("Position GPS acquise"); },
-        (err) => { gpsErrorRef.current = err.message; setGpsMsg("GPS refusé : " + err.message); },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
-      );
-    } else {
-      gpsErrorRef.current = "GPS non disponible";
-      setGpsMsg("GPS non disponible sur cet appareil");
+    const geo = typeof navigator !== "undefined" ? navigator.geolocation : null;
+    if (!geo || typeof geo.getCurrentPosition !== "function") {
+      setStatus("error");
+      setMessage("GPS non disponible sur cet appareil.");
+      return;
+    }
+    if (typeof window !== "undefined" && window.isSecureContext === false) {
+      setStatus("error");
+      setMessage("La localisation requiert HTTPS. Ouvrez l'application avec le lien sécurisé https://.");
+      return;
     }
 
-    // Lance la caméra immédiatement (gesture user encore actif sur iOS)
+    geo.getCurrentPosition(
+      (pos) => {
+        if (!mountedRef.current) return;
+        coordsRef.current = pos.coords;
+        setGpsMsg("Position GPS acquise");
+        setMessage("Position confirmée. Lancez maintenant la caméra pour scanner le QR code.");
+        setStatus("gpsReady");
+      },
+      (err) => {
+        if (!mountedRef.current) return;
+        setGpsMsg("GPS refusé ou indisponible");
+        setStatus("error");
+        setMessage(gpsErrorMessage(err));
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+    );
+  };
+
+  const startCamera = () => {
+    if (!coordsRef.current) {
+      setStatus("error");
+      setMessage("Position GPS introuvable. Recommencez en autorisant la localisation.");
+      return;
+    }
     try {
-      // Attend juste le mount du div #qr-reader (rendu au même render)
-      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      setStatus("scanning");
+      setMessage("Pointez la caméra vers le QR code…");
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
       let handled = false;
-      await scanner.start(
+      scanner.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         async (decoded) => {
           if (handled) return;
           handled = true;
-          await scanner.stop().catch(() => {});
-          await waitAndValidate(decoded);
+          await stopScanner();
+          await validate(decoded, coordsRef.current!);
         },
         () => {},
-      );
+      ).catch((e) => {
+        if (!mountedRef.current) return;
+        setStatus("error");
+        setMessage(cameraErrorMessage(e));
+      });
     } catch (e: any) {
       setStatus("error");
-      const msg = e?.message || String(e);
-      if (/NotAllowed|Permission/i.test(msg)) {
-        setMessage("Accès caméra refusé. Activez-le dans Réglages Safari → Caméra.");
-      } else if (/NotFound|Devices/i.test(msg)) {
-        setMessage("Aucune caméra détectée sur cet appareil.");
-      } else if (/NotReadable|TrackStart/i.test(msg)) {
-        setMessage("Caméra utilisée par une autre application. Fermez les autres apps.");
-      } else {
-        setMessage("Caméra inaccessible : " + msg);
-      }
+      setMessage(cameraErrorMessage(e));
     }
-  };
-
-  const waitAndValidate = async (qrToken: string) => {
-    setStatus("validating");
-    setMessage("Validation en cours…");
-    // Attend jusqu'à 10s que le GPS arrive (si pas déjà là)
-    const start = Date.now();
-    while (!coordsRef.current && !gpsErrorRef.current && Date.now() - start < 10000) {
-      await new Promise((r) => setTimeout(r, 200));
-    }
-    if (!coordsRef.current) {
-      setStatus("error");
-      setMessage("Position GPS introuvable. Activez la localisation dans Réglages Safari → Position et réessayez.");
-      return;
-    }
-    await validate(qrToken, coordsRef.current);
   };
 
   const validate = async (qrToken: string, gps: GeolocationCoordinates) => {
