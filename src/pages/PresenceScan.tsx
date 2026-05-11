@@ -7,13 +7,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { Camera, CheckCircle2, MapPin, AlertTriangle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-type Status = "idle" | "scanning" | "validating" | "success" | "error";
+type Status = "idle" | "gps" | "gpsReady" | "scanning" | "validating" | "success" | "error";
+
+const gpsErrorMessage = (err?: GeolocationPositionError | null) => {
+  const code = err?.code;
+  if (code === 1) return "Localisation refusée. Autorisez la position dans Réglages Safari → Position.";
+  if (code === 2) return "Position indisponible. Activez le GPS et vérifiez le réseau.";
+  if (code === 3) return "Délai GPS dépassé. Réessayez à l'extérieur ou près d'une fenêtre.";
+  return err?.message || "Position GPS introuvable.";
+};
+
+const cameraErrorMessage = (error: unknown) => {
+  const msg = error instanceof Error ? error.message : String(error || "");
+  if (/NotAllowed|Permission/i.test(msg)) return "Accès caméra refusé. Activez-le dans Réglages Safari → Caméra.";
+  if (/NotFound|Devices|Overconstrained/i.test(msg)) return "Aucune caméra arrière détectée sur cet appareil.";
+  if (/NotReadable|TrackStart/i.test(msg)) return "Caméra utilisée par une autre application. Fermez les autres apps.";
+  return "Caméra inaccessible : " + (msg || "erreur inconnue");
+};
 
 const PresenceScan = () => {
   const navigate = useNavigate();
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const coordsRef = useRef<GeolocationCoordinates | null>(null);
-  const gpsErrorRef = useRef<string | null>(null);
+  const mountedRef = useRef(true);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string>("");
   const [gpsMsg, setGpsMsg] = useState<string>("Recherche GPS…");
