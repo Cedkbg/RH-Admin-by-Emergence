@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
   try {
     const { location_id } = await req.json();
     if (!location_id || typeof location_id !== "string") {
-      return new Response(JSON.stringify({ error: "location_id requis" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "location_id requis" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // service role pour lire le secret du lieu (jamais exposé au client)
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       .from("attendance_locations").select("id,name,secret,active")
       .eq("id", location_id).maybeSingle();
     if (le || !loc || !loc.active) {
-      return new Response(JSON.stringify({ error: "Lieu introuvable" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Lieu introuvable" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const slot = Math.floor(Date.now() / 1000 / WINDOW_SEC);
