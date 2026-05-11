@@ -155,9 +155,24 @@ const PresenceScan = () => {
         <CardHeader><CardTitle className="text-base">État</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {status === "idle" && (
-            <Button size="lg" className="w-full" onClick={startScan}>
-              <Camera className="mr-2 h-5 w-5" /> Démarrer le scan
+            <Button size="lg" className="w-full" onClick={startGps}>
+              <MapPin className="mr-2 h-5 w-5" /> Autoriser la position GPS
             </Button>
+          )}
+
+          {(status === "gps" || status === "gpsReady") && (
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {status === "gps" ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4 text-primary" />}
+                {gpsMsg}
+              </div>
+              <p className="text-sm text-muted-foreground">{message}</p>
+              {status === "gpsReady" && (
+                <Button size="lg" className="w-full" onClick={startCamera}>
+                  <Camera className="mr-2 h-5 w-5" /> Ouvrir la caméra
+                </Button>
+              )}
+            </div>
           )}
 
           {status === "validating" && (
@@ -173,7 +188,7 @@ const PresenceScan = () => {
             <div id="qr-reader" className="overflow-hidden rounded-lg border min-h-[280px] bg-black/5" />
             <p className="text-sm text-muted-foreground">{message}</p>
             <Button variant="outline" className="w-full" onClick={async () => {
-              await scannerRef.current?.stop().catch(() => {});
+              await stopScanner();
               setStatus("idle"); setMessage("");
             }}>Annuler</Button>
           </div>
