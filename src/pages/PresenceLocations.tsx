@@ -171,7 +171,7 @@ const PresenceLocations = () => {
                 <Badge variant={r.active ? "default" : "secondary"}>{r.active ? "Actif" : "Inactif"}</Badge>
               </div>
               <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                <p className="font-mono">{r.latitude.toFixed(5)}, {r.longitude.toFixed(5)}</p>
+                <p className="font-mono">{Number(r.latitude).toFixed(5)}, {Number(r.longitude).toFixed(5)}</p>
                 <p>Rayon : <b>{r.radius_meters} m</b></p>
               </div>
               <div className="mt-4 flex gap-2">
