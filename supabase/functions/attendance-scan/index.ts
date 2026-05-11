@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
   try {
     const auth = req.headers.get("Authorization");
     if (!auth?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Connexion requise" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Connexion requise" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const supabase = createClient(
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     const token = auth.replace("Bearer ", "");
     const { data: userData, error: ce } = await supabase.auth.getUser(token);
     if (ce || !userData?.user?.id) {
-      return new Response(JSON.stringify({ error: "Connexion requise" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Connexion requise" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const userId = userData.user.id;
     const userEmail = userData.user.email;
@@ -54,12 +54,12 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { qr_token, gps_lat, gps_lng } = body || {};
     if (!qr_token || typeof gps_lat !== "number" || typeof gps_lng !== "number") {
-      return new Response(JSON.stringify({ error: "QR et position GPS requis" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "QR et position GPS requis" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     let payload: any;
     try { payload = JSON.parse(atob(qr_token)); }
-    catch { return new Response(JSON.stringify({ error: "QR invalide" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+    catch { return new Response(JSON.stringify({ error: "QR invalide" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       .select("id,name,secret,latitude,longitude,radius_meters,active")
       .eq("id", payload.l).maybeSingle();
     if (le || !loc || !loc.active) {
-      return new Response(JSON.stringify({ error: "Lieu inconnu ou désactivé" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Lieu inconnu ou désactivé" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Vérification d'expiration : supporte v2 (e=expires_at ms) et v1 (s=slot HMAC, rétro-compat)
@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
       valid = expected === payload.h && Math.abs(currentSlot - payload.s) <= TOLERANCE_SLOTS;
     }
     if (!valid) {
-      return new Response(JSON.stringify({ error: "QR expiré, scannez à nouveau" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "QR expiré, scannez à nouveau" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Vérifie GPS
@@ -90,16 +90,16 @@ Deno.serve(async (req) => {
     if (distance > loc.radius_meters) {
       return new Response(JSON.stringify({
         error: `Vous êtes à ${Math.round(distance)} m du site (${loc.radius_meters} m max). Pointage refusé.`,
-      }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Trouve l'employé via email
     if (!userEmail) {
-      return new Response(JSON.stringify({ error: "Email utilisateur introuvable" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Email utilisateur introuvable" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const { data: emp } = await admin.from("employees").select("id,first_name,last_name").eq("email", userEmail).maybeSingle();
     if (!emp) {
-      return new Response(JSON.stringify({ error: "Aucune fiche agent liée à votre compte. Contactez la RH." }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Aucune fiche agent liée à votre compte. Contactez la RH." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Heure locale RDC (Africa/Kinshasa, UTC+1)
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
       if (ue) throw ue;
       action = "check_out";
     } else {
-      return new Response(JSON.stringify({ error: "Vous avez déjà pointé entrée + sortie aujourd'hui." }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Vous avez déjà pointé entrée + sortie aujourd'hui." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(JSON.stringify({
