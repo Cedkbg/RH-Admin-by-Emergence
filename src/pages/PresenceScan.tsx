@@ -175,6 +175,8 @@ const PresenceScan = () => {
             </div>
           )}
 
+          <div id="qr-reader" className={status === "gpsReady" || status === "scanning" ? "overflow-hidden rounded-lg border min-h-[280px] bg-black/5" : "hidden"} />
+
           {status === "validating" && (
             <div className="flex items-center gap-3 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" /> {message}
@@ -185,7 +187,6 @@ const PresenceScan = () => {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin className="h-4 w-4" /> {gpsMsg}
             </div>
-            <div id="qr-reader" className="overflow-hidden rounded-lg border min-h-[280px] bg-black/5" />
             <p className="text-sm text-muted-foreground">{message}</p>
             <Button variant="outline" className="w-full" onClick={async () => {
               await stopScanner();
