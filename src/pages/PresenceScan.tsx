@@ -117,6 +117,8 @@ const PresenceScan = () => {
   };
 
   const validate = async (qrToken: string, gps: GeolocationCoordinates) => {
+    setStatus("validating");
+    setMessage("Validation en cours…");
     const { data, error } = await supabase.functions.invoke("attendance-scan", {
       body: { qr_token: qrToken, gps_lat: gps.latitude, gps_lng: gps.longitude },
     });
@@ -131,7 +133,9 @@ const PresenceScan = () => {
   };
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       const s = scannerRef.current;
       if (s && s.getState && s.getState() === 2) {
         s.stop().catch(() => {}).then(() => s.clear?.()).catch(() => {});
