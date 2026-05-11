@@ -7,89 +7,118 @@ import { supabase } from "@/integrations/supabase/client";
 import { Camera, CheckCircle2, MapPin, AlertTriangle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-type Status = "idle" | "scanning" | "validating" | "success" | "error";
+type Status = "idle" | "gps" | "gpsReady" | "scanning" | "validating" | "success" | "error";
+
+const gpsErrorMessage = (err?: GeolocationPositionError | null) => {
+  const code = err?.code;
+  if (code === 1) return "Localisation refusée. Autorisez la position dans Réglages Safari → Position.";
+  if (code === 2) return "Position indisponible. Activez le GPS et vérifiez le réseau.";
+  if (code === 3) return "Délai GPS dépassé. Réessayez à l'extérieur ou près d'une fenêtre.";
+  return err?.message || "Position GPS introuvable.";
+};
+
+const cameraErrorMessage = (error: unknown) => {
+  const msg = error instanceof Error ? error.message : String(error || "");
+  if (/NotAllowed|Permission/i.test(msg)) return "Accès caméra refusé. Activez-le dans Réglages Safari → Caméra.";
+  if (/NotFound|Devices|Overconstrained/i.test(msg)) return "Aucune caméra arrière détectée sur cet appareil.";
+  if (/NotReadable|TrackStart/i.test(msg)) return "Caméra utilisée par une autre application. Fermez les autres apps.";
+  return "Caméra inaccessible : " + (msg || "erreur inconnue");
+};
 
 const PresenceScan = () => {
   const navigate = useNavigate();
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const coordsRef = useRef<GeolocationCoordinates | null>(null);
-  const gpsErrorRef = useRef<string | null>(null);
+  const mountedRef = useRef(true);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string>("");
   const [gpsMsg, setGpsMsg] = useState<string>("Recherche GPS…");
   const [result, setResult] = useState<any>(null);
 
-  // IMPORTANT iOS Safari : getUserMedia DOIT être appelé dans le même tick que le clic.
-  // On démarre donc la caméra EN PREMIER (sans await avant), puis on demande le GPS en parallèle.
-  const startScan = async () => {
-    setStatus("scanning");
-    setMessage("Pointez la caméra vers le QR code…");
+  const stopScanner = async () => {
+    const scanner = scannerRef.current;
+    if (!scanner) return;
+    scannerRef.current = null;
+    try {
+      if (scanner.getState && scanner.getState() === 2) await scanner.stop();
+      scanner.clear?.();
+    } catch {}
+  };
+
+  // iOS Safari est fragile avec les permissions : on demande d'abord le GPS
+  // directement sur un clic, puis la caméra directement sur un second clic.
+  const startGps = () => {
+    setStatus("gps");
+    setMessage("Autorisez la localisation pour confirmer votre présence sur site.");
     setGpsMsg("Recherche GPS…");
     coordsRef.current = null;
-    gpsErrorRef.current = null;
 
-    // Demande GPS en parallèle (n'interrompt pas la chaîne de gesture caméra)
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => { coordsRef.current = pos.coords; setGpsMsg("Position GPS acquise"); },
-        (err) => { gpsErrorRef.current = err.message; setGpsMsg("GPS refusé : " + err.message); },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
-      );
-    } else {
-      gpsErrorRef.current = "GPS non disponible";
-      setGpsMsg("GPS non disponible sur cet appareil");
+    const geo = typeof navigator !== "undefined" ? navigator.geolocation : null;
+    if (!geo || typeof geo.getCurrentPosition !== "function") {
+      setStatus("error");
+      setMessage("GPS non disponible sur cet appareil.");
+      return;
+    }
+    if (typeof window !== "undefined" && window.isSecureContext === false) {
+      setStatus("error");
+      setMessage("La localisation requiert HTTPS. Ouvrez l'application avec le lien sécurisé https://.");
+      return;
     }
 
-    // Lance la caméra immédiatement (gesture user encore actif sur iOS)
+    geo.getCurrentPosition(
+      (pos) => {
+        if (!mountedRef.current) return;
+        coordsRef.current = pos.coords;
+        setGpsMsg("Position GPS acquise");
+        setMessage("Position confirmée. Lancez maintenant la caméra pour scanner le QR code.");
+        setStatus("gpsReady");
+      },
+      (err) => {
+        if (!mountedRef.current) return;
+        setGpsMsg("GPS refusé ou indisponible");
+        setStatus("error");
+        setMessage(gpsErrorMessage(err));
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+    );
+  };
+
+  const startCamera = () => {
+    if (!coordsRef.current) {
+      setStatus("error");
+      setMessage("Position GPS introuvable. Recommencez en autorisant la localisation.");
+      return;
+    }
     try {
-      // Attend juste le mount du div #qr-reader (rendu au même render)
-      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      setStatus("scanning");
+      setMessage("Pointez la caméra vers le QR code…");
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
       let handled = false;
-      await scanner.start(
+      scanner.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         async (decoded) => {
           if (handled) return;
           handled = true;
-          await scanner.stop().catch(() => {});
-          await waitAndValidate(decoded);
+          await stopScanner();
+          await validate(decoded, coordsRef.current!);
         },
         () => {},
-      );
+      ).catch((e) => {
+        if (!mountedRef.current) return;
+        setStatus("error");
+        setMessage(cameraErrorMessage(e));
+      });
     } catch (e: any) {
       setStatus("error");
-      const msg = e?.message || String(e);
-      if (/NotAllowed|Permission/i.test(msg)) {
-        setMessage("Accès caméra refusé. Activez-le dans Réglages Safari → Caméra.");
-      } else if (/NotFound|Devices/i.test(msg)) {
-        setMessage("Aucune caméra détectée sur cet appareil.");
-      } else if (/NotReadable|TrackStart/i.test(msg)) {
-        setMessage("Caméra utilisée par une autre application. Fermez les autres apps.");
-      } else {
-        setMessage("Caméra inaccessible : " + msg);
-      }
+      setMessage(cameraErrorMessage(e));
     }
-  };
-
-  const waitAndValidate = async (qrToken: string) => {
-    setStatus("validating");
-    setMessage("Validation en cours…");
-    // Attend jusqu'à 10s que le GPS arrive (si pas déjà là)
-    const start = Date.now();
-    while (!coordsRef.current && !gpsErrorRef.current && Date.now() - start < 10000) {
-      await new Promise((r) => setTimeout(r, 200));
-    }
-    if (!coordsRef.current) {
-      setStatus("error");
-      setMessage("Position GPS introuvable. Activez la localisation dans Réglages Safari → Position et réessayez.");
-      return;
-    }
-    await validate(qrToken, coordsRef.current);
   };
 
   const validate = async (qrToken: string, gps: GeolocationCoordinates) => {
+    setStatus("validating");
+    setMessage("Validation en cours…");
     const { data, error } = await supabase.functions.invoke("attendance-scan", {
       body: { qr_token: qrToken, gps_lat: gps.latitude, gps_lng: gps.longitude },
     });
@@ -104,7 +133,9 @@ const PresenceScan = () => {
   };
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       const s = scannerRef.current;
       if (s && s.getState && s.getState() === 2) {
         s.stop().catch(() => {}).then(() => s.clear?.()).catch(() => {});
@@ -124,10 +155,27 @@ const PresenceScan = () => {
         <CardHeader><CardTitle className="text-base">État</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {status === "idle" && (
-            <Button size="lg" className="w-full" onClick={startScan}>
-              <Camera className="mr-2 h-5 w-5" /> Démarrer le scan
+            <Button size="lg" className="w-full" onClick={startGps}>
+              <MapPin className="mr-2 h-5 w-5" /> Autoriser la position GPS
             </Button>
           )}
+
+          {(status === "gps" || status === "gpsReady") && (
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {status === "gps" ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4 text-primary" />}
+                {gpsMsg}
+              </div>
+              <p className="text-sm text-muted-foreground">{message}</p>
+              {status === "gpsReady" && (
+                <Button size="lg" className="w-full" onClick={startCamera}>
+                  <Camera className="mr-2 h-5 w-5" /> Ouvrir la caméra
+                </Button>
+              )}
+            </div>
+          )}
+
+          <div id="qr-reader" className={status === "gpsReady" || status === "scanning" ? "overflow-hidden rounded-lg border min-h-[280px] bg-black/5" : "hidden"} />
 
           {status === "validating" && (
             <div className="flex items-center gap-3 text-muted-foreground">
@@ -139,10 +187,9 @@ const PresenceScan = () => {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin className="h-4 w-4" /> {gpsMsg}
             </div>
-            <div id="qr-reader" className="overflow-hidden rounded-lg border min-h-[280px] bg-black/5" />
             <p className="text-sm text-muted-foreground">{message}</p>
             <Button variant="outline" className="w-full" onClick={async () => {
-              await scannerRef.current?.stop().catch(() => {});
+              await stopScanner();
               setStatus("idle"); setMessage("");
             }}>Annuler</Button>
           </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink, MapPin, Plus, Trash2, Crosshair, Loader2, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,16 @@ interface Loc {
   active: boolean;
 }
 
+const toFiniteNumber = (value: unknown) => {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+};
+
+const formatCoord = (value: unknown, digits = 5) => {
+  const numberValue = toFiniteNumber(value);
+  return numberValue === null ? "—" : numberValue.toFixed(digits);
+};
+
 const PresenceLocations = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -29,6 +39,7 @@ const PresenceLocations = () => {
   const [saving, setSaving] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [form, setForm] = useState({ name: "", address: "", latitude: "", longitude: "", radius_meters: "50" });
+  const mountedRef = useRef(true);
 
   const refresh = async () => {
     setLoading(true);
@@ -37,20 +48,25 @@ const PresenceLocations = () => {
     setRows(((data as unknown) as Loc[]) || []);
     setLoading(false);
   };
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    mountedRef.current = true;
+    refresh();
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const useMyPosition = () => {
     try {
-      if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      const geo = typeof navigator !== "undefined" ? navigator.geolocation : null;
+      if (!geo || typeof geo.getCurrentPosition !== "function") {
         toast.error("Géolocalisation non supportée par ce navigateur");
         return;
       }
-      if (!window.isSecureContext) {
+      if (typeof window !== "undefined" && window.isSecureContext === false) {
         toast.error("La géolocalisation requiert HTTPS. Ouvrez l'app en https://…");
         return;
       }
       setGpsLoading(true);
-      navigator.geolocation.getCurrentPosition(
+      geo.getCurrentPosition(
         (pos) => {
           try {
             const lat = Number(pos?.coords?.latitude);
@@ -58,13 +74,14 @@ const PresenceLocations = () => {
             if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
               toast.error("Coordonnées GPS invalides");
             } else {
+              if (!mountedRef.current) return;
               setForm((f) => ({ ...f, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }));
               toast.success("Position GPS récupérée");
             }
           } catch (e: any) {
             toast.error("Erreur GPS : " + (e?.message || "inconnue"));
           } finally {
-            setGpsLoading(false);
+            if (mountedRef.current) setGpsLoading(false);
           }
         },
         (err) => {
@@ -74,8 +91,10 @@ const PresenceLocations = () => {
             : code === 2 ? "Position indisponible. Vérifiez le GPS / réseau."
             : code === 3 ? "Délai dépassé. Réessayez à l'extérieur."
             : (err?.message || "Erreur inconnue");
-          toast.error("Position : " + msg);
-          setGpsLoading(false);
+          if (mountedRef.current) {
+            toast.error("Position : " + msg);
+            setGpsLoading(false);
+          }
         },
         { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
       );
@@ -171,7 +190,7 @@ const PresenceLocations = () => {
                 <Badge variant={r.active ? "default" : "secondary"}>{r.active ? "Actif" : "Inactif"}</Badge>
               </div>
               <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                <p className="font-mono">{Number(r.latitude).toFixed(5)}, {Number(r.longitude).toFixed(5)}</p>
+                <p className="font-mono">{formatCoord(r.latitude)}, {formatCoord(r.longitude)}</p>
                 <p>Rayon : <b>{r.radius_meters} m</b></p>
               </div>
               <div className="mt-4 flex gap-2">
@@ -220,7 +239,7 @@ const PresenceLocations = () => {
               </Button>
               {form.latitude && form.longitude && (
                 <p className="mt-2 text-xs text-muted-foreground font-mono">
-                  ✓ {Number(form.latitude).toFixed(5)}, {Number(form.longitude).toFixed(5)}
+                  ✓ {formatCoord(form.latitude)}, {formatCoord(form.longitude)}
                 </p>
               )}
               <div className="mt-2 grid grid-cols-2 gap-2">
