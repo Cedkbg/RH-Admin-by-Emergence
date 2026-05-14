@@ -150,7 +150,12 @@ const PresenceScan = () => {
     setStatus("validating");
     setMessage("Validation en cours…");
     const { data, error } = await supabase.functions.invoke("attendance-scan", {
-      body: { qr_token: qrToken, gps_lat: gps.latitude, gps_lng: gps.longitude },
+      body: {
+        qr_token: qrToken,
+        gps_lat: gps.latitude,
+        gps_lng: gps.longitude,
+        gps_accuracy: Number.isFinite(gps.accuracy) ? gps.accuracy : null,
+      },
     });
     if (error || data?.error) {
       setStatus("error");
