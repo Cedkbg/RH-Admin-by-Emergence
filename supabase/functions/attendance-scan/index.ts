@@ -52,10 +52,12 @@ Deno.serve(async (req) => {
     const userEmail = userData.user.email;
 
     const body = await req.json();
-    const { qr_token, gps_lat, gps_lng } = body || {};
+    const { qr_token, gps_lat, gps_lng, gps_accuracy } = body || {};
     if (!qr_token || typeof gps_lat !== "number" || typeof gps_lng !== "number") {
       return new Response(JSON.stringify({ error: "QR et position GPS requis" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    // Tolérance basée sur la précision GPS rapportée par le device (plafonnée à 75m)
+    const accuracyTolerance = Math.min(75, Math.max(0, Number(gps_accuracy) || 0));
 
     let payload: any;
     try { payload = JSON.parse(atob(qr_token)); }
