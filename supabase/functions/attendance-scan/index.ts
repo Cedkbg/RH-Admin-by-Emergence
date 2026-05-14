@@ -52,10 +52,12 @@ Deno.serve(async (req) => {
     const userEmail = userData.user.email;
 
     const body = await req.json();
-    const { qr_token, gps_lat, gps_lng } = body || {};
+    const { qr_token, gps_lat, gps_lng, gps_accuracy } = body || {};
     if (!qr_token || typeof gps_lat !== "number" || typeof gps_lng !== "number") {
       return new Response(JSON.stringify({ error: "QR et position GPS requis" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    // Tolérance basée sur la précision GPS rapportée par le device (plafonnée à 75m)
+    const accuracyTolerance = Math.min(75, Math.max(0, Number(gps_accuracy) || 0));
 
     let payload: any;
     try { payload = JSON.parse(atob(qr_token)); }
@@ -85,11 +87,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "QR expiré, scannez à nouveau" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Vérifie GPS
+    // Vérifie GPS — on tolère la marge d'erreur GPS du téléphone
     const distance = distMeters(gps_lat, gps_lng, loc.latitude, loc.longitude);
-    if (distance > loc.radius_meters) {
+    const effectiveDistance = Math.max(0, distance - accuracyTolerance);
+    if (effectiveDistance > loc.radius_meters) {
+      const accTxt = accuracyTolerance > 0 ? ` (précision GPS ±${Math.round(accuracyTolerance)} m)` : "";
       return new Response(JSON.stringify({
-        error: `Vous êtes à ${Math.round(distance)} m du site (${loc.radius_meters} m max). Pointage refusé.`,
+        error: `Vous êtes à ~${Math.round(distance)} m du site${accTxt}. Maximum autorisé : ${loc.radius_meters} m. Rapprochez-vous puis réessayez.`,
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 

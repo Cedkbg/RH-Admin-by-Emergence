@@ -49,12 +49,12 @@ const PresenceScan = () => {
   // directement sur un clic, puis la caméra directement sur un second clic.
   const startGps = () => {
     setStatus("gps");
-    setMessage("Autorisez la localisation pour confirmer votre présence sur site.");
+    setMessage("Autorisez la localisation. On affine la précision pendant quelques secondes…");
     setGpsMsg("Recherche GPS…");
     coordsRef.current = null;
 
     const geo = typeof navigator !== "undefined" ? navigator.geolocation : null;
-    if (!geo || typeof geo.getCurrentPosition !== "function") {
+    if (!geo || typeof geo.watchPosition !== "function") {
       setStatus("error");
       setMessage("GPS non disponible sur cet appareil.");
       return;
@@ -65,22 +65,52 @@ const PresenceScan = () => {
       return;
     }
 
-    geo.getCurrentPosition(
-      (pos) => {
-        if (!mountedRef.current) return;
-        coordsRef.current = pos.coords;
-        setGpsMsg("Position GPS acquise");
+    let watchId: number | null = null;
+    let timeoutId: number | null = null;
+    let bailoutId: number | null = null;
+    let best: GeolocationCoordinates | null = null;
+
+    const finish = (errMsg?: string) => {
+      if (watchId !== null) { try { geo.clearWatch(watchId); } catch {} watchId = null; }
+      if (timeoutId !== null) { clearTimeout(timeoutId); timeoutId = null; }
+      if (bailoutId !== null) { clearTimeout(bailoutId); bailoutId = null; }
+      if (!mountedRef.current) return;
+      if (best && Number.isFinite(best.latitude) && Number.isFinite(best.longitude)) {
+        coordsRef.current = best;
+        const acc = Math.round(best.accuracy || 0);
+        setGpsMsg(`Position GPS acquise (±${acc} m)`);
         setMessage("Position confirmée. Lancez maintenant la caméra pour scanner le QR code.");
         setStatus("gpsReady");
-      },
-      (err) => {
-        if (!mountedRef.current) return;
+      } else {
         setGpsMsg("GPS refusé ou indisponible");
         setStatus("error");
-        setMessage(gpsErrorMessage(err));
+        setMessage(errMsg || "Position GPS introuvable. Sortez à l'air libre puis réessayez.");
+      }
+    };
+
+    watchId = geo.watchPosition(
+      (pos) => {
+        if (!mountedRef.current) return;
+        const c = pos.coords;
+        if (!Number.isFinite(c.latitude) || !Number.isFinite(c.longitude)) return;
+        if (!best || (c.accuracy ?? 9999) < (best.accuracy ?? 9999)) best = c;
+        const acc = Math.round(c.accuracy || 0);
+        setGpsMsg(`Affinage GPS… ±${acc} m`);
+        // Stop dès qu'on a une excellente précision
+        if ((c.accuracy ?? 9999) <= 15) finish();
+      },
+      (err) => {
+        // Si on a déjà une lecture acceptable, on la garde
+        if (best) finish();
+        else finish(gpsErrorMessage(err));
       },
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
     );
+
+    // Bailout : 8s max d'affinage, puis on prend la meilleure lecture
+    bailoutId = window.setTimeout(() => finish(), 8000);
+    // Filet de sécurité dur : 22s
+    timeoutId = window.setTimeout(() => finish("Délai GPS dépassé. Réessayez à l'extérieur."), 22000);
   };
 
   const startCamera = () => {
@@ -120,7 +150,12 @@ const PresenceScan = () => {
     setStatus("validating");
     setMessage("Validation en cours…");
     const { data, error } = await supabase.functions.invoke("attendance-scan", {
-      body: { qr_token: qrToken, gps_lat: gps.latitude, gps_lng: gps.longitude },
+      body: {
+        qr_token: qrToken,
+        gps_lat: gps.latitude,
+        gps_lng: gps.longitude,
+        gps_accuracy: Number.isFinite(gps.accuracy) ? gps.accuracy : null,
+      },
     });
     if (error || data?.error) {
       setStatus("error");
