@@ -587,13 +587,13 @@ const Paie = () => {
         transport: 0, communication: 0, loyer: 0, allocation_familiale: 0,
         status: "en_attente", paid_at: "",
         // extras non persistés
-        children_count: 0, overtime_hours: 0, advance: 0,
+        children_count: 0, overtime_hours: 0, overtime_days: 0, regular_hours: 0, advance: 0,
       } as any}
       validate={(f) => (!f.employee_id || !f.period ? "Agent et période requis" : null)}
       prepare={(f: any) => {
         const c = cleanForm(f);
         delete c.net_pay; delete c.deductions; delete c.total_avantages;
-        delete c.children_count; delete c.overtime_hours; delete c.advance;
+        delete c.children_count; delete c.overtime_hours; delete c.overtime_days; delete c.regular_hours; delete c.advance;
         ["hours_worked","hourly_rate","days_worked","daily_rate","base_salary","assiette_ipr","bonus","ipr","inpp","cnss","cnss_patronal","onem","other_deductions","transport","communication","loyer","allocation_familiale"].forEach((k) => { c[k] = Number(c[k] || 0); });
         if (!Array.isArray(c.bonus_details)) c.bonus_details = [];
         return c;
