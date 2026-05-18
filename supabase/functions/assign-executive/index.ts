@@ -64,6 +64,22 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Singleton enforcement: only one DG / one DGA, sauf si on (ré)assigne la même personne
+    if (role === "dg" || role === "dga") {
+      const { data: existingHolders } = await admin
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", role);
+      const others = (existingHolders || []).filter((h: any) => h.user_id !== user_id);
+      if (others.length > 0) {
+        return new Response(JSON.stringify({
+          error: role === "dg"
+            ? "Un Directeur Général existe déjà. Retirez-le d'abord avant d'en affecter un autre."
+            : "Un Directeur Général Adjoint existe déjà. Retirez-le d'abord avant d'en affecter un autre.",
+        }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     // Make sure profile is approved
     await admin.from("profiles").update({ approval_status: "approved" }).eq("id", user_id);
 

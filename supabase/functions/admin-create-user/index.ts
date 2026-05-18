@@ -72,6 +72,21 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Singleton enforcement: only ONE DG and ONE DGA allowed in the whole organisation
+    if (role === "dg" || role === "dga") {
+      const { count } = await admin
+        .from("user_roles")
+        .select("*", { count: "exact", head: true })
+        .eq("role", role);
+      if ((count ?? 0) > 0) {
+        return new Response(JSON.stringify({
+          error: role === "dg"
+            ? "Un Directeur Général existe déjà. Un seul DG est autorisé."
+            : "Un Directeur Général Adjoint existe déjà. Un seul DGA est autorisé.",
+        }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     // 1) Create user (idempotent: reuse if already exists)
     let newUserId: string | null = null;
     let createdNewUser = false;

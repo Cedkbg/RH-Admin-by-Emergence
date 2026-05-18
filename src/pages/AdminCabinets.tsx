@@ -102,13 +102,26 @@ export default function AdminCabinets() {
             <TabsTrigger key={r} value={r}>{ROLE_META[r].label}</TabsTrigger>
           ))}
         </TabsList>
-        {allowedRoles.map((r) => (
-          <TabsContent key={r} value={r} className="space-y-6">
-            <AssignExistingForm role={r} directions={directions} profiles={profiles} onAssigned={refresh} />
-            <CreateForm role={r} directions={directions} onCreated={refresh} />
-            <ExistingList role={r} executives={executives} directions={directions} profiles={profiles} />
-          </TabsContent>
-        ))}
+        {allowedRoles.map((r) => {
+          const isSingleton = r === "dg" || r === "dga";
+          const alreadyExists = isSingleton && executives.some((e) => e.role === r);
+          return (
+            <TabsContent key={r} value={r} className="space-y-6">
+              {alreadyExists ? (
+                <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-foreground">
+                  <strong>{ROLE_META[r].label}</strong> déjà désigné. Un seul {ROLE_META[r].label.toLowerCase()} est autorisé dans l'organisation.
+                  Retirez l'affectation existante ci-dessous avant d'en créer une nouvelle.
+                </div>
+              ) : (
+                <>
+                  <AssignExistingForm role={r} directions={directions} profiles={profiles} onAssigned={refresh} />
+                  <CreateForm role={r} directions={directions} onCreated={refresh} />
+                </>
+              )}
+              <ExistingList role={r} executives={executives} directions={directions} profiles={profiles} />
+            </TabsContent>
+          );
+        })}
       </Tabs>
     </div>
   );
