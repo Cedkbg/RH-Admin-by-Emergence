@@ -271,7 +271,11 @@ const PaieForm = ({
     : null;
   const computedBrut = baseFromHours ?? baseFromDays ?? num(form.base_salary);
 
-  const overtimePay = num(form.overtime_hours) * num(form.hourly_rate) * OVERTIME_RATE;
+  // Heures sup = heures × taux horaire × 1.3 ; Jours sup = jours × taux journalier (ou 8×tauxH) × 1.5
+  const overtimeHoursPay = num(form.overtime_hours) * num(form.hourly_rate) * OVERTIME_HOUR_RATE;
+  const dailyRateEffective = num(form.daily_rate) || num(form.hourly_rate) * STD_HOURS_PER_DAY;
+  const overtimeDaysPay = num(form.overtime_days) * dailyRateEffective * OVERTIME_DAY_RATE;
+  const overtimePay = +(overtimeHoursPay + overtimeDaysPay).toFixed(2);
 
   const childrenCount = num(form.children_count);
   const allocFamPerChild = 5; // USD/enfant indicatif
