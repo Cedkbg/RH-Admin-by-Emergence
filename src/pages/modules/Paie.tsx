@@ -353,9 +353,15 @@ const PaieForm = ({
           Recalculer
         </Button>
       </div>
-      <TextField label="Jours prestés" value={String(form.days_worked ?? 0)} onChange={() => {}} type="number" disabled hint="Calculé depuis le pointage de présence" />
-      <TextField label="Heures travaillées" value={String(form.hours_worked ?? 0)} onChange={() => {}} type="number" disabled hint="Calculé depuis le pointage de présence" />
-      <TextField label="Heures supplémentaires" value={String(form.overtime_hours ?? 0)} onChange={() => {}} type="number" disabled hint="Calculé depuis le pointage de présence" />
+      <div className="md:col-span-2 rounded-md border bg-secondary/20 p-2 text-[11px] text-muted-foreground">
+        Régime de travail : <strong>{STD_HOURS_PER_DAY} h/jour × {STD_DAYS_PER_WEEK} jours/semaine</strong> ({STD_MONTHLY_HOURS.toFixed(2)} h/mois théoriques).
+        Heures sup. au-delà de 8 h/jour ouvré ; jours sup. = jours travaillés samedi/dimanche.
+      </div>
+      <TextField label="Jours prestés (auto)" value={String(form.days_worked ?? 0)} onChange={() => {}} type="number" disabled hint="Depuis le pointage" />
+      <TextField label="Heures travaillées (auto)" value={String(form.hours_worked ?? 0)} onChange={() => {}} type="number" disabled hint="Depuis le pointage" />
+      <TextField label="Heures normales" value={String(form.regular_hours ?? Math.max(0, num(form.hours_worked) - num(form.overtime_hours)))} onChange={() => {}} type="number" disabled hint="Heures hors supplémentaires" />
+      <TextField label="Heures supplémentaires" value={String(form.overtime_hours ?? 0)} onChange={(v) => setForm({ ...form, overtime_hours: Number(v) })} type="number" hint={`Majorées à ${(OVERTIME_HOUR_RATE * 100).toFixed(0)}%`} />
+      <TextField label="Jours supplémentaires (WE)" value={String(form.overtime_days ?? 0)} onChange={(v) => setForm({ ...form, overtime_days: Number(v) })} type="number" hint={`Majorés à ${(OVERTIME_DAY_RATE * 100).toFixed(0)}%`} />
       <TextField label="Taux horaire (USD/h)" value={String(form.hourly_rate ?? 0)} onChange={(v) => setForm({ ...form, hourly_rate: Number(v) })} type="number" />
       <TextField label="Taux journalier (USD/j)" value={String(form.daily_rate ?? 0)} onChange={(v) => setForm({ ...form, daily_rate: Number(v) })} type="number" />
       <TextField label="Salaire de base mensuel" value={String(form.base_salary ?? 0)} onChange={(v) => setForm({ ...form, base_salary: Number(v) })} type="number" span={2} />
