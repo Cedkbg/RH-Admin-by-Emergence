@@ -141,7 +141,7 @@ const OVERTIME_DAY_RATE = 1.5;   // majoration jours sup (samedi / dimanche / au
 const PaieForm = ({
   form, setForm, employees, directions, departments,
 }: {
-  form: Partial<Pay> & { children_count?: number; overtime_hours?: number; advance?: number };
+  form: Partial<Pay> & { children_count?: number; overtime_hours?: number; overtime_days?: number; regular_hours?: number; advance?: number };
   setForm: (f: any) => void;
   employees: Employee[];
   directions: Map<string, Direction>;
