@@ -131,9 +131,12 @@ const yearsBetween = (from: string | null | undefined, to: Date) => {
   return Math.max(0, (to.getTime() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
 };
 
-// === Heures théoriques mensuelles ===
-const STD_MONTHLY_HOURS = 173.33; // 40h/sem
-const OVERTIME_RATE = 1.3; // majoration heures sup
+// === Régime horaire légal RDC : 8h/jour × 5 jours/semaine = 40h/semaine ===
+const STD_HOURS_PER_DAY = 8;
+const STD_DAYS_PER_WEEK = 5;
+const STD_MONTHLY_HOURS = (STD_HOURS_PER_DAY * STD_DAYS_PER_WEEK * 52) / 12; // ≈ 173.33
+const OVERTIME_HOUR_RATE = 1.3;  // majoration heures sup (jour ouvré)
+const OVERTIME_DAY_RATE = 1.5;   // majoration jours sup (samedi / dimanche / au-delà des 5j)
 
 const PaieForm = ({
   form, setForm, employees, directions, departments,
