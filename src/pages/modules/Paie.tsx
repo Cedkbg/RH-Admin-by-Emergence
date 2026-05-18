@@ -175,26 +175,42 @@ const PaieForm = ({
         .lte("date", endDate);
       if (error) {
         console.warn("[Paie] attendance fetch:", error.message);
-        return { hours_worked: 0, days_worked: 0, overtime_hours: 0 };
+        return { hours_worked: 0, days_worked: 0, overtime_hours: 0, overtime_days: 0, regular_hours: 0 };
       }
-      let totalMinutes = 0;
+      let totalHours = 0;
+      let overtimeHours = 0;     // au-delà de 8h sur un jour ouvré (Lun-Ven)
+      let overtimeDays = 0;      // jours travaillés le samedi ou dimanche
       const days = new Set<string>();
       for (const r of (data as any[]) || []) {
         if (!r.check_in || !r.check_out) continue;
-        const [h1, m1] = r.check_in.split(":").map(Number);
-        const [h2, m2] = r.check_out.split(":").map(Number);
-        const diff = h2 * 60 + m2 - (h1 * 60 + m1);
-        if (diff > 0) {
-          totalMinutes += diff;
-          days.add(r.date);
+        const [h1, m1] = String(r.check_in).split(":").map(Number);
+        const [h2, m2] = String(r.check_out).split(":").map(Number);
+        const diffH = (h2 * 60 + m2 - (h1 * 60 + m1)) / 60;
+        if (diffH <= 0) continue;
+        days.add(r.date);
+        totalHours += diffH;
+        const dow = new Date(r.date).getDay(); // 0=Dim, 6=Sam
+        const isWeekend = dow === 0 || dow === 6;
+        if (isWeekend) {
+          overtimeDays += 1;
+          overtimeHours += diffH; // toutes les heures du WE sont sup
+        } else if (diffH > STD_HOURS_PER_DAY) {
+          overtimeHours += diffH - STD_HOURS_PER_DAY;
         }
       }
-      const hours = +(totalMinutes / 60).toFixed(2);
-      const overtime = +Math.max(0, hours - STD_MONTHLY_HOURS).toFixed(2);
-      return { hours_worked: hours, days_worked: days.size, overtime_hours: overtime };
+      const hours = +totalHours.toFixed(2);
+      const overtimeH = +overtimeHours.toFixed(2);
+      const regularH = +(hours - overtimeH).toFixed(2);
+      return {
+        hours_worked: hours,
+        days_worked: days.size,
+        regular_hours: regularH,
+        overtime_hours: overtimeH,
+        overtime_days: overtimeDays,
+      };
     } catch (e: any) {
       console.error("[Paie] fillFromAttendance error:", e);
-      return { hours_worked: 0, days_worked: 0, overtime_hours: 0 };
+      return { hours_worked: 0, days_worked: 0, overtime_hours: 0, overtime_days: 0, regular_hours: 0 };
     } finally {
       setLoadingHours(false);
     }
@@ -208,7 +224,7 @@ const PaieForm = ({
     const att = await fillFromAttendance(form.employee_id, form.period);
     if (!att) return;
     setForm({ ...form, ...att });
-    toast.success(`Présence recalculée : ${att.days_worked} jours, ${att.hours_worked} h`);
+    toast.success(`Présence : ${att.days_worked} j · ${att.hours_worked} h · sup ${att.overtime_hours} h / ${att.overtime_days} j`);
   };
 
   const handleSelectEmployee = async (empId: string) => {
