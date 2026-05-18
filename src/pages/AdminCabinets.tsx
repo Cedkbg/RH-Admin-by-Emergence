@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, UserPlus, Loader2, Link2 } from "lucide-react";
+import { ArrowLeft, UserPlus, Loader2, Link2, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,7 +110,7 @@ export default function AdminCabinets() {
               {alreadyExists ? (
                 <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-foreground">
                   <strong>{ROLE_META[r].label}</strong> déjà désigné. Un seul {ROLE_META[r].label.toLowerCase()} est autorisé dans l'organisation.
-                  Retirez l'affectation existante ci-dessous avant d'en créer une nouvelle.
+                  Retirez l'affectation existante ci-dessous (bouton « Retirer ») avant d'en créer une nouvelle.
                 </div>
               ) : (
                 <>
@@ -118,7 +118,7 @@ export default function AdminCabinets() {
                   <CreateForm role={r} directions={directions} onCreated={refresh} />
                 </>
               )}
-              <ExistingList role={r} executives={executives} directions={directions} profiles={profiles} />
+              <ExistingList role={r} executives={executives} directions={directions} profiles={profiles} onChanged={refresh} canRemove={callerRoles.includes("admin")} />
             </TabsContent>
           );
         })}
@@ -300,15 +300,51 @@ function CreateForm({ role, directions, onCreated }: {
   );
 }
 
-function ExistingList({ role, executives, directions, profiles }: {
+function ExistingList({ role, executives, directions, profiles, onChanged, canRemove }: {
   role: RoleKey;
   executives: any[];
   directions: { id: string; code: string; name: string }[];
   profiles: ProfileLite[];
+  onChanged: () => void;
+  canRemove: boolean;
 }) {
   const filtered = executives.filter((e) => e.role === role);
   const dirById = new Map(directions.map((d) => [d.id, d]));
   const profById = new Map(profiles.map((p) => [p.id, p]));
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const remove = async (exec: any) => {
+    const p = profById.get(exec.user_id);
+    const label = ROLE_META[role].label;
+    if (!confirm(`Retirer ${p?.full_name || "cet utilisateur"} du rôle ${label} ?\nCela libère le poste et permet d'affecter une autre personne.`)) return;
+    setRemovingId(exec.id);
+    try {
+      const { error: e1 } = await supabase.from("direction_executives").delete().eq("id", exec.id);
+      if (e1) throw e1;
+      // Vérifier s'il reste d'autres affectations de ce rôle pour cet utilisateur
+      const { data: remaining } = await supabase
+        .from("direction_executives")
+        .select("id")
+        .eq("user_id", exec.user_id)
+        .eq("role", role);
+      if (!remaining || remaining.length === 0) {
+        const { error: e2 } = await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", exec.user_id)
+          .eq("role", role);
+        if (e2) throw e2;
+      }
+      toast.success(`${label} retiré`);
+      onChanged();
+    } catch (err: any) {
+      console.error("[remove executive]", err);
+      toast.error(err?.message || "Échec du retrait (réservé à l'admin)");
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
   return (
     <div className="rounded-xl border bg-card p-6 shadow-sm">
       <h3 className="text-sm font-semibold mb-3">Affectations existantes ({filtered.length})</h3>
@@ -325,11 +361,30 @@ function ExistingList({ role, executives, directions, profiles }: {
                   <div className="font-medium truncate">{p?.full_name || "Utilisateur inconnu"}</div>
                   {p?.email && <div className="text-xs text-muted-foreground truncate">{p.email}</div>}
                 </div>
-                {d && <Badge variant="outline" className="shrink-0">{d.code} — {d.name}</Badge>}
+                <div className="flex items-center gap-2 shrink-0">
+                  {d && <Badge variant="outline">{d.code} — {d.name}</Badge>}
+                  {canRemove && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => remove(e)}
+                      disabled={removingId === e.id}
+                    >
+                      {removingId === e.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4 mr-1" />Retirer</>}
+                    </Button>
+                  )}
+                </div>
               </li>
             );
           })}
         </ul>
+      )}
+      {!canRemove && filtered.length > 0 && (
+        <p className="mt-3 text-xs text-muted-foreground italic">
+          Seul l'administrateur peut retirer une affectation.
+        </p>
       )}
     </div>
   );

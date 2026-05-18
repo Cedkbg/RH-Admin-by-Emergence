@@ -131,14 +131,17 @@ const yearsBetween = (from: string | null | undefined, to: Date) => {
   return Math.max(0, (to.getTime() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
 };
 
-// === Heures théoriques mensuelles ===
-const STD_MONTHLY_HOURS = 173.33; // 40h/sem
-const OVERTIME_RATE = 1.3; // majoration heures sup
+// === Régime horaire légal RDC : 8h/jour × 5 jours/semaine = 40h/semaine ===
+const STD_HOURS_PER_DAY = 8;
+const STD_DAYS_PER_WEEK = 5;
+const STD_MONTHLY_HOURS = (STD_HOURS_PER_DAY * STD_DAYS_PER_WEEK * 52) / 12; // ≈ 173.33
+const OVERTIME_HOUR_RATE = 1.3;  // majoration heures sup (jour ouvré)
+const OVERTIME_DAY_RATE = 1.5;   // majoration jours sup (samedi / dimanche / au-delà des 5j)
 
 const PaieForm = ({
   form, setForm, employees, directions, departments,
 }: {
-  form: Partial<Pay> & { children_count?: number; overtime_hours?: number; advance?: number };
+  form: Partial<Pay> & { children_count?: number; overtime_hours?: number; overtime_days?: number; regular_hours?: number; advance?: number };
   setForm: (f: any) => void;
   employees: Employee[];
   directions: Map<string, Direction>;
@@ -172,26 +175,42 @@ const PaieForm = ({
         .lte("date", endDate);
       if (error) {
         console.warn("[Paie] attendance fetch:", error.message);
-        return { hours_worked: 0, days_worked: 0, overtime_hours: 0 };
+        return { hours_worked: 0, days_worked: 0, overtime_hours: 0, overtime_days: 0, regular_hours: 0 };
       }
-      let totalMinutes = 0;
+      let totalHours = 0;
+      let overtimeHours = 0;     // au-delà de 8h sur un jour ouvré (Lun-Ven)
+      let overtimeDays = 0;      // jours travaillés le samedi ou dimanche
       const days = new Set<string>();
       for (const r of (data as any[]) || []) {
         if (!r.check_in || !r.check_out) continue;
-        const [h1, m1] = r.check_in.split(":").map(Number);
-        const [h2, m2] = r.check_out.split(":").map(Number);
-        const diff = h2 * 60 + m2 - (h1 * 60 + m1);
-        if (diff > 0) {
-          totalMinutes += diff;
-          days.add(r.date);
+        const [h1, m1] = String(r.check_in).split(":").map(Number);
+        const [h2, m2] = String(r.check_out).split(":").map(Number);
+        const diffH = (h2 * 60 + m2 - (h1 * 60 + m1)) / 60;
+        if (diffH <= 0) continue;
+        days.add(r.date);
+        totalHours += diffH;
+        const dow = new Date(r.date).getDay(); // 0=Dim, 6=Sam
+        const isWeekend = dow === 0 || dow === 6;
+        if (isWeekend) {
+          overtimeDays += 1;
+          overtimeHours += diffH; // toutes les heures du WE sont sup
+        } else if (diffH > STD_HOURS_PER_DAY) {
+          overtimeHours += diffH - STD_HOURS_PER_DAY;
         }
       }
-      const hours = +(totalMinutes / 60).toFixed(2);
-      const overtime = +Math.max(0, hours - STD_MONTHLY_HOURS).toFixed(2);
-      return { hours_worked: hours, days_worked: days.size, overtime_hours: overtime };
+      const hours = +totalHours.toFixed(2);
+      const overtimeH = +overtimeHours.toFixed(2);
+      const regularH = +(hours - overtimeH).toFixed(2);
+      return {
+        hours_worked: hours,
+        days_worked: days.size,
+        regular_hours: regularH,
+        overtime_hours: overtimeH,
+        overtime_days: overtimeDays,
+      };
     } catch (e: any) {
       console.error("[Paie] fillFromAttendance error:", e);
-      return { hours_worked: 0, days_worked: 0, overtime_hours: 0 };
+      return { hours_worked: 0, days_worked: 0, overtime_hours: 0, overtime_days: 0, regular_hours: 0 };
     } finally {
       setLoadingHours(false);
     }
@@ -205,7 +224,7 @@ const PaieForm = ({
     const att = await fillFromAttendance(form.employee_id, form.period);
     if (!att) return;
     setForm({ ...form, ...att });
-    toast.success(`Présence recalculée : ${att.days_worked} jours, ${att.hours_worked} h`);
+    toast.success(`Présence : ${att.days_worked} j · ${att.hours_worked} h · sup ${att.overtime_hours} h / ${att.overtime_days} j`);
   };
 
   const handleSelectEmployee = async (empId: string) => {
@@ -252,7 +271,11 @@ const PaieForm = ({
     : null;
   const computedBrut = baseFromHours ?? baseFromDays ?? num(form.base_salary);
 
-  const overtimePay = num(form.overtime_hours) * num(form.hourly_rate) * OVERTIME_RATE;
+  // Heures sup = heures × taux horaire × 1.3 ; Jours sup = jours × taux journalier (ou 8×tauxH) × 1.5
+  const overtimeHoursPay = num(form.overtime_hours) * num(form.hourly_rate) * OVERTIME_HOUR_RATE;
+  const dailyRateEffective = num(form.daily_rate) || num(form.hourly_rate) * STD_HOURS_PER_DAY;
+  const overtimeDaysPay = num(form.overtime_days) * dailyRateEffective * OVERTIME_DAY_RATE;
+  const overtimePay = +(overtimeHoursPay + overtimeDaysPay).toFixed(2);
 
   const childrenCount = num(form.children_count);
   const allocFamPerChild = 5; // USD/enfant indicatif
@@ -330,9 +353,15 @@ const PaieForm = ({
           Recalculer
         </Button>
       </div>
-      <TextField label="Jours prestés" value={String(form.days_worked ?? 0)} onChange={() => {}} type="number" disabled hint="Calculé depuis le pointage de présence" />
-      <TextField label="Heures travaillées" value={String(form.hours_worked ?? 0)} onChange={() => {}} type="number" disabled hint="Calculé depuis le pointage de présence" />
-      <TextField label="Heures supplémentaires" value={String(form.overtime_hours ?? 0)} onChange={() => {}} type="number" disabled hint="Calculé depuis le pointage de présence" />
+      <div className="md:col-span-2 rounded-md border bg-secondary/20 p-2 text-[11px] text-muted-foreground">
+        Régime de travail : <strong>{STD_HOURS_PER_DAY} h/jour × {STD_DAYS_PER_WEEK} jours/semaine</strong> ({STD_MONTHLY_HOURS.toFixed(2)} h/mois théoriques).
+        Heures sup. au-delà de 8 h/jour ouvré ; jours sup. = jours travaillés samedi/dimanche.
+      </div>
+      <TextField label="Jours prestés (auto)" value={String(form.days_worked ?? 0)} onChange={() => {}} type="number" disabled hint="Depuis le pointage" />
+      <TextField label="Heures travaillées (auto)" value={String(form.hours_worked ?? 0)} onChange={() => {}} type="number" disabled hint="Depuis le pointage" />
+      <TextField label="Heures normales" value={String(form.regular_hours ?? Math.max(0, num(form.hours_worked) - num(form.overtime_hours)))} onChange={() => {}} type="number" disabled hint="Heures hors supplémentaires" />
+      <TextField label="Heures supplémentaires" value={String(form.overtime_hours ?? 0)} onChange={(v) => setForm({ ...form, overtime_hours: Number(v) })} type="number" hint={`Majorées à ${(OVERTIME_HOUR_RATE * 100).toFixed(0)}%`} />
+      <TextField label="Jours supplémentaires (WE)" value={String(form.overtime_days ?? 0)} onChange={(v) => setForm({ ...form, overtime_days: Number(v) })} type="number" hint={`Majorés à ${(OVERTIME_DAY_RATE * 100).toFixed(0)}%`} />
       <TextField label="Taux horaire (USD/h)" value={String(form.hourly_rate ?? 0)} onChange={(v) => setForm({ ...form, hourly_rate: Number(v) })} type="number" />
       <TextField label="Taux journalier (USD/j)" value={String(form.daily_rate ?? 0)} onChange={(v) => setForm({ ...form, daily_rate: Number(v) })} type="number" />
       <TextField label="Salaire de base mensuel" value={String(form.base_salary ?? 0)} onChange={(v) => setForm({ ...form, base_salary: Number(v) })} type="number" span={2} />
@@ -400,7 +429,8 @@ const PaieForm = ({
       {/* === RÉCAP === */}
       <div className="md:col-span-2 rounded-lg border-2 border-primary/40 bg-primary/5 p-3 text-sm space-y-1">
         <div className="flex justify-between"><span className="text-muted-foreground">Salaire brut</span><span className="font-semibold">{fmt(computedBrut)} USD</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Heures sup. ({fmt(form.overtime_hours)} h × {OVERTIME_RATE})</span><span>+ {fmt(overtimePay)} USD</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Heures sup. ({fmt(form.overtime_hours)} h × {OVERTIME_HOUR_RATE})</span><span>+ {fmt(overtimeHoursPay)} USD</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Jours sup. ({fmt(form.overtime_days)} j × {OVERTIME_DAY_RATE})</span><span>+ {fmt(overtimeDaysPay)} USD</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Total primes ({bonuses.length})</span><span>+ {fmt(totalPrimes)} USD</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Total avantages</span><span className="font-semibold">+ {fmt(totalAvantages)} USD</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Total retenues</span><span className="font-semibold">- {fmt(totalRetenues)} USD</span></div>
@@ -557,13 +587,13 @@ const Paie = () => {
         transport: 0, communication: 0, loyer: 0, allocation_familiale: 0,
         status: "en_attente", paid_at: "",
         // extras non persistés
-        children_count: 0, overtime_hours: 0, advance: 0,
+        children_count: 0, overtime_hours: 0, overtime_days: 0, regular_hours: 0, advance: 0,
       } as any}
       validate={(f) => (!f.employee_id || !f.period ? "Agent et période requis" : null)}
       prepare={(f: any) => {
         const c = cleanForm(f);
         delete c.net_pay; delete c.deductions; delete c.total_avantages;
-        delete c.children_count; delete c.overtime_hours; delete c.advance;
+        delete c.children_count; delete c.overtime_hours; delete c.overtime_days; delete c.regular_hours; delete c.advance;
         ["hours_worked","hourly_rate","days_worked","daily_rate","base_salary","assiette_ipr","bonus","ipr","inpp","cnss","cnss_patronal","onem","other_deductions","transport","communication","loyer","allocation_familiale"].forEach((k) => { c[k] = Number(c[k] || 0); });
         if (!Array.isArray(c.bonus_details)) c.bonus_details = [];
         return c;
