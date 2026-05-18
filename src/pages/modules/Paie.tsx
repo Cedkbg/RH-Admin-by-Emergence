@@ -429,7 +429,8 @@ const PaieForm = ({
       {/* === RÉCAP === */}
       <div className="md:col-span-2 rounded-lg border-2 border-primary/40 bg-primary/5 p-3 text-sm space-y-1">
         <div className="flex justify-between"><span className="text-muted-foreground">Salaire brut</span><span className="font-semibold">{fmt(computedBrut)} USD</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Heures sup. ({fmt(form.overtime_hours)} h × {OVERTIME_RATE})</span><span>+ {fmt(overtimePay)} USD</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Heures sup. ({fmt(form.overtime_hours)} h × {OVERTIME_HOUR_RATE})</span><span>+ {fmt(overtimeHoursPay)} USD</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Jours sup. ({fmt(form.overtime_days)} j × {OVERTIME_DAY_RATE})</span><span>+ {fmt(overtimeDaysPay)} USD</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Total primes ({bonuses.length})</span><span>+ {fmt(totalPrimes)} USD</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Total avantages</span><span className="font-semibold">+ {fmt(totalAvantages)} USD</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Total retenues</span><span className="font-semibold">- {fmt(totalRetenues)} USD</span></div>
