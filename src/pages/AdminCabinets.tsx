@@ -110,7 +110,7 @@ export default function AdminCabinets() {
               {alreadyExists ? (
                 <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-foreground">
                   <strong>{ROLE_META[r].label}</strong> déjà désigné. Un seul {ROLE_META[r].label.toLowerCase()} est autorisé dans l'organisation.
-                  Retirez l'affectation existante ci-dessous avant d'en créer une nouvelle.
+                  Retirez l'affectation existante ci-dessous (bouton « Retirer ») avant d'en créer une nouvelle.
                 </div>
               ) : (
                 <>
@@ -118,7 +118,7 @@ export default function AdminCabinets() {
                   <CreateForm role={r} directions={directions} onCreated={refresh} />
                 </>
               )}
-              <ExistingList role={r} executives={executives} directions={directions} profiles={profiles} />
+              <ExistingList role={r} executives={executives} directions={directions} profiles={profiles} onChanged={refresh} canRemove={callerRoles.includes("admin")} />
             </TabsContent>
           );
         })}
