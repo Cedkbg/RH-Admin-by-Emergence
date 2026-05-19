@@ -299,20 +299,43 @@ const PaieForm = ({
   const totalRetenues = ipr + inpp + cnss + onem + num(form.other_deductions) + advance;
   const net = computedBrut + totalAvantages - totalRetenues;
 
-  // Auto-remplissage cotisations à chaque changement du brut
+  // Auto-recalcul : à chaque changement d'un paramètre manuel (heures, primes, avances, taux, enfants, retenues manuelles),
+  // on resynchronise tous les champs dérivés pour garantir la cohérence du bulletin.
   useEffect(() => {
+    const assiette = +(computedBrut + totalPrimes + overtimePay).toFixed(2);
+    const _cnss = +(computedBrut * 0.05).toFixed(2);
+    const _inpp = +(computedBrut * 0.03).toFixed(2);
+    const _onem = +(computedBrut * 0.002).toFixed(2);
+    const _ipr = computeIPR(assiette);
+    const _alloc = childrenCount > 0 ? childrenCount * allocFamPerChild : 0;
+    const _avantages = num(form.transport) + num(form.communication) + num(form.loyer) + _alloc + totalPrimes + overtimePay;
+    const _retenues = _ipr + _inpp + _cnss + _onem + num(form.other_deductions) + num(form.advance);
+    const _net = +(computedBrut + _avantages - _retenues).toFixed(2);
+    const _regular = Math.max(0, +(num(form.hours_worked) - num(form.overtime_hours)).toFixed(2));
+
     setForm((f: any) => ({
       ...f,
-      cnss: +(computedBrut * 0.05).toFixed(2),
+      base_salary: +computedBrut.toFixed(2),
+      cnss: _cnss,
       cnss_patronal: +(computedBrut * 0.13).toFixed(2),
-      inpp: +(computedBrut * 0.03).toFixed(2),
-      onem: +(computedBrut * 0.002).toFixed(2),
-      assiette_ipr: +(computedBrut + totalPrimes + overtimePay).toFixed(2),
-      ipr: computeIPR(computedBrut + totalPrimes + overtimePay),
-      allocation_familiale: childrenCount > 0 ? childrenCount * allocFamPerChild : f.allocation_familiale,
+      inpp: _inpp,
+      onem: _onem,
+      assiette_ipr: assiette,
+      ipr: _ipr,
+      allocation_familiale: _alloc || f.allocation_familiale,
+      total_avantages: +_avantages.toFixed(2),
+      deductions: +_retenues.toFixed(2),
+      net_pay: _net,
+      regular_hours: _regular,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [computedBrut, totalPrimes, overtimePay, childrenCount]);
+  }, [
+    computedBrut, totalPrimes, overtimePay, childrenCount,
+    form.transport, form.communication, form.loyer,
+    form.other_deductions, form.advance,
+    form.hours_worked, form.overtime_hours,
+  ]);
+
 
   const emp = employees.find((e) => e.id === form.employee_id);
   const dir = emp?.direction_id ? directions.get(emp.direction_id)?.name : null;
