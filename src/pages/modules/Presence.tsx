@@ -20,6 +20,8 @@ const Presence = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [employees, setEmployees] = useState<Emp[]>([]);
+  const [directions, setDirections] = useState<Map<string, string>>(new Map());
+  const [departments, setDepartments] = useState<Map<string, string>>(new Map());
   const [attendance, setAttendance] = useState<AttRow[]>([]);
   const [leaves, setLeaves] = useState<LeaveRow[]>([]);
   const [openAtt, setOpenAtt] = useState(false);
@@ -28,20 +30,33 @@ const Presence = () => {
   const [leave, setLeave] = useState<any>({ employee_id: "", leave_type: "paid", start_date: "", end_date: "", reason: "", status: "pending" });
 
   const refresh = async () => {
-    const [e, a, l] = await Promise.all([
-      supabase.from("employees").select("id,first_name,last_name").order("last_name"),
+    const [e, a, l, d, dep] = await Promise.all([
+      supabase.from("employees").select("id,first_name,last_name,matricule,direction_id,department_id").order("last_name"),
       supabase.from("attendance").select("*").order("date", { ascending: false }).limit(200),
       supabase.from("leave_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("directions").select("id,name"),
+      supabase.from("departments").select("id,name"),
     ]);
     setEmployees((e.data as Emp[]) || []);
     setAttendance((a.data as AttRow[]) || []);
     setLeaves((l.data as LeaveRow[]) || []);
+    const dm = new Map<string, string>(); (d.data as RefRow[] || []).forEach((x) => dm.set(x.id, x.name)); setDirections(dm);
+    const pm = new Map<string, string>(); (dep.data as RefRow[] || []).forEach((x) => pm.set(x.id, x.name)); setDepartments(pm);
   };
   useEffect(() => { refresh(); }, []);
 
   const empName = (id: string) => {
     const e = employees.find((x) => x.id === id);
     return e ? `${e.first_name} ${e.last_name}` : "—";
+  };
+  const empInfo = (id: string) => {
+    const e = employees.find((x) => x.id === id);
+    if (!e) return { dir: "—", dep: "—", mat: "—" };
+    return {
+      dir: e.direction_id ? directions.get(e.direction_id) || "—" : "—",
+      dep: e.department_id ? departments.get(e.department_id) || "—" : "—",
+      mat: e.matricule || "—",
+    };
   };
 
   const addAtt = async (ev: React.FormEvent) => {
