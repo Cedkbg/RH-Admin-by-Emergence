@@ -116,23 +116,31 @@ const Presence = () => {
             <Badge variant="secondary">{attendance.length} pointage(s)</Badge>
             {isAdmin && <Button onClick={() => setOpenAtt(true)}><Plus className="mr-2 h-4 w-4" /> Pointage</Button>}
           </div>
-          <section className="rounded-xl border bg-card shadow-sm overflow-hidden">
-            <table className="w-full">
+          <section className="rounded-xl border bg-card shadow-sm overflow-hidden overflow-x-auto">
+            <table className="w-full min-w-[900px]">
               <thead><tr className="border-b bg-secondary/40 text-left text-xs uppercase text-muted-foreground">
-                <th className="p-4">Date</th><th className="p-4">Agent</th><th className="p-4">Entrée</th><th className="p-4">Sortie</th><th className="p-4">Statut</th>
+                <th className="p-4">Date</th><th className="p-4">Agent</th><th className="p-4">Direction</th><th className="p-4">Département</th><th className="p-4">Entrée</th><th className="p-4">Sortie</th><th className="p-4">Statut</th>
               </tr></thead>
               <tbody>
                 {attendance.length === 0 ? (
-                  <tr><td colSpan={5} className="p-12 text-center text-muted-foreground">Aucun pointage.</td></tr>
-                ) : attendance.map((a) => (
+                  <tr><td colSpan={7} className="p-12 text-center text-muted-foreground">Aucun pointage.</td></tr>
+                ) : attendance.map((a) => {
+                  const info = empInfo(a.employee_id);
+                  return (
                   <tr key={a.id} className="border-b hover:bg-muted/50 text-sm">
                     <td className="p-4">{new Date(a.date).toLocaleDateString("fr-FR")}</td>
-                    <td className="p-4 font-semibold">{empName(a.employee_id)}</td>
+                    <td className="p-4">
+                      <div className="font-semibold">{empName(a.employee_id)}</div>
+                      <div className="text-[11px] text-muted-foreground">{info.mat}</div>
+                    </td>
+                    <td className="p-4"><Badge variant="outline" className="font-normal">{info.dir}</Badge></td>
+                    <td className="p-4 text-muted-foreground">{info.dep}</td>
                     <td className="p-4">{a.check_in || "—"}</td>
                     <td className="p-4">{a.check_out || "—"}</td>
                     <td className="p-4"><Badge variant={a.status === "present" ? "default" : "secondary"}>{a.status}</Badge></td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </section>
