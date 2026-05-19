@@ -13,12 +13,15 @@ import { useNavigate } from "react-router-dom";
 
 interface AttRow { id: string; employee_id: string; date: string; check_in: string | null; check_out: string | null; status: string; }
 interface LeaveRow { id: string; employee_id: string; leave_type: string; start_date: string; end_date: string; reason: string | null; status: string; }
-interface Emp { id: string; first_name: string; last_name: string; }
+interface Emp { id: string; first_name: string; last_name: string; matricule: string | null; direction_id: string | null; department_id: string | null; }
+interface RefRow { id: string; name: string; }
 
 const Presence = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [employees, setEmployees] = useState<Emp[]>([]);
+  const [directions, setDirections] = useState<Map<string, string>>(new Map());
+  const [departments, setDepartments] = useState<Map<string, string>>(new Map());
   const [attendance, setAttendance] = useState<AttRow[]>([]);
   const [leaves, setLeaves] = useState<LeaveRow[]>([]);
   const [openAtt, setOpenAtt] = useState(false);
@@ -27,20 +30,33 @@ const Presence = () => {
   const [leave, setLeave] = useState<any>({ employee_id: "", leave_type: "paid", start_date: "", end_date: "", reason: "", status: "pending" });
 
   const refresh = async () => {
-    const [e, a, l] = await Promise.all([
-      supabase.from("employees").select("id,first_name,last_name").order("last_name"),
+    const [e, a, l, d, dep] = await Promise.all([
+      supabase.from("employees").select("id,first_name,last_name,matricule,direction_id,department_id").order("last_name"),
       supabase.from("attendance").select("*").order("date", { ascending: false }).limit(200),
       supabase.from("leave_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("directions").select("id,name"),
+      supabase.from("departments").select("id,name"),
     ]);
     setEmployees((e.data as Emp[]) || []);
     setAttendance((a.data as AttRow[]) || []);
     setLeaves((l.data as LeaveRow[]) || []);
+    const dm = new Map<string, string>(); (d.data as RefRow[] || []).forEach((x) => dm.set(x.id, x.name)); setDirections(dm);
+    const pm = new Map<string, string>(); (dep.data as RefRow[] || []).forEach((x) => pm.set(x.id, x.name)); setDepartments(pm);
   };
   useEffect(() => { refresh(); }, []);
 
   const empName = (id: string) => {
     const e = employees.find((x) => x.id === id);
     return e ? `${e.first_name} ${e.last_name}` : "—";
+  };
+  const empInfo = (id: string) => {
+    const e = employees.find((x) => x.id === id);
+    if (!e) return { dir: "—", dep: "—", mat: "—" };
+    return {
+      dir: e.direction_id ? directions.get(e.direction_id) || "—" : "—",
+      dep: e.department_id ? departments.get(e.department_id) || "—" : "—",
+      mat: e.matricule || "—",
+    };
   };
 
   const addAtt = async (ev: React.FormEvent) => {
@@ -100,23 +116,31 @@ const Presence = () => {
             <Badge variant="secondary">{attendance.length} pointage(s)</Badge>
             {isAdmin && <Button onClick={() => setOpenAtt(true)}><Plus className="mr-2 h-4 w-4" /> Pointage</Button>}
           </div>
-          <section className="rounded-xl border bg-card shadow-sm overflow-hidden">
-            <table className="w-full">
+          <section className="rounded-xl border bg-card shadow-sm overflow-hidden overflow-x-auto">
+            <table className="w-full min-w-[900px]">
               <thead><tr className="border-b bg-secondary/40 text-left text-xs uppercase text-muted-foreground">
-                <th className="p-4">Date</th><th className="p-4">Agent</th><th className="p-4">Entrée</th><th className="p-4">Sortie</th><th className="p-4">Statut</th>
+                <th className="p-4">Date</th><th className="p-4">Agent</th><th className="p-4">Direction</th><th className="p-4">Département</th><th className="p-4">Entrée</th><th className="p-4">Sortie</th><th className="p-4">Statut</th>
               </tr></thead>
               <tbody>
                 {attendance.length === 0 ? (
-                  <tr><td colSpan={5} className="p-12 text-center text-muted-foreground">Aucun pointage.</td></tr>
-                ) : attendance.map((a) => (
+                  <tr><td colSpan={7} className="p-12 text-center text-muted-foreground">Aucun pointage.</td></tr>
+                ) : attendance.map((a) => {
+                  const info = empInfo(a.employee_id);
+                  return (
                   <tr key={a.id} className="border-b hover:bg-muted/50 text-sm">
                     <td className="p-4">{new Date(a.date).toLocaleDateString("fr-FR")}</td>
-                    <td className="p-4 font-semibold">{empName(a.employee_id)}</td>
+                    <td className="p-4">
+                      <div className="font-semibold">{empName(a.employee_id)}</div>
+                      <div className="text-[11px] text-muted-foreground">{info.mat}</div>
+                    </td>
+                    <td className="p-4"><Badge variant="outline" className="font-normal">{info.dir}</Badge></td>
+                    <td className="p-4 text-muted-foreground">{info.dep}</td>
                     <td className="p-4">{a.check_in || "—"}</td>
                     <td className="p-4">{a.check_out || "—"}</td>
                     <td className="p-4"><Badge variant={a.status === "present" ? "default" : "secondary"}>{a.status}</Badge></td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </section>
