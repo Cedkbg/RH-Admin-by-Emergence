@@ -364,8 +364,8 @@ const PaieForm = ({
       <TextField label="Jours supplémentaires (WE)" value={String(form.overtime_days ?? 0)} onChange={(v) => setForm({ ...form, overtime_days: Number(v) })} type="number" hint={`Majorés à ${(OVERTIME_DAY_RATE * 100).toFixed(0)}%`} />
       <TextField label="Taux horaire (USD/h)" value={String(form.hourly_rate ?? 0)} onChange={(v) => setForm({ ...form, hourly_rate: Number(v) })} type="number" />
       <TextField label="Taux journalier (USD/j)" value={String(form.daily_rate ?? 0)} onChange={(v) => setForm({ ...form, daily_rate: Number(v) })} type="number" />
-      <TextField label="Salaire de base mensuel" value={String(form.base_salary ?? 0)} onChange={(v) => setForm({ ...form, base_salary: Number(v) })} type="number" span={2} />
-      <TextField label="Assiette" value={String(form.assiette_ipr ?? 0)} onChange={(v) => setForm({ ...form, assiette_ipr: Number(v) })} type="number" span={2} />
+      <TextField label="Salaire de base mensuel (auto)" value={String(form.base_salary ?? 0)} onChange={() => {}} type="number" span={2} disabled hint="Calculé : heures × taux OU jours × taux journalier" />
+      <TextField label="Assiette imposable (auto)" value={String(form.assiette_ipr ?? 0)} onChange={() => {}} type="number" span={2} disabled hint="Brut + primes + heures sup." />
 
       {/* === MULTI-PRIMES === */}
       <div className="md:col-span-2 mt-1 flex items-center justify-between">
