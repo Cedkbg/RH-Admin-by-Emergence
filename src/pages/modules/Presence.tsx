@@ -13,7 +13,8 @@ import { useNavigate } from "react-router-dom";
 
 interface AttRow { id: string; employee_id: string; date: string; check_in: string | null; check_out: string | null; status: string; }
 interface LeaveRow { id: string; employee_id: string; leave_type: string; start_date: string; end_date: string; reason: string | null; status: string; }
-interface Emp { id: string; first_name: string; last_name: string; }
+interface Emp { id: string; first_name: string; last_name: string; matricule: string | null; direction_id: string | null; department_id: string | null; }
+interface RefRow { id: string; name: string; }
 
 const Presence = () => {
   const { isAdmin } = useAuth();
