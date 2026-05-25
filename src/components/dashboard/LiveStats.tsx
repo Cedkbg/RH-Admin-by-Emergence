@@ -1,0 +1,256 @@
+import { useEffect, useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Users, UserCheck, UserX, Clock, TrendingUp, TrendingDown,
+  Wallet, Calendar, AlertCircle, Activity, DollarSign, Briefcase,
+  Building2, GraduationCap, FileCheck, Timer,
+} from "lucide-react";
+
+type Variant = "presence" | "paie" | "global";
+interface Props { variant: Variant; }
+
+const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(Math.round(n));
+const fmtCDF = (n: number) =>
+  new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(n)) + " CDF";
+
+interface Pulse { key: string; ts: number; }
+
+/**
+ * Tableau de bord statistiques pro avec mise à jour temps réel (Supabase Realtime).
+ * Trois variantes : présence (jour), paie (période courante), global (consolidé).
+ */
+export function LiveStats({ variant }: Props) {
+  const [pulse, setPulse] = useState<Pulse | null>(null);
+  const [data, setData] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  const today = new Date().toISOString().slice(0, 10);
+  const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+
+  const reload = async () => {
+    try {
+      if (variant === "presence") {
+        const [att, emp, leaves] = await Promise.all([
+          supabase.from("attendance").select("id,employee_id,check_in,check_out,status,date").eq("date", today),
+          supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
+          supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        ]);
+        const rows = att.data || [];
+        const totalActifs = emp.count ?? 0;
+        const present = rows.filter((r: any) => r.status === "present").length;
+        const enMission = rows.filter((r: any) => r.status === "mission" || r.status === "deplacement").length;
+        const inOffice = rows.filter((r: any) => r.check_in && !r.check_out).length;
+        const lateThreshold = "08:15:00";
+        const retards = rows.filter((r: any) => r.check_in && r.check_in > lateThreshold).length;
+        const absents = Math.max(0, totalActifs - present - enMission);
+        const tauxPresence = totalActifs > 0 ? Math.round(((present + enMission) / totalActifs) * 100) : 0;
+        setData({ totalActifs, present, absents, retards, enMission, inOffice, tauxPresence, pendingLeaves: leaves.count ?? 0 });
+      } else if (variant === "paie") {
+        const [pay, emp] = await Promise.all([
+          supabase.from("payroll").select("net_pay,base_salary,total_avantages,deductions,cnss_patronal,status,period,employee_id"),
+          supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
+        ]);
+        const all = pay.data || [];
+        const current = all.filter((p: any) => p.period === period);
+        const totalNet = current.reduce((s: number, p: any) => s + Number(p.net_pay || 0), 0);
+        const totalBrut = current.reduce((s: number, p: any) => s + Number(p.base_salary || 0), 0);
+        const totalAvantages = current.reduce((s: number, p: any) => s + Number(p.total_avantages || 0), 0);
+        const totalRetenues = current.reduce((s: number, p: any) => s + Number(p.deductions || 0), 0);
+        const chargesPatronales = current.reduce((s: number, p: any) => s + Number(p.cnss_patronal || 0), 0);
+        const paid = current.filter((p: any) => p.status === "paye").length;
+        const pending = current.filter((p: any) => p.status === "en_attente" || p.status === "draft").length;
+        const validated = current.filter((p: any) => p.status === "valide").length;
+        const avgNet = current.length > 0 ? totalNet / current.length : 0;
+        const couverture = (emp.count ?? 0) > 0 ? Math.round((current.length / (emp.count ?? 1)) * 100) : 0;
+        // Évolution vs mois précédent
+        const d = new Date(); d.setMonth(d.getMonth() - 1);
+        const prevPeriod = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const prev = all.filter((p: any) => p.period === prevPeriod);
+        const totalPrev = prev.reduce((s: number, p: any) => s + Number(p.net_pay || 0), 0);
+        const evolution = totalPrev > 0 ? Math.round(((totalNet - totalPrev) / totalPrev) * 100) : 0;
+        setData({ totalNet, totalBrut, totalAvantages, totalRetenues, chargesPatronales, paid, pending, validated, avgNet, couverture, evolution, period, bulletins: current.length });
+      } else {
+        const [emp, empActive, att, leaves, jobs, cand, train, pay] = await Promise.all([
+          supabase.from("employees").select("id", { count: "exact", head: true }),
+          supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
+          supabase.from("attendance").select("id", { count: "exact", head: true }).eq("date", today).eq("status", "present"),
+          supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+          supabase.from("job_offers").select("id", { count: "exact", head: true }).eq("status", "open"),
+          supabase.from("candidates").select("id", { count: "exact", head: true }),
+          supabase.from("trainings").select("id", { count: "exact", head: true }),
+          supabase.from("payroll").select("net_pay").eq("period", period),
+        ]);
+        const masse = (pay.data || []).reduce((s: number, r: any) => s + Number(r.net_pay || 0), 0);
+        const totalActifs = empActive.count ?? 0;
+        const taux = totalActifs > 0 ? Math.round(((att.count ?? 0) / totalActifs) * 100) : 0;
+        setData({
+          employees: emp.count ?? 0, activeEmployees: totalActifs,
+          presentToday: att.count ?? 0, tauxPresence: taux,
+          pendingLeaves: leaves.count ?? 0, openJobs: jobs.count ?? 0,
+          candidates: cand.count ?? 0, trainings: train.count ?? 0, masse,
+        });
+      }
+      setLastUpdate(new Date());
+    } catch (e) { console.error("LiveStats reload error:", e); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    reload();
+    const tables =
+      variant === "presence" ? ["attendance", "leave_requests", "employees"]
+      : variant === "paie" ? ["payroll", "employees"]
+      : ["employees", "attendance", "leave_requests", "payroll", "job_offers", "candidates", "trainings"];
+
+    const ch = supabase.channel(`live-stats-${variant}`);
+    tables.forEach((t) => {
+      ch.on("postgres_changes", { event: "*", schema: "public", table: t }, () => {
+        setPulse({ key: t, ts: Date.now() });
+        reload();
+      });
+    });
+    ch.subscribe();
+    const interval = setInterval(reload, 60_000); // filet de sécurité
+    return () => { supabase.removeChannel(ch); clearInterval(interval); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variant]);
+
+  const pulsing = pulse && Date.now() - pulse.ts < 2000;
+
+  const header = (
+    <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+      <div className="flex items-center gap-2">
+        <div className="relative">
+          <span className={cn("inline-block h-2.5 w-2.5 rounded-full bg-emerald-500", pulsing && "animate-ping absolute")} />
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
+        </div>
+        <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Temps réel</span>
+        <Badge variant="outline" className="text-[10px] font-mono">
+          {lastUpdate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+        </Badge>
+      </div>
+      {loading && <span className="text-[11px] text-muted-foreground animate-pulse">Synchronisation…</span>}
+    </div>
+  );
+
+  if (variant === "presence") {
+    return (
+      <div>
+        {header}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+          <Kpi icon={UserCheck} label="Présents" value={data.present ?? 0} color="from-emerald-500 to-emerald-600" tone="emerald" />
+          <Kpi icon={UserX} label="Absents" value={data.absents ?? 0} color="from-rose-500 to-rose-600" tone="rose" />
+          <Kpi icon={Timer} label="Retards" value={data.retards ?? 0} hint="après 8h15" color="from-amber-500 to-amber-600" tone="amber" />
+          <Kpi icon={Briefcase} label="En mission" value={data.enMission ?? 0} color="from-indigo-500 to-indigo-600" tone="indigo" />
+          <Kpi icon={Activity} label="Actifs au bureau" value={data.inOffice ?? 0} hint="non sortis" color="from-cyan-500 to-cyan-600" tone="cyan" />
+          <Kpi icon={Calendar} label="Congés à valider" value={data.pendingLeaves ?? 0} color="from-violet-500 to-violet-600" tone="violet" />
+          <Gauge label="Taux de présence" value={data.tauxPresence ?? 0} total={data.totalActifs ?? 0} />
+        </div>
+      </div>
+    );
+  }
+
+  if (variant === "paie") {
+    const evo = Number(data.evolution || 0);
+    return (
+      <div>
+        {header}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <Card className="p-4 bg-gradient-to-br from-emerald-600 to-emerald-700 text-white border-0 shadow-md">
+            <div className="flex items-center justify-between">
+              <Wallet className="h-5 w-5 opacity-90" />
+              {evo !== 0 && (
+                <Badge variant="secondary" className="bg-white/20 text-white border-0 text-[10px]">
+                  {evo > 0 ? <TrendingUp className="h-3 w-3 mr-0.5" /> : <TrendingDown className="h-3 w-3 mr-0.5" />}
+                  {evo > 0 ? "+" : ""}{evo}%
+                </Badge>
+              )}
+            </div>
+            <p className="text-[10px] uppercase tracking-wider opacity-80 mt-3">Masse salariale nette · {data.period}</p>
+            <p className="text-2xl font-bold mt-1">{fmtCDF(data.totalNet ?? 0)}</p>
+            <p className="text-[11px] opacity-80 mt-1">{data.bulletins ?? 0} bulletin(s)</p>
+          </Card>
+          <Kpi icon={DollarSign} label="Brut cumulé" value={fmtCDF(data.totalBrut ?? 0)} color="from-slate-700 to-slate-900" tone="slate" big />
+          <Kpi icon={TrendingUp} label="Avantages" value={fmtCDF(data.totalAvantages ?? 0)} color="from-blue-500 to-blue-600" tone="blue" big />
+          <Kpi icon={TrendingDown} label="Retenues" value={fmtCDF(data.totalRetenues ?? 0)} hint={`+ ${fmtCDF(data.chargesPatronales ?? 0)} patronal`} color="from-rose-500 to-rose-600" tone="rose" big />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          <Mini label="Net moyen" value={fmtCDF(data.avgNet ?? 0)} />
+          <Mini label="Payés" value={data.paid ?? 0} tone="emerald" />
+          <Mini label="Validés" value={data.validated ?? 0} tone="blue" />
+          <Mini label="En attente" value={data.pending ?? 0} tone="amber" />
+          <Mini label="Couverture" value={`${data.couverture ?? 0}%`} hint="bulletins/actifs" />
+        </div>
+      </div>
+    );
+  }
+
+  // global
+  return (
+    <div>
+      {header}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
+        <Kpi icon={Users} label="Effectif" value={data.employees ?? 0} hint={`${data.activeEmployees ?? 0} actifs`} color="from-blue-500 to-blue-600" tone="blue" />
+        <Kpi icon={UserCheck} label="Présents jour" value={data.presentToday ?? 0} color="from-emerald-500 to-emerald-600" tone="emerald" />
+        <Gauge label="Présence" value={data.tauxPresence ?? 0} total={data.activeEmployees ?? 0} />
+        <Kpi icon={AlertCircle} label="Congés" value={data.pendingLeaves ?? 0} hint="en attente" color="from-amber-500 to-amber-600" tone="amber" />
+        <Kpi icon={Briefcase} label="Postes ouverts" value={data.openJobs ?? 0} color="from-orange-500 to-orange-600" tone="orange" />
+        <Kpi icon={FileCheck} label="Candidats" value={data.candidates ?? 0} color="from-indigo-500 to-indigo-600" tone="indigo" />
+        <Kpi icon={GraduationCap} label="Formations" value={data.trainings ?? 0} color="from-violet-500 to-violet-600" tone="violet" />
+        <Kpi icon={Wallet} label="Masse mois" value={fmtCDF(data.masse ?? 0)} color="from-slate-700 to-slate-900" tone="slate" big />
+      </div>
+    </div>
+  );
+}
+
+const toneRing: Record<string, string> = {
+  emerald: "ring-emerald-500/20", rose: "ring-rose-500/20", amber: "ring-amber-500/20",
+  indigo: "ring-indigo-500/20", cyan: "ring-cyan-500/20", violet: "ring-violet-500/20",
+  blue: "ring-blue-500/20", orange: "ring-orange-500/20", slate: "ring-slate-500/20",
+};
+
+function Kpi({ icon: Icon, label, value, hint, color, tone, big }: any) {
+  return (
+    <Card className={cn("p-4 transition-all hover:shadow-md hover:-translate-y-0.5 ring-1", toneRing[tone])}>
+      <div className={cn("inline-flex p-2 rounded-lg bg-gradient-to-br text-white mb-2", color)}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
+      <p className={cn("font-bold leading-tight mt-0.5", big ? "text-base" : "text-2xl")}>{value}</p>
+      {hint && <p className="text-[10px] text-muted-foreground mt-0.5">{hint}</p>}
+    </Card>
+  );
+}
+
+function Mini({ label, value, hint, tone }: { label: string; value: any; hint?: string; tone?: string }) {
+  const toneText: Record<string, string> = {
+    emerald: "text-emerald-600", blue: "text-blue-600", amber: "text-amber-600",
+  };
+  return (
+    <Card className="p-3">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
+      <p className={cn("text-lg font-bold mt-1", tone && toneText[tone])}>{value}</p>
+      {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}
+    </Card>
+  );
+}
+
+function Gauge({ label, value, total }: { label: string; value: number; total: number }) {
+  const color = value >= 80 ? "from-emerald-500 to-emerald-600" : value >= 50 ? "from-amber-500 to-amber-600" : "from-rose-500 to-rose-600";
+  return (
+    <Card className="p-4 ring-1 ring-primary/10 col-span-2 md:col-span-1">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
+      <div className="flex items-end justify-between mt-1">
+        <p className="text-2xl font-bold">{value}%</p>
+        {total > 0 && <p className="text-[10px] text-muted-foreground">/ {total}</p>}
+      </div>
+      <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className={cn("h-full bg-gradient-to-r transition-all duration-700", color)} style={{ width: `${Math.min(100, value)}%` }} />
+      </div>
+    </Card>
+  );
+}
