@@ -9,6 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { LiveStats } from "@/components/dashboard/LiveStats";
+
 
 interface Employee {
   id: string;
@@ -596,7 +598,10 @@ const Paie = () => {
   }
 
   return (
-    <CrudPage<Pay>
+    <div className="space-y-4">
+      <LiveStats variant="paie" />
+      <CrudPage<Pay>
+
       title="Paie & Rémunération"
       subtitle="bulletin(s)"
       table="payroll"
@@ -650,7 +655,9 @@ const Paie = () => {
         <PaieForm form={form as any} setForm={setForm as any} employees={employees} directions={directions} departments={departments} />
       )}
     />
+    </div>
   );
 };
+
 
 export default Paie;

@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { LiveStats } from "@/components/dashboard/LiveStats";
+
 
 interface Stats {
   employees: number;
@@ -87,8 +89,12 @@ export function ExecutiveDashboard() {
         </div>
       </Card>
 
-      {/* KPIs stratégiques */}
+      {/* Stats temps réel pro */}
+      <LiveStats variant="global" />
+
+      {/* KPIs stratégiques (snapshot initial) */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+
         <StatCard icon={Users}        label="Effectif total"   value={stats.employees}      hint={`${stats.activeEmployees} actifs`} color="bg-blue-600" />
         <StatCard icon={Building2}    label="Directions"       value={stats.directions}     hint={`${stats.departments} départements`} color="bg-emerald-600" />
         <StatCard icon={Briefcase}    label="Postes ouverts"   value={stats.openJobs}       hint={`${stats.candidates} candidats`} color="bg-orange-600" />
