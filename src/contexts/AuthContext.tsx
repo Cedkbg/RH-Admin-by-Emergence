@@ -153,11 +153,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 
         setSession(data.session);
-        setUser(userData.user);
+        setUser(userData?.user ?? data.session.user);
         setRolesLoading(true);
         setLoading(false);
         clearTimeout(safety);
-        setTimeout(() => { refreshUserData(userData.user.id); }, 0);
+        const uid = userData?.user?.id ?? data.session.user?.id;
+        if (uid) setTimeout(() => { refreshUserData(uid); }, 0);
+
       } catch (e) {
         console.error("[Auth] Erreur init:", e);
         if (mountedRef.current) {
