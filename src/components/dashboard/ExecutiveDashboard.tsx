@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { LiveStats } from "@/components/dashboard/LiveStats";
+
 
 interface Stats {
   employees: number;
