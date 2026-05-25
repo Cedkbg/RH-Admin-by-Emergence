@@ -22,10 +22,32 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    // Auth requise : seuls les utilisateurs authentifiés (idéalement admin/rh) peuvent générer un token QR
+    const auth = req.headers.get("Authorization");
+    if (!auth?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Non authentifié" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: auth } } },
+    );
+    const { data: userData, error: ue } = await userClient.auth.getUser();
+    if (ue || !userData?.user?.id) {
+      return new Response(JSON.stringify({ error: "Non authentifié" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    // Vérifie le rôle admin ou rh
+    const { data: roles } = await userClient.from("user_roles").select("role").eq("user_id", userData.user.id);
+    const allowed = (roles || []).some((r: any) => ["admin", "rh"].includes(r.role));
+    if (!allowed) {
+      return new Response(JSON.stringify({ error: "Accès refusé" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const { location_id } = await req.json();
     if (!location_id || typeof location_id !== "string") {
       return new Response(JSON.stringify({ error: "location_id requis" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
 
     // service role pour lire le secret du lieu (jamais exposé au client)
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
