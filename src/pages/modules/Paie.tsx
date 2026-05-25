@@ -598,7 +598,10 @@ const Paie = () => {
   }
 
   return (
-    <CrudPage<Pay>
+    <div className="space-y-4">
+      <LiveStats variant="paie" />
+      <CrudPage<Pay>
+
       title="Paie & Rémunération"
       subtitle="bulletin(s)"
       table="payroll"
