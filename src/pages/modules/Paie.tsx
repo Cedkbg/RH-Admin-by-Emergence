@@ -655,7 +655,9 @@ const Paie = () => {
         <PaieForm form={form as any} setForm={setForm as any} employees={employees} directions={directions} departments={departments} />
       )}
     />
+    </div>
   );
 };
+
 
 export default Paie;
