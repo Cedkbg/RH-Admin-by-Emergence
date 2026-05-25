@@ -116,12 +116,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         // Vérifier que le user existe toujours (sub claim valide)
+        // IMPORTANT : ne purger QUE si l'erreur prouve un token invalide.
+        // Une erreur réseau transitoire ne doit JAMAIS déconnecter l'utilisateur.
         const { data: userData, error } = await supabase.auth.getUser();
         if (!mountedRef.current) return;
 
-        if (error || !userData?.user) {
+        const isInvalidTokenError = (() => {
+          if (!error) return false;
+          const status = (error as any)?.status;
+          const msg = (error?.message || "").toLowerCase();
+          if (status === 401 || status === 403) return true;
+          return (
+            msg.includes("user not found") ||
+            msg.includes("user from sub claim") ||
+            msg.includes("invalid jwt") ||
+            msg.includes("jwt expired") ||
+            msg.includes("bad_jwt") ||
+            msg.includes("session_not_found")
+          );
+        })();
+
+        if (isInvalidTokenError) {
           console.warn("[Auth] Token JWT orphelin détecté — purge");
-          // Purge locale uniquement (signOut serveur échouerait)
           await supabase.auth.signOut({ scope: "local" }).catch(() => {});
           setSession(null);
           setUser(null);
@@ -132,12 +148,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
 
+        // Si erreur réseau ou inconnue : on garde la session locale (rester connecté)
+        // et on tentera de rafraîchir les données plus tard.
+
+
         setSession(data.session);
-        setUser(userData.user);
+        setUser(userData?.user ?? data.session.user);
         setRolesLoading(true);
         setLoading(false);
         clearTimeout(safety);
-        setTimeout(() => { refreshUserData(userData.user.id); }, 0);
+        const uid = userData?.user?.id ?? data.session.user?.id;
+        if (uid) setTimeout(() => { refreshUserData(uid); }, 0);
+
       } catch (e) {
         console.error("[Auth] Erreur init:", e);
         if (mountedRef.current) {
