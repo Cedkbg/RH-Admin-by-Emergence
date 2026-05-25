@@ -107,7 +107,10 @@ const Presence = () => {
         </div>
       </div>
 
+      <LiveStats variant="presence" />
+
       <Tabs defaultValue="attendance">
+
         <TabsList>
           <TabsTrigger value="attendance"><ClipboardList className="mr-2 h-4 w-4" /> Pointage</TabsTrigger>
           <TabsTrigger value="leaves"><CalendarDays className="mr-2 h-4 w-4" /> Congés</TabsTrigger>
