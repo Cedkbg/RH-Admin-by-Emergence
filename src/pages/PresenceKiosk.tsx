@@ -30,7 +30,12 @@ const PresenceKiosk = () => {
         body: { location_id: locationId },
       });
       if (cancelled) return;
-      if (e || !data?.token) { setError(data?.error || "Impossible de générer le QR. Reconnectez-vous."); return; }
+      // Tente d'extraire un message d'erreur précis (FunctionsHttpError expose .context.json())
+      let msg = data?.error as string | undefined;
+      if (!msg && e) {
+        try { const ctx: any = (e as any)?.context; const j = ctx?.json ? await ctx.json() : null; msg = j?.error; } catch { /* noop */ }
+      }
+      if ((e || !data?.token) && !data?.token) { setError(msg || "Impossible de générer le QR. Reconnectez-vous."); return; }
       setError("");
       setLocationName(data.location_name || "Site de pointage");
       setQrToken(data.token);
