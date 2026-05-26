@@ -22,10 +22,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    // Auth requise : seuls les utilisateurs authentifiés (idéalement admin/rh) peuvent générer un token QR
+    // Auth requise : tout utilisateur authentifié approuvé peut afficher le QR sur la tablette d'accueil.
+    // Le QR est court (30s), signé HMAC, et ne sert à rien sans le scan + validation GPS côté edge "attendance-scan".
     const auth = req.headers.get("Authorization");
     if (!auth?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Non authentifié" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Vous devez être connecté pour afficher le QR." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -34,13 +35,7 @@ Deno.serve(async (req) => {
     );
     const { data: userData, error: ue } = await userClient.auth.getUser();
     if (ue || !userData?.user?.id) {
-      return new Response(JSON.stringify({ error: "Non authentifié" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    // Vérifie le rôle admin ou rh
-    const { data: roles } = await userClient.from("user_roles").select("role").eq("user_id", userData.user.id);
-    const allowed = (roles || []).some((r: any) => ["admin", "rh"].includes(r.role));
-    if (!allowed) {
-      return new Response(JSON.stringify({ error: "Accès refusé" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Session expirée, reconnectez-vous." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const { location_id } = await req.json();
