@@ -1,5 +1,6 @@
 // Génère un token QR rotatif (HMAC-SHA256) signé pour un lieu donné, valable 30s.
-// Appelé par l'écran "tablette d'accueil".
+// Endpoint PUBLIC : la tablette d'accueil n'est pas authentifiée.
+// La sécurité réelle est assurée côté scan (HMAC court + GPS + user authentifié).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -22,27 +23,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    // Auth requise : tout utilisateur authentifié approuvé peut afficher le QR sur la tablette d'accueil.
-    // Le QR est court (30s), signé HMAC, et ne sert à rien sans le scan + validation GPS côté edge "attendance-scan".
-    const auth = req.headers.get("Authorization");
-    if (!auth?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Vous devez être connecté pour afficher le QR." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: auth } } },
-    );
-    const { data: userData, error: ue } = await userClient.auth.getUser();
-    if (ue || !userData?.user?.id) {
-      return new Response(JSON.stringify({ error: "Session expirée, reconnectez-vous." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
     const { location_id } = await req.json();
     if (!location_id || typeof location_id !== "string") {
       return new Response(JSON.stringify({ error: "location_id requis" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
 
     // service role pour lire le secret du lieu (jamais exposé au client)
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
