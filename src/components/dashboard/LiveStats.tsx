@@ -14,7 +14,7 @@ interface Props { variant: Variant; }
 
 const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(Math.round(n));
 const fmtCDF = (n: number) =>
-  new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(n)) + " CDF";
+  new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(Number(n || 0)) + " USD";
 
 interface Pulse { key: string; ts: number; }
 
