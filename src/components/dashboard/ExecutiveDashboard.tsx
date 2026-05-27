@@ -107,7 +107,7 @@ export function ExecutiveDashboard() {
         <Card className="p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Masse salariale cumulée</p>
           <p className="mt-2 text-2xl font-bold">
-            {stats.totalPayroll.toLocaleString("fr-FR")} <span className="text-sm font-normal text-muted-foreground">CDF</span>
+            {Number(stats.totalPayroll || 0).toLocaleString("en-US", { maximumFractionDigits: 2 })} <span className="text-sm font-normal text-muted-foreground">USD</span>
           </p>
           <p className="text-xs text-muted-foreground mt-1">Tous bulletins confondus</p>
         </Card>
