@@ -14,6 +14,9 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { toast } from "sonner";
@@ -404,8 +407,37 @@ export default function DirectionDetail() {
               </div>
             </div>
             <div>
-              <Label>Responsable</Label>
-              <Input value={form.manager_name} onChange={(e) => setForm({ ...form, manager_name: e.target.value })} />
+              <Label>Responsable du département</Label>
+              {employees.length > 0 ? (
+                <Select
+                  value={form.manager_name || "__none__"}
+                  onValueChange={(v) => setForm({ ...form, manager_name: v === "__none__" ? "" : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={`Choisir parmi les agents de ${direction.name}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Aucun —</SelectItem>
+                    {employees.map((e) => {
+                      const fullName = `${e.first_name} ${e.last_name}`.trim();
+                      return (
+                        <SelectItem key={e.id} value={fullName}>
+                          {fullName}{e.position ? ` · ${e.position}` : ""}{e.matricule ? ` (${e.matricule})` : ""}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  value={form.manager_name}
+                  onChange={(e) => setForm({ ...form, manager_name: e.target.value })}
+                  placeholder="Aucun agent rattaché à cette direction"
+                />
+              )}
+              <p className="text-[11px] text-muted-foreground mt-1">
+                La liste affiche les agents rattachés à <strong>{direction.name}</strong>.
+              </p>
             </div>
             <div>
               <Label>Description</Label>

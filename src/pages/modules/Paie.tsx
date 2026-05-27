@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LiveStats } from "@/components/dashboard/LiveStats";
+import { PayrollAttendanceChart } from "@/components/dashboard/PayrollAttendanceChart";
 
 
 interface Employee {
@@ -63,7 +64,7 @@ interface Pay {
   paid_at: string | null;
 }
 
-const fmt = (n: any) => Number(n || 0).toLocaleString("fr-FR", { maximumFractionDigits: 2 });
+const fmt = (n: any) => Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 2 });
 const num = (v: any) => Number(v || 0);
 const currentPeriod = () => {
   const d = new Date();
@@ -600,6 +601,7 @@ const Paie = () => {
   return (
     <div className="space-y-4">
       <LiveStats variant="paie" />
+      <PayrollAttendanceChart />
       <CrudPage<Pay>
 
       title="Paie & Rémunération"

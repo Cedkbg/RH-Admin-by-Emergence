@@ -68,7 +68,9 @@ const AuthRedirectGuard = () => {
 };
 
 // Rôles autorisés à accéder aux modules opérationnels (Recrutement → Paramètres)
-const OPS_ROLES = ["admin", "dg", "dga", "manager", "rh", "assistant_direction"];
+// Le secrétaire est inclus pour pouvoir accéder à son espace (/secretariat) et aux modules
+// transversaux (documents, juridique, communication, paramètres) — sinon écran blanc/refusé.
+const OPS_ROLES = ["admin", "dg", "dga", "manager", "rh", "assistant_direction", "secretaire"];
 const Ops = ({ children }: { children: JSX.Element }) => (
   <RoleGuard allowed={OPS_ROLES}>{children}</RoleGuard>
 );
