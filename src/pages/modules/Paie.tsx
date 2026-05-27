@@ -64,7 +64,7 @@ interface Pay {
   paid_at: string | null;
 }
 
-const fmt = (n: any) => Number(n || 0).toLocaleString("fr-FR", { maximumFractionDigits: 2 });
+const fmt = (n: any) => Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 2 });
 const num = (v: any) => Number(v || 0);
 const currentPeriod = () => {
   const d = new Date();
