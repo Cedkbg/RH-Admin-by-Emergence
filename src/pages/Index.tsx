@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { Users, Building2, Briefcase, FileText } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { ModuleGrid } from "@/components/dashboard/ModuleGrid";
