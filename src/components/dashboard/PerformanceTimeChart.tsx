@@ -166,23 +166,12 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
               <CartesianGrid strokeDasharray="3 6" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} dy={6} />
               <YAxis
-                yAxisId="left"
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickFormatter={(v) => `${v}%`}
-                domain={[0, 100]}
                 axisLine={false}
                 tickLine={false}
                 width={42}
               />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickFormatter={(v) => `${v}h`}
-                axisLine={false}
-                tickLine={false}
-                width={42}
-              />
+
               <Tooltip
                 cursor={{ stroke: "hsl(var(--primary))", strokeWidth: 1, strokeDasharray: "3 3" }}
                 contentStyle={{
