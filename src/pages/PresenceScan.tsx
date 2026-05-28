@@ -113,7 +113,7 @@ const PresenceScan = () => {
     timeoutId = window.setTimeout(() => finish("Délai GPS dépassé. Réessayez à l'extérieur."), 22000);
   };
 
-  const startCamera = () => {
+  const startCamera = async () => {
     if (!coordsRef.current) {
       setStatus("error");
       setMessage("Position GPS introuvable. Recommencez en autorisant la localisation.");
@@ -122,20 +122,42 @@ const PresenceScan = () => {
     try {
       setStatus("scanning");
       setMessage("Pointez la caméra vers le QR code…");
-      const scanner = new Html5Qrcode("qr-reader");
+      // Nettoyage dur du conteneur pour éviter l'écran blanc sur ré-essais (iOS/Android)
+      await stopScanner();
+      const container = document.getElementById("qr-reader");
+      if (container) container.innerHTML = "";
+      // Pré-warm la caméra : force la demande de permission et libère le stream avant html5-qrcode
+      try {
+        const test = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
+        test.getTracks().forEach((t) => t.stop());
+      } catch (permErr) {
+        setStatus("error");
+        setMessage(cameraErrorMessage(permErr));
+        return;
+      }
+      const scanner = new Html5Qrcode("qr-reader", { verbose: false });
       scannerRef.current = scanner;
       let handled = false;
+      // Détecteur d'écran blanc : si aucun frame décodable + pas de <video> après 5s, on relance
+      const whiteScreenTimer = window.setTimeout(() => {
+        const video = document.querySelector("#qr-reader video") as HTMLVideoElement | null;
+        if (!video || video.readyState < 2) {
+          setMessage("La caméra met du temps à démarrer. Touchez « Recharger la caméra ».");
+        }
+      }, 5000);
       scanner.start(
-        { facingMode: "environment" },
+        { facingMode: { ideal: "environment" } },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         async (decoded) => {
           if (handled) return;
           handled = true;
+          clearTimeout(whiteScreenTimer);
           await stopScanner();
           await validate(decoded, coordsRef.current!);
         },
         () => {},
       ).catch((e) => {
+        clearTimeout(whiteScreenTimer);
         if (!mountedRef.current) return;
         setStatus("error");
         setMessage(cameraErrorMessage(e));
@@ -144,6 +166,13 @@ const PresenceScan = () => {
       setStatus("error");
       setMessage(cameraErrorMessage(e));
     }
+  };
+
+  const reloadCamera = async () => {
+    await stopScanner();
+    const container = document.getElementById("qr-reader");
+    if (container) container.innerHTML = "";
+    setTimeout(() => startCamera(), 300);
   };
 
   const validate = async (qrToken: string, gps: GeolocationCoordinates) => {
