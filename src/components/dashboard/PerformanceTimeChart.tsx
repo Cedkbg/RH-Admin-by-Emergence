@@ -166,23 +166,12 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
               <CartesianGrid strokeDasharray="3 6" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} dy={6} />
               <YAxis
-                yAxisId="left"
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickFormatter={(v) => `${v}%`}
-                domain={[0, 100]}
                 axisLine={false}
                 tickLine={false}
                 width={42}
               />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                tickFormatter={(v) => `${v}h`}
-                axisLine={false}
-                tickLine={false}
-                width={42}
-              />
+
               <Tooltip
                 cursor={{ stroke: "hsl(var(--primary))", strokeWidth: 1, strokeDasharray: "3 3" }}
                 contentStyle={{
@@ -198,8 +187,9 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
                 ]}
               />
               <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" />
-              <Area yAxisId="left" type="monotone" dataKey="Présence" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#presenceFill)" dot={{ r: 3, strokeWidth: 2, fill: "hsl(var(--background))" }} activeDot={{ r: 6 }} />
-              <Area yAxisId="right" type="monotone" dataKey="Heures" stroke="hsl(160 70% 40%)" strokeWidth={2.5} fill="url(#hoursFill)" dot={{ r: 3, strokeWidth: 2, fill: "hsl(var(--background))" }} activeDot={{ r: 6 }} />
+              <Area type="monotone" dataKey="Présence" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#presenceFill)" dot={{ r: 3, strokeWidth: 2, fill: "hsl(var(--background))" }} activeDot={{ r: 6 }} />
+              <Area type="monotone" dataKey="Heures" stroke="hsl(160 70% 40%)" strokeWidth={2.5} fill="url(#hoursFill)" dot={{ r: 3, strokeWidth: 2, fill: "hsl(var(--background))" }} activeDot={{ r: 6 }} />
+
             </ComposedChart>
           </ResponsiveContainer>
         )}
