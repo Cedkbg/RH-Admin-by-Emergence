@@ -12,8 +12,18 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
 
   componentDidCatch(error: Error, info: any) {
-    // Affiche dans la console pour debug (utile sur iPhone via remote inspector)
     console.error("[ErrorBoundary]", error, info);
+    // Erreurs DOM provoquées par Google Translate / extensions navigateur
+    // qui manipulent le DOM en dehors de React. On récupère silencieusement.
+    const msg = error?.message || "";
+    if (
+      msg.includes("removeChild") ||
+      msg.includes("insertBefore") ||
+      msg.includes("is not a child of this node") ||
+      msg.includes("n'est pas un enfant")
+    ) {
+      setTimeout(() => this.setState({ hasError: false, error: null }), 50);
+    }
   }
 
   handleReload = () => {
