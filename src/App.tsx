@@ -123,7 +123,7 @@ const App = () => (
               <Route path="/presence/locations" element={<Field><PresenceLocations /></Field>} />
               <Route path="/documents" element={<Ops><Documents /></Ops>} />
               <Route path="/juridique" element={<Ops><Juridique /></Ops>} />
-              <Route path="/communication" element={<Field><Communication /></Field>} />
+              <Route path="/communication" element={<Communication />} />
               <Route path="/talents" element={<Ops><Talents /></Ops>} />
               <Route path="/bien-etre" element={<Field><BienEtre /></Field>} />
               <Route path="/rapports" element={<Ops><Rapports /></Ops>} />
