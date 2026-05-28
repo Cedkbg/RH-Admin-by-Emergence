@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Shield, ShieldOff, Check, X, Clock, RotateCcw, ArrowLeft, History } from "lucide-react";
+import { Shield, ShieldOff, Check, X, Clock, RotateCcw, ArrowLeft, History, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { AgentHoursStats } from "@/components/dashboard/AgentHoursStats";
 
 interface ProfileRow {
   id: string;
@@ -202,6 +203,9 @@ const Admin = () => {
           <TabsTrigger value="audit">
             <History className="mr-2 h-4 w-4" /> Journal des rôles
           </TabsTrigger>
+          <TabsTrigger value="stats">
+            <BarChart3 className="mr-2 h-4 w-4" /> Statistiques agents
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending">
@@ -258,6 +262,11 @@ const Admin = () => {
               </table>
             )}
           </section>
+        </TabsContent>
+        <TabsContent value="stats">
+          <div className="mt-4">
+            <AgentHoursStats />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
