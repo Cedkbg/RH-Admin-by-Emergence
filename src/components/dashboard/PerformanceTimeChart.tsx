@@ -91,20 +91,16 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
     }
 
     return buckets.map((b) => {
-      const inRange = att.filter((a) => {
-        const d = new Date(a.date);
-        return d >= b.start && d <= b.end;
-      });
+      const startStr = format(b.start, "yyyy-MM-dd");
+      const endStr = format(b.end, "yyyy-MM-dd");
+      const inRange = att.filter((a) => a.date >= startStr && a.date <= endStr);
       const expected = eachDayOfInterval({ start: b.start, end: b.end }).filter((d) => !isWeekend(d)).length;
-      let workedAgents: Set<string> | number;
       let presence: number;
       if (selectedAgentId) {
         const present = inRange.filter((a) => a.status === "present" || a.status === "mission" || a.status === "deplacement").length;
         presence = expected > 0 ? Math.round((present / expected) * 100) : 0;
       } else {
-        // Moyenne: présents/jour ouvré ramené sur 100%
         const totalPresences = inRange.filter((a) => a.status === "present" || a.status === "mission" || a.status === "deplacement").length;
-        // Pour aggregate, on suppose des heures: présence "moyenne" = (présences / (expected * agents distincts du mois))
         const distinct = new Set(att.map((a) => a.employee_id)).size || 1;
         presence = expected > 0 ? Math.round((totalPresences / (expected * distinct)) * 100) : 0;
       }
