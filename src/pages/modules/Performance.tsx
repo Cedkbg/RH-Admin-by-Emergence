@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AgentSalarySummary } from "@/components/dashboard/AgentSalarySummary";
+import { PayrollAttendanceChart } from "@/components/dashboard/PayrollAttendanceChart";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Review {
