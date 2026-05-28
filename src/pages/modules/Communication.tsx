@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
-interface Ann { id: string; title: string; content: string; pinned: boolean; created_at: string; }
+interface Ann { id: string; title: string; content: string; pinned: boolean; created_at: string; author_id: string | null; }
 
 const Communication = () => {
   const { isAdmin, user } = useAuth();
@@ -25,7 +25,23 @@ const Communication = () => {
     const { data } = await supabase.from("announcements").select("*").order("pinned", { ascending: false }).order("created_at", { ascending: false });
     setItems((data as Ann[]) || []);
   };
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+    const channel = supabase
+      .channel("announcements-feed")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "announcements" }, (payload) => {
+        const a = payload.new as Ann;
+        setItems((prev) => (prev.find((p) => p.id === a.id) ? prev : [a, ...prev]));
+        if (a.author_id !== user?.id) {
+          toast.message("📢 Nouvelle annonce", { description: a.title });
+        }
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "announcements" }, (payload) => {
+        setItems((prev) => prev.filter((p) => p.id !== (payload.old as Ann).id));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
