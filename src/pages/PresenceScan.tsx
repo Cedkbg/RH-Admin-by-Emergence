@@ -252,10 +252,15 @@ const PresenceScan = () => {
               <MapPin className="h-4 w-4" /> {gpsMsg}
             </div>
             <p className="text-sm text-muted-foreground">{message}</p>
-            <Button variant="outline" className="w-full" onClick={async () => {
-              await stopScanner();
-              setStatus("idle"); setMessage("");
-            }}>Annuler</Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" className="flex-1" onClick={reloadCamera}>
+                <Camera className="mr-2 h-4 w-4" /> Recharger la caméra
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={async () => {
+                await stopScanner();
+                setStatus("idle"); setMessage("");
+              }}>Annuler</Button>
+            </div>
           </div>
 
           {status === "success" && result && (
