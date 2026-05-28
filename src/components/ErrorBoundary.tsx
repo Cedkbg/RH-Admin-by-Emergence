@@ -1,68 +1,27 @@
 import { Component, ReactNode } from "react";
-import { Button } from "@/components/ui/button";
-import { AlertTriangle } from "lucide-react";
 
-interface State { hasError: boolean; error: Error | null; }
+interface State { hasError: boolean; }
 
+/**
+ * ErrorBoundary silencieux : on log dans la console pour le debug,
+ * mais on n'affiche JAMAIS d'écran d'erreur à l'utilisateur.
+ * On se réinitialise automatiquement pour laisser React re-render.
+ */
 export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
-  state: State = { hasError: false, error: null };
+  state: State = { hasError: false };
 
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+  static getDerivedStateFromError(): State {
+    return { hasError: true };
   }
 
   componentDidCatch(error: Error, info: any) {
     console.error("[ErrorBoundary]", error, info);
-    // Erreurs DOM provoquées par Google Translate / extensions navigateur
-    // qui manipulent le DOM en dehors de React. On récupère silencieusement.
-    const msg = error?.message || "";
-    if (
-      msg.includes("removeChild") ||
-      msg.includes("insertBefore") ||
-      msg.includes("is not a child of this node") ||
-      msg.includes("n'est pas un enfant")
-    ) {
-      setTimeout(() => this.setState({ hasError: false, error: null }), 50);
-    }
+    // Reset immédiat pour ne rien afficher de cassé à l'utilisateur
+    setTimeout(() => this.setState({ hasError: false }), 0);
   }
 
-  handleReload = () => {
-    try {
-      // Purge le cache local Supabase en cas de session corrompue
-      Object.keys(localStorage).forEach((k) => {
-        if (k.startsWith("sb-") || k.includes("supabase")) localStorage.removeItem(k);
-      });
-    } catch {}
-    window.location.href = "/";
-  };
-
   render() {
-    if (!this.state.hasError) return this.props.children;
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
-        <div className="max-w-md w-full rounded-xl border bg-card p-6 shadow-sm space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-            </div>
-            <div>
-              <h1 className="font-semibold">Une erreur est survenue</h1>
-              <p className="text-xs text-muted-foreground">L'application n'a pas pu afficher cette page.</p>
-            </div>
-          </div>
-          <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-40 whitespace-pre-wrap break-words">
-            {this.state.error?.message || "Erreur inconnue"}
-          </pre>
-          <div className="flex gap-2">
-            <Button onClick={() => this.setState({ hasError: false, error: null })} variant="outline" className="flex-1">
-              Réessayer
-            </Button>
-            <Button onClick={this.handleReload} className="flex-1">
-              Recharger
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+    if (this.state.hasError) return null;
+    return this.props.children;
   }
 }
