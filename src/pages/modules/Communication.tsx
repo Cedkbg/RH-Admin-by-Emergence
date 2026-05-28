@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
-interface Ann { id: string; title: string; content: string; pinned: boolean; created_at: string; }
+interface Ann { id: string; title: string; content: string; pinned: boolean; created_at: string; author_id: string | null; }
 
 const Communication = () => {
   const { isAdmin, user } = useAuth();
