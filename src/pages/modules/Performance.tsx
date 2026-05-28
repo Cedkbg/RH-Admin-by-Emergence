@@ -25,7 +25,12 @@ const Performance = () => {
 
   return (
     <div className="space-y-4">
-      {isAdmin && <AgentSalarySummary />}
+      {isAdmin && (
+        <>
+          <AgentSalarySummary />
+          <PayrollAttendanceChart />
+        </>
+      )}
       <CrudPage<Review>
         title="Performance"
         subtitle="évaluation(s)"
