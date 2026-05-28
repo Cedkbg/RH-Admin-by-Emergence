@@ -206,6 +206,7 @@ const Admin = () => {
           <TabsTrigger value="stats">
             <BarChart3 className="mr-2 h-4 w-4" /> Statistiques agents
           </TabsTrigger>
+        </TabsList>
 
         <TabsContent value="pending">
           <Table rows={pending} mode="pending" emptyText="Aucun compte en attente d'approbation." />
