@@ -187,8 +187,9 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
                 ]}
               />
               <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" />
-              <Area yAxisId="left" type="monotone" dataKey="Présence" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#presenceFill)" dot={{ r: 3, strokeWidth: 2, fill: "hsl(var(--background))" }} activeDot={{ r: 6 }} />
-              <Area yAxisId="right" type="monotone" dataKey="Heures" stroke="hsl(160 70% 40%)" strokeWidth={2.5} fill="url(#hoursFill)" dot={{ r: 3, strokeWidth: 2, fill: "hsl(var(--background))" }} activeDot={{ r: 6 }} />
+              <Area type="monotone" dataKey="Présence" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#presenceFill)" dot={{ r: 3, strokeWidth: 2, fill: "hsl(var(--background))" }} activeDot={{ r: 6 }} />
+              <Area type="monotone" dataKey="Heures" stroke="hsl(160 70% 40%)" strokeWidth={2.5} fill="url(#hoursFill)" dot={{ r: 3, strokeWidth: 2, fill: "hsl(var(--background))" }} activeDot={{ r: 6 }} />
+
             </ComposedChart>
           </ResponsiveContainer>
         )}
