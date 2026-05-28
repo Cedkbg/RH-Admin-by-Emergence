@@ -3,8 +3,6 @@ import { TextField, AreaField, SelectField, FormGrid, cleanForm } from "@/lib/fo
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { LiveStats } from "@/components/dashboard/LiveStats";
-import { PayrollAttendanceChart } from "@/components/dashboard/PayrollAttendanceChart";
 import { AgentSalarySummary } from "@/components/dashboard/AgentSalarySummary";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -26,13 +24,7 @@ const Performance = () => {
 
   return (
     <div className="space-y-4">
-      {isAdmin && (
-        <>
-          <LiveStats variant="paie" />
-          <AgentSalarySummary />
-          <PayrollAttendanceChart />
-        </>
-      )}
+      {isAdmin && <AgentSalarySummary />}
       <CrudPage<Review>
         title="Performance"
         subtitle="évaluation(s)"

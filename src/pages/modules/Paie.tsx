@@ -9,6 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { LiveStats } from "@/components/dashboard/LiveStats";
+import { PayrollAttendanceChart } from "@/components/dashboard/PayrollAttendanceChart";
 
 
 interface Employee {
@@ -598,6 +600,12 @@ const Paie = () => {
 
   return (
     <div className="space-y-4">
+      {isAdmin && (
+        <>
+          <LiveStats variant="paie" />
+          <PayrollAttendanceChart />
+        </>
+      )}
       <CrudPage<Pay>
 
       title="Paie & Rémunération"
