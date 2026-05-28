@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, defs as _defs,
+  ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
 import { RefreshCw, TrendingUp } from "lucide-react";
 import {
@@ -152,30 +152,55 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+            <ComposedChart data={chartData} margin={{ top: 16, right: 24, left: 8, bottom: 10 }}>
+              <defs>
+                <linearGradient id="presenceFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="hoursFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(160 70% 40%)" stopOpacity={0.28} />
+                  <stop offset="100%" stopColor="hsl(160 70% 40%)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 6" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} dy={6} />
               <YAxis
                 yAxisId="left"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                 tickFormatter={(v) => `${v}%`}
                 domain={[0, 100]}
-                label={{ value: "Présence", angle: -90, position: "insideLeft", style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }}
+                axisLine={false}
+                tickLine={false}
+                width={42}
               />
               <YAxis
                 yAxisId="right"
                 orientation="right"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                 tickFormatter={(v) => `${v}h`}
-                label={{ value: "Heures", angle: 90, position: "insideRight", style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" } }}
+                axisLine={false}
+                tickLine={false}
+                width={42}
               />
               <Tooltip
-                contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                cursor={{ stroke: "hsl(var(--primary))", strokeWidth: 1, strokeDasharray: "3 3" }}
+                contentStyle={{
+                  background: "hsl(var(--popover))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: 10,
+                  fontSize: 12,
+                  boxShadow: "0 10px 30px -10px hsl(var(--primary) / 0.25)",
+                }}
+                formatter={(value: number, name: string) => [
+                  name === "Présence" ? `${value}%` : `${value} h`,
+                  name,
+                ]}
               />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Line yAxisId="left" type="monotone" dataKey="Présence" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              <Line yAxisId="right" type="monotone" dataKey="Heures" stroke="hsl(160 70% 40%)" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-            </LineChart>
+              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" />
+              <Area yAxisId="left" type="monotone" dataKey="Présence" stroke="hsl(var(--primary))" strokeWidth={2.5} fill="url(#presenceFill)" dot={{ r: 3, strokeWidth: 2, fill: "hsl(var(--background))" }} activeDot={{ r: 6 }} />
+              <Area yAxisId="right" type="monotone" dataKey="Heures" stroke="hsl(160 70% 40%)" strokeWidth={2.5} fill="url(#hoursFill)" dot={{ r: 3, strokeWidth: 2, fill: "hsl(var(--background))" }} activeDot={{ r: 6 }} />
+            </ComposedChart>
           </ResponsiveContainer>
         )}
       </div>
