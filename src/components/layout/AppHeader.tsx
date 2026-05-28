@@ -69,6 +69,8 @@ export function AppHeader({ title }: AppHeaderProps) {
         />
       </form>
 
+      <NotificationBell />
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="flex items-center gap-3 rounded-full p-1 pr-3 hover:bg-secondary">
