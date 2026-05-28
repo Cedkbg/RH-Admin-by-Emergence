@@ -127,9 +127,16 @@ const PresenceScan = () => {
       const container = document.getElementById("qr-reader");
       if (container) container.innerHTML = "";
       // Pré-warm la caméra : force la demande de permission et libère le stream avant html5-qrcode
+      // ⚠️ facingMode doit être une string OU { exact: ... } — { ideal: ... } est rejeté
+      // par certains navigateurs (Android Chrome, WebView). On essaie environment puis fallback générique.
       try {
-        const test = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
-        test.getTracks().forEach((t) => t.stop());
+        let test: MediaStream | null = null;
+        try {
+          test = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        } catch {
+          test = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+        test?.getTracks().forEach((t) => t.stop());
       } catch (permErr) {
         setStatus("error");
         setMessage(cameraErrorMessage(permErr));
@@ -145,8 +152,18 @@ const PresenceScan = () => {
           setMessage("La caméra met du temps à démarrer. Touchez « Recharger la caméra ».");
         }
       }, 5000);
+      // Résoudre une caméra concrète : on évite l'objet facingMode (incompatible sur certains devices)
+      // On prend la caméra arrière si possible, sinon la première disponible.
+      let cameraConfig: any = { facingMode: "environment" };
+      try {
+        const cams = await Html5Qrcode.getCameras();
+        if (cams && cams.length > 0) {
+          const back = cams.find((c) => /back|rear|environment|arrière|arriere/i.test(c.label));
+          cameraConfig = (back || cams[cams.length - 1]).id;
+        }
+      } catch { /* on garde le fallback facingMode string */ }
       scanner.start(
-        { facingMode: { ideal: "environment" } },
+        cameraConfig,
         { fps: 10, qrbox: { width: 250, height: 250 } },
         async (decoded) => {
           if (handled) return;
