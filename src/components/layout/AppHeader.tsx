@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { NotificationBell } from "./NotificationBell";
 
 interface AppHeaderProps {
   title: string;
@@ -67,6 +68,8 @@ export function AppHeader({ title }: AppHeaderProps) {
           className="h-10 rounded-full border-border bg-secondary pl-10 text-sm"
         />
       </form>
+
+      <NotificationBell />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
