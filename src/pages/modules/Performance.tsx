@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AgentSalarySummary } from "@/components/dashboard/AgentSalarySummary";
-import { PayrollAttendanceChart } from "@/components/dashboard/PayrollAttendanceChart";
+import { PerformanceTimeChart } from "@/components/dashboard/PerformanceTimeChart";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Review {
@@ -19,6 +19,8 @@ interface Review {
 const Performance = () => {
   const { isAdmin } = useAuth();
   const [employees, setEmployees] = useState<{ id: string; first_name: string; last_name: string }[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+
   useEffect(() => {
     supabase.from("employees").select("id,first_name,last_name").order("last_name").then(({ data }) => setEmployees(data || []));
   }, []);
@@ -27,8 +29,8 @@ const Performance = () => {
     <div className="space-y-4">
       {isAdmin && (
         <>
-          <AgentSalarySummary />
-          <PayrollAttendanceChart />
+          <AgentSalarySummary selectedAgentId={selectedAgentId} onSelectAgent={setSelectedAgentId} />
+          <PerformanceTimeChart selectedAgentId={selectedAgentId} />
         </>
       )}
       <CrudPage<Review>
