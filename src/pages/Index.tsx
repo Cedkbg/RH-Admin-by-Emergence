@@ -46,10 +46,9 @@ const Index = () => {
     );
   }
 
-  // Si pas d'user, aller a auth
+  // Si pas d'user (race possible iOS Safari), redirige proprement via React Router
   if (!user) {
-    window.location.href = "/auth";
-    return null;
+    return <Navigate to="/agent/login" replace />;
   }
 
   if (rolesLoading) {
