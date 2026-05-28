@@ -263,6 +263,11 @@ const Admin = () => {
             )}
           </section>
         </TabsContent>
+        <TabsContent value="stats">
+          <div className="mt-4">
+            <AgentHoursStats />
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
