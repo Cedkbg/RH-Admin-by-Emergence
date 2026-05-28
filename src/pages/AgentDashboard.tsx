@@ -201,6 +201,8 @@ const AgentDashboard = () => {
         </section>
       )}
 
+      {me && <MyAttendanceCard employeeId={me.id} />}
+
       {!me ? (
         <section className="rounded-xl border bg-card p-6 shadow-sm">
           <h2 className="font-semibold mb-2">Profil agent non lie</h2>
