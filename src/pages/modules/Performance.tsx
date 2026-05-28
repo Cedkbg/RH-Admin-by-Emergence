@@ -24,13 +24,7 @@ const Performance = () => {
 
   return (
     <div className="space-y-4">
-      {isAdmin && (
-        <>
-          <LiveStats variant="paie" />
-          <AgentSalarySummary />
-          <PayrollAttendanceChart />
-        </>
-      )}
+      {isAdmin && <AgentSalarySummary />}
       <CrudPage<Review>
         title="Performance"
         subtitle="évaluation(s)"
