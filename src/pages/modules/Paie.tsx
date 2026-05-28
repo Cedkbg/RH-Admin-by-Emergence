@@ -599,12 +599,7 @@ const Paie = () => {
 
   return (
     <div className="space-y-4">
-      {isAdmin && (
-        <>
-          <LiveStats variant="paie" />
-          <PayrollAttendanceChart />
-        </>
-      )}
+      {isAdmin && <LiveStats variant="paie" />}
       <CrudPage<Pay>
 
       title="Paie & Rémunération"
