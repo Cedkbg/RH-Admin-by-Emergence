@@ -40,6 +40,7 @@ import PresenceScan from "./pages/PresenceScan";
 import PresenceLocations from "./pages/PresenceLocations";
 import Install from "./pages/Install";
 import { RoleGuard } from "@/components/RoleGuard";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -93,54 +94,56 @@ const Staff = ({ children }: { children: JSX.Element }) => (
 );
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
 <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <AuthRedirectGuard />
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/agent/login" element={<AgentAuth />} />
-            <Route path="/login" element={<AgentAuth />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/presence/kiosk/:locationId" element={<PresenceKiosk />} />
-            <Route element={<Protected><AppLayout /></Protected>}>
-              <Route index element={<Index />} />
-              <Route path="/organigramme" element={<Staff><Organigramme /></Staff>} />
-              <Route path="/direction/:code" element={<DirectionDetail />} />
-              <Route path="/employes" element={<Staff><Employes /></Staff>} />
-              <Route path="/install" element={<Staff><Install /></Staff>} />
-              <Route path="/recrutement" element={<Ops><Recrutement /></Ops>} />
-              <Route path="/taches" element={<Field><Taches /></Field>} />
-              <Route path="/performance" element={<Ops><Performance /></Ops>} />
-              <Route path="/formation" element={<Ops><Formation /></Ops>} />
-              <Route path="/paie" element={<Ops><Paie /></Ops>} />
-              <Route path="/presence" element={<PresenceGuard><Presence /></PresenceGuard>} />
-              <Route path="/presence/scan" element={<PresenceScan />} />
-              <Route path="/presence/locations" element={<Field><PresenceLocations /></Field>} />
-              <Route path="/documents" element={<Ops><Documents /></Ops>} />
-              <Route path="/juridique" element={<Ops><Juridique /></Ops>} />
-              <Route path="/communication" element={<Communication />} />
-              <Route path="/talents" element={<Ops><Talents /></Ops>} />
-              <Route path="/bien-etre" element={<Field><BienEtre /></Field>} />
-              <Route path="/rapports" element={<Ops><Rapports /></Ops>} />
-              <Route path="/securite" element={<Ops><Securite /></Ops>} />
-              <Route path="/secretariat" element={<Ops><Secretariat /></Ops>} />
-              <Route path="/assistant" element={<Ops><Assistant /></Ops>} />
-              <Route path="/manager" element={<Ops><ManagerGeneral /></Ops>} />
-              <Route path="/parametres" element={<Ops><Parametres /></Ops>} />
-              <Route path="/admin/cabinets" element={<Staff><AdminCabinets /></Staff>} />
-              <Route path="/admin" element={<Protected adminOnly><Admin /></Protected>} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+            <AuthRedirectGuard />
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/agent/login" element={<AgentAuth />} />
+              <Route path="/login" element={<AgentAuth />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/presence/kiosk/:locationId" element={<PresenceKiosk />} />
+              <Route element={<Protected><AppLayout /></Protected>}>
+                <Route index element={<ErrorBoundary><Index /></ErrorBoundary>} />
+                <Route path="/organigramme" element={<Staff><Organigramme /></Staff>} />
+                <Route path="/direction/:code" element={<DirectionDetail />} />
+                <Route path="/employes" element={<Staff><Employes /></Staff>} />
+                <Route path="/install" element={<Staff><Install /></Staff>} />
+                <Route path="/recrutement" element={<Ops><Recrutement /></Ops>} />
+                <Route path="/taches" element={<Field><Taches /></Field>} />
+                <Route path="/performance" element={<Ops><Performance /></Ops>} />
+                <Route path="/formation" element={<Ops><Formation /></Ops>} />
+                <Route path="/paie" element={<Ops><Paie /></Ops>} />
+                <Route path="/presence" element={<PresenceGuard><Presence /></PresenceGuard>} />
+                <Route path="/presence/scan" element={<PresenceScan />} />
+                <Route path="/presence/locations" element={<Field><PresenceLocations /></Field>} />
+                <Route path="/documents" element={<Ops><Documents /></Ops>} />
+                <Route path="/juridique" element={<Ops><Juridique /></Ops>} />
+                <Route path="/communication" element={<Communication />} />
+                <Route path="/talents" element={<Ops><Talents /></Ops>} />
+                <Route path="/bien-etre" element={<Field><BienEtre /></Field>} />
+                <Route path="/rapports" element={<Ops><Rapports /></Ops>} />
+                <Route path="/securite" element={<Ops><Securite /></Ops>} />
+                <Route path="/secretariat" element={<Ops><Secretariat /></Ops>} />
+                <Route path="/assistant" element={<Ops><Assistant /></Ops>} />
+                <Route path="/manager" element={<Ops><ManagerGeneral /></Ops>} />
+                <Route path="/parametres" element={<Ops><Parametres /></Ops>} />
+                <Route path="/admin/cabinets" element={<Staff><AdminCabinets /></Staff>} />
+                <Route path="/admin" element={<Protected adminOnly><Admin /></Protected>} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

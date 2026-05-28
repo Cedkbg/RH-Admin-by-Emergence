@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { Users, Building2, Briefcase, FileText } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { ModuleGrid } from "@/components/dashboard/ModuleGrid";
@@ -45,10 +46,9 @@ const Index = () => {
     );
   }
 
-  // Si pas d'user, aller a auth
+  // Si pas d'user (race possible iOS Safari), redirige proprement via React Router
   if (!user) {
-    window.location.href = "/auth";
-    return null;
+    return <Navigate to="/agent/login" replace />;
   }
 
   if (rolesLoading) {
