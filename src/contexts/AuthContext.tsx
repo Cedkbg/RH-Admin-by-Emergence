@@ -47,6 +47,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     setRolesLoading(true);
+    // Filet de sécurité iPhone/Safari : si Supabase met >4s, on débloque
+    const rolesSafety = setTimeout(() => {
+      if (mountedRef.current) {
+        console.warn("[Auth] refreshUserData timeout — déblocage forcé");
+        setRolesLoading(false);
+      }
+    }, 4000);
     try {
       const [{ data: roles }, { data: profileData }] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", uid),
@@ -62,6 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Erreur refreshUserData:", e);
       if (mountedRef.current) setRoles([]);
     } finally {
+      clearTimeout(rolesSafety);
       if (mountedRef.current) setRolesLoading(false);
     }
   };
