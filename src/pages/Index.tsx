@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Users, Building2, Briefcase, FileText } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
@@ -15,7 +15,16 @@ const STAFF_ROLES = ["admin", "dg", "dga", "manager", "rh", "secretaire", "assis
 const Index = () => {
   const { user, loading: authLoading, roles, rolesLoading } = useAuth();
   const [stats, setStats] = useState({ employees: 0, directions: 0, jobs: 0, documents: 0 });
+  const [rolesTimeout, setRolesTimeout] = useState(false);
   const isStaff = roles.some((r: string) => STAFF_ROLES.includes(r));
+
+  // Filet de sécurité iPhone/Safari : si le chargement des rôles dépasse 2s,
+  // on débloque l'UI et on affiche le dashboard agent par défaut.
+  useEffect(() => {
+    if (!rolesLoading) { setRolesTimeout(false); return; }
+    const t = setTimeout(() => setRolesTimeout(true), 2000);
+    return () => clearTimeout(t);
+  }, [rolesLoading]);
 
   // Charger les stats si staff
   useEffect(() => {
@@ -51,7 +60,7 @@ const Index = () => {
     return <Navigate to="/agent/login" replace />;
   }
 
-  if (rolesLoading) {
+  if (rolesLoading && !rolesTimeout) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-muted-foreground">Vérification des accès...</div>
