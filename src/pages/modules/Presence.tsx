@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ClipboardList, Plus, ArrowLeft, QrCode, MapPinned } from "lucide-react";
+import { CalendarDays, ClipboardList, Plus, ArrowLeft, QrCode, MapPinned, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { LiveStats } from "@/components/dashboard/LiveStats";
+import ValidationConges from "@/pages/ValidationConges";
+import { useUserRoles } from "@/hooks/useUserRoles";
 
 
 interface AttRow { id: string; employee_id: string; date: string; check_in: string | null; check_out: string | null; status: string; }
@@ -20,6 +22,8 @@ interface RefRow { id: string; name: string; }
 
 const Presence = () => {
   const { isAdmin } = useAuth();
+  const { hasAny } = useUserRoles();
+  const canValidate = hasAny(["admin", "rh", "secretaire", "assistant_direction"]);
   const navigate = useNavigate();
   const [employees, setEmployees] = useState<Emp[]>([]);
   const [directions, setDirections] = useState<Map<string, string>>(new Map());
@@ -114,6 +118,9 @@ const Presence = () => {
         <TabsList>
           <TabsTrigger value="attendance"><ClipboardList className="mr-2 h-4 w-4" /> Pointage</TabsTrigger>
           <TabsTrigger value="leaves"><CalendarDays className="mr-2 h-4 w-4" /> Congés</TabsTrigger>
+          {canValidate && (
+            <TabsTrigger value="validation"><ShieldCheck className="mr-2 h-4 w-4" /> Validation</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="attendance" className="mt-4">
@@ -190,6 +197,12 @@ const Presence = () => {
             </table>
           </section>
         </TabsContent>
+
+        {canValidate && (
+          <TabsContent value="validation" className="mt-4">
+            <ValidationConges />
+          </TabsContent>
+        )}
       </Tabs>
 
       <Dialog open={openAtt} onOpenChange={setOpenAtt}>
