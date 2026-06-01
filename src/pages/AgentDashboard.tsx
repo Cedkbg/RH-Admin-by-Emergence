@@ -62,6 +62,8 @@ const AgentDashboard = () => {
       .eq("date", today)
       .maybeSingle();
     setTodayAttendance((data as Attendance | null) ?? null);
+  };
+
   // Timeout de secu : ne jamais laisser l'ecran sur Chargement
   useEffect(() => {
     const timer = setTimeout(() => {
