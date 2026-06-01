@@ -28,16 +28,23 @@ const DEFAULTS = {
   // Entreprise
   company_name: "EMERGENCE DRC",
   company_legal_form: "SARL",
+  company_sigle: "",
   company_rccm: "",
   company_id_nat: "",
   company_nif: "",
+  company_cnss_num: "",
+  company_inpp_num: "",
   company_address: "",
   company_city: "Kinshasa",
+  company_province: "Kinshasa",
   company_country: "RDC",
   company_phone: "",
   company_email: "",
   company_website: "",
   about: "Système intégré de gestion des ressources humaines.",
+  payment_day: 25,
+  ui_color_primary: "#0052CC",
+  ui_color_secondary: "#F4F5F7",
 
   // Temps de travail
   work_hours_per_day: 8,
