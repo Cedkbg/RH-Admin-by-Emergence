@@ -425,6 +425,38 @@ const MesConges = () => {
                 rows={4}
               />
             </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="attachment" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Pièce jointe (optionnel)
+              </Label>
+              <input
+                ref={fileInputRef}
+                id="attachment"
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary hover:file:bg-primary/20"
+              />
+              {file && (
+                <div className="flex items-center justify-between rounded-md border bg-muted/40 px-2 py-1.5 text-xs">
+                  <span className="flex items-center gap-1.5 truncate">
+                    <Paperclip className="h-3 w-3 shrink-0" /> {file.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                    className="ml-2 text-muted-foreground hover:text-destructive"
+                    aria-label="Retirer la pièce jointe"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                PDF, image ou document Word. Taille max : 10 Mo.
+              </p>
+            </div>
           </form>
 
           <div className="rounded-xl border bg-card p-5 shadow-sm">
