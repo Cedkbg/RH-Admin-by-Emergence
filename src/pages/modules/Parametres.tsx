@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Settings as SettingsIcon, Save, ArrowLeft, ImageIcon, Upload,
+  Settings as SettingsIcon, Save, ArrowLeft, ImageIcon, Upload, Wand2,
   Building2, Clock, Receipt, Gift, Award, Palette, ShieldCheck, Info,
 } from "lucide-react";
+import SetupWizard from "@/components/parametres/SetupWizard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,16 +28,23 @@ const DEFAULTS = {
   // Entreprise
   company_name: "EMERGENCE DRC",
   company_legal_form: "SARL",
+  company_sigle: "",
   company_rccm: "",
   company_id_nat: "",
   company_nif: "",
+  company_cnss_num: "",
+  company_inpp_num: "",
   company_address: "",
   company_city: "Kinshasa",
+  company_province: "Kinshasa",
   company_country: "RDC",
   company_phone: "",
   company_email: "",
   company_website: "",
   about: "Système intégré de gestion des ressources humaines.",
+  payment_day: 25,
+  ui_color_primary: "#0052CC",
+  ui_color_secondary: "#F4F5F7",
 
   // Temps de travail
   work_hours_per_day: 8,
@@ -95,6 +103,7 @@ const Parametres = () => {
   const [saving, setSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string>("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const setField = (k: string, val: Json) => setV((s) => ({ ...s, [k]: val }));
@@ -173,15 +182,28 @@ const Parametres = () => {
             Configurez l'identité, la paie, les retenues et l'apparence. Tout est enregistré dans le profil entreprise.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {!isAdmin && <Badge variant="secondary">Lecture seule</Badge>}
           {isAdmin && (
-            <Button onClick={saveAll} disabled={saving}>
-              <Save className="mr-2 h-4 w-4" /> {saving ? "Enregistrement…" : "Enregistrer tout"}
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => setWizardOpen(true)}>
+                <Wand2 className="mr-2 h-4 w-4" /> Configuration assistée
+              </Button>
+              <Button onClick={saveAll} disabled={saving}>
+                <Save className="mr-2 h-4 w-4" /> {saving ? "Enregistrement…" : "Enregistrer tout"}
+              </Button>
+            </>
           )}
         </div>
       </div>
+
+      <SetupWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        initial={v}
+        initialLogo={logoUrl}
+        onSaved={refresh}
+      />
 
       <Tabs defaultValue="entreprise" className="space-y-4">
         <TabsList className="flex w-full flex-wrap h-auto">
