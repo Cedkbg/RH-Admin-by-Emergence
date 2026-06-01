@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  Settings as SettingsIcon, Save, ArrowLeft, ImageIcon, Upload,
+  Settings as SettingsIcon, Save, ArrowLeft, ImageIcon, Upload, Wand2,
   Building2, Clock, Receipt, Gift, Award, Palette, ShieldCheck, Info,
 } from "lucide-react";
+import SetupWizard from "@/components/parametres/SetupWizard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
