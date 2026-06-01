@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/sidebar";
 import { modules } from "@/data/modules";
 import { cn } from "@/lib/utils";
-import { Shield, Users2, CalendarCheck } from "lucide-react";
+import { Shield, Users2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +32,7 @@ export function AppSidebar() {
   const [logoUrl, setLogoUrl] = useState<string>(companyLogo);
   const [companyName, setCompanyName] = useState<string>("EMERGENCE DRC");
   const canManageCabinets = roles.some((r) => CABINET_ROLES.has(r));
-  const canValidateLeaves = roles.some((r) => ["admin","rh","secretaire","assistant_direction"].includes(r));
+  
   const hasOpsAccess = roles.some((r) => OPS_ROLES.has(r));
   const hasField = roles.some((r) => ["admin", "manager", "rh", "assistant_direction"].includes(r));
   const hasExec = roles.some((r) => EXECUTIVE_ROLES.has(r));
