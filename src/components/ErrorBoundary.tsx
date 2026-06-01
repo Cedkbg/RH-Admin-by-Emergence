@@ -1,5 +1,11 @@
 import { Component, ReactNode } from "react";
 
+const isIosWebKit = () => {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return /iP(ad|hone|od)/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+};
+
 interface State { hasError: boolean; error: Error | null; }
 
 /**
@@ -21,10 +27,22 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
 
   private handleReload = () => {
     try {
-      window.location.reload();
+      const url = new URL(window.location.href);
+      url.searchParams.set("recover", String(Date.now()));
+      window.location.replace(url.toString());
     } catch {
       this.setState({ hasError: false, error: null });
     }
+  };
+
+  private handleReset = async () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {
+      // Le stockage peut être indisponible en navigation privée iOS.
+    }
+    window.location.replace("/agent/login?reset=1");
   };
 
   render() {
@@ -41,6 +59,14 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
           >
             Recharger la page
           </button>
+          {isIosWebKit() && (
+            <button
+              onClick={this.handleReset}
+              className="text-sm font-medium text-primary underline underline-offset-4"
+            >
+              Réinitialiser la connexion
+            </button>
+          )}
         </div>
       );
     }
