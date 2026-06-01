@@ -181,7 +181,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!mountedRef.current) return;
 
         const userData = userResult.type === "data" ? userResult.result.data : { user: data.session.user };
-        const error = userResult.type === "error" ? userResult.error : null;
+        const error = userResult.type === "data" ? userResult.result.error : userResult.error;
 
         const isInvalidTokenError = (() => {
           if (!error) return false;
