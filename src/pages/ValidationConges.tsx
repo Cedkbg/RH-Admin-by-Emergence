@@ -74,7 +74,7 @@ const ValidationConges = () => {
       supabase.from("leave_requests")
         .select("id, employee_id, leave_type, start_date, end_date, reason, status, attachment_url, review_comment, reviewed_at, created_at")
         .order("created_at", { ascending: false }),
-      supabase.from("employees").select("id, first_name, last_name, matricule, direction_id, poste, photo_url"),
+      supabase.from("employees").select("id, first_name, last_name, matricule, direction_id, position"),
     ]);
     setRows((lr as LeaveRow[]) || []);
     const m = new Map<string, Emp>();
