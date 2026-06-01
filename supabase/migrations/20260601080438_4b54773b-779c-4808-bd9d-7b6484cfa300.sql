@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.notify_leave_request() FROM anon, authenticated;

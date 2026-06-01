@@ -683,34 +683,46 @@ export type Database = {
       }
       leave_requests: {
         Row: {
+          attachment_url: string | null
           created_at: string
           employee_id: string
           end_date: string
           id: string
           leave_type: string
           reason: string | null
+          review_comment: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           start_date: string
           status: string
           updated_at: string
         }
         Insert: {
+          attachment_url?: string | null
           created_at?: string
           employee_id: string
           end_date: string
           id?: string
           leave_type?: string
           reason?: string | null
+          review_comment?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           start_date: string
           status?: string
           updated_at?: string
         }
         Update: {
+          attachment_url?: string | null
           created_at?: string
           employee_id?: string
           end_date?: string
           id?: string
           leave_type?: string
           reason?: string | null
+          review_comment?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           start_date?: string
           status?: string
           updated_at?: string
@@ -846,6 +858,39 @@ export type Database = {
           next_steps?: string | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          link: string | null
+          message: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          message?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          link?: string | null
+          message?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
         }
         Relationships: []
       }
