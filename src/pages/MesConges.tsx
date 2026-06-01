@@ -86,15 +86,30 @@ const MesConges = () => {
   useEffect(() => {
     let alive = true;
     const load = async () => {
-      if (!user?.email) {
+      if (!user?.id) {
         setLoading(false);
         return;
       }
       try {
+        // 1) Récupérer l'email via la session OU le profil (fallback iOS)
+        let email = user.email ?? null;
+        if (!email) {
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("email")
+            .eq("id", user.id)
+            .maybeSingle();
+          email = prof?.email ?? null;
+        }
+        if (!email) {
+          if (alive) setLoading(false);
+          return;
+        }
+        // 2) Trouver la fiche employé liée
         const { data: emp } = await supabase
           .from("employees")
           .select("id")
-          .ilike("email", user.email)
+          .ilike("email", email)
           .maybeSingle();
         if (!alive) return;
         if (!emp) {
@@ -119,7 +134,7 @@ const MesConges = () => {
     return () => {
       alive = false;
     };
-  }, [user?.email]);
+  }, [user?.id, user?.email]);
 
   const stats = useMemo(() => {
     const month = new Date().getMonth();
