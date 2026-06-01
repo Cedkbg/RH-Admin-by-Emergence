@@ -182,15 +182,28 @@ const Parametres = () => {
             Configurez l'identité, la paie, les retenues et l'apparence. Tout est enregistré dans le profil entreprise.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {!isAdmin && <Badge variant="secondary">Lecture seule</Badge>}
           {isAdmin && (
-            <Button onClick={saveAll} disabled={saving}>
-              <Save className="mr-2 h-4 w-4" /> {saving ? "Enregistrement…" : "Enregistrer tout"}
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => setWizardOpen(true)}>
+                <Wand2 className="mr-2 h-4 w-4" /> Configuration assistée
+              </Button>
+              <Button onClick={saveAll} disabled={saving}>
+                <Save className="mr-2 h-4 w-4" /> {saving ? "Enregistrement…" : "Enregistrer tout"}
+              </Button>
+            </>
           )}
         </div>
       </div>
+
+      <SetupWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        initial={v}
+        initialLogo={logoUrl}
+        onSaved={refresh}
+      />
 
       <Tabs defaultValue="entreprise" className="space-y-4">
         <TabsList className="flex w-full flex-wrap h-auto">
