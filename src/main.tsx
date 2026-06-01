@@ -19,7 +19,9 @@ import "./index.css";
     if (isAuthLink && window.location.pathname !== "/reset-password") {
       window.history.replaceState({}, "", `/reset-password${search}${hash}`);
     }
-  } catch {}
+  } catch {
+    // Redirection précoce non critique : l'app continue si le navigateur refuse.
+  }
 })();
 
 createRoot(document.getElementById("root")!).render(
