@@ -118,6 +118,9 @@ const Presence = () => {
         <TabsList>
           <TabsTrigger value="attendance"><ClipboardList className="mr-2 h-4 w-4" /> Pointage</TabsTrigger>
           <TabsTrigger value="leaves"><CalendarDays className="mr-2 h-4 w-4" /> Congés</TabsTrigger>
+          {canValidate && (
+            <TabsTrigger value="validation"><ShieldCheck className="mr-2 h-4 w-4" /> Validation</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="attendance" className="mt-4">
