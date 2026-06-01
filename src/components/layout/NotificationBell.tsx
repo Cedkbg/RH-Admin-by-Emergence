@@ -20,6 +20,22 @@ interface Ann {
 
 const STORAGE_KEY = "announcements:lastSeenAt";
 
+const formatSafeDateTime = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  try {
+    return new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  } catch {
+    return date.toLocaleString("fr-FR");
+  }
+};
+
 export function NotificationBell() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -62,7 +78,9 @@ export function NotificationBell() {
   const markAllRead = () => {
     const now = new Date().toISOString();
     setLastSeen(now);
-    try { localStorage.setItem(STORAGE_KEY, now); } catch {}
+    try { localStorage.setItem(STORAGE_KEY, now); } catch {
+      // Stockage indisponible sur certains iPhone / modes privés.
+    }
   };
 
   const handleOpenChange = (v: boolean) => {
@@ -109,7 +127,7 @@ export function NotificationBell() {
                   </div>
                   <p className="line-clamp-2 text-xs text-muted-foreground">{a.content}</p>
                   <div className="mt-1 text-[10px] text-muted-foreground">
-                    {new Date(a.created_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                    {formatSafeDateTime(a.created_at)}
                   </div>
                 </button>
               ))}
