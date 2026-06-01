@@ -33,8 +33,7 @@ interface Emp {
   last_name: string;
   matricule: string | null;
   direction_id: string | null;
-  poste: string | null;
-  photo_url: string | null;
+  position: string | null;
 }
 
 const TYPE_LABEL: Record<string, string> = {
