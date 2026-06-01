@@ -197,6 +197,12 @@ const Presence = () => {
             </table>
           </section>
         </TabsContent>
+
+        {canValidate && (
+          <TabsContent value="validation" className="mt-4">
+            <ValidationConges />
+          </TabsContent>
+        )}
       </Tabs>
 
       <Dialog open={openAtt} onOpenChange={setOpenAtt}>
