@@ -39,6 +39,7 @@ import PresenceKiosk from "./pages/PresenceKiosk";
 import PresenceScan from "./pages/PresenceScan";
 import PresenceLocations from "./pages/PresenceLocations";
 import Install from "./pages/Install";
+import MesConges from "./pages/MesConges";
 import { RoleGuard } from "@/components/RoleGuard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
