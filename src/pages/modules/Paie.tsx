@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LiveStats } from "@/components/dashboard/LiveStats";
+import { PaieOverview } from "@/components/paie/PaieOverview";
 
 
 interface Employee {
@@ -598,7 +599,8 @@ const Paie = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <PaieOverview />
       {isAdmin && <LiveStats variant="paie" />}
       <CrudPage<Pay>
 
