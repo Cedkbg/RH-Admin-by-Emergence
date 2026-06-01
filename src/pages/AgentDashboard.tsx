@@ -22,16 +22,6 @@ interface PaySlip {
 }
 const fmt = (n: any) => Number(n || 0).toLocaleString("fr-FR");
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const withTimeout = async <T,>(promise: PromiseLike<T>, ms = 3000): Promise<T | null> => {
-  const result: any = await Promise.race([
-    Promise.resolve(promise).then((data) => ({ type: "data", data })).catch((error) => ({ type: "error", error })),
-    wait(ms).then(() => ({ type: "timeout" })),
-  ]);
-  if (result.type === "timeout") return null;
-  if (result.type === "error") throw result.error;
-  return result.data;
-};
 
 // Heure limite d'arrivee (configurable plus tard via app_settings)
 const ARRIVAL_DEADLINE_HOUR = 9; // 09:00
