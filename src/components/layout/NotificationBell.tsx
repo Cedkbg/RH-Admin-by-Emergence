@@ -78,7 +78,9 @@ export function NotificationBell() {
   const markAllRead = () => {
     const now = new Date().toISOString();
     setLastSeen(now);
-    try { localStorage.setItem(STORAGE_KEY, now); } catch {}
+    try { localStorage.setItem(STORAGE_KEY, now); } catch {
+      // Stockage indisponible sur certains iPhone / modes privés.
+    }
   };
 
   const handleOpenChange = (v: boolean) => {
