@@ -83,12 +83,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       const [{ data: roleRows }, { data: profileData }] = result;
-      const roleSet = new Set<string>((roleRows || []).map((r: any) => r.role).filter(Boolean));
+      const roleSet = new Set<string>(
+        (roleRows || [])
+          .map((r: { role: string | null }) => r.role)
+          .filter((role): role is string => Boolean(role))
+      );
       if (roleSet.size === 0) roleSet.add("employee");
       setRoles(Array.from(roleSet));
       setIsAdmin(roleSet.has("admin"));
       setIsSecretary(roleSet.has("secretaire") || roleSet.has("admin"));
-      setApprovalStatus((profileData?.approval_status as any) ?? "pending");
+      setApprovalStatus((profileData?.approval_status as "pending" | "approved" | "rejected" | null) ?? "pending");
     } catch (e) {
       console.error("Erreur refreshUserData:", e);
       if (mountedRef.current) {
