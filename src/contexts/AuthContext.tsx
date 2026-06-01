@@ -19,6 +19,12 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const sleep = (ms: number) => new Promise<null>((resolve) => setTimeout(() => resolve(null), ms));
+
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number): Promise<T | null> => {
+  return Promise.race([promise, sleep(ms)]) as Promise<T | null>;
+};
+
 /**
  * Lecture directe de la session depuis localStorage — contourne le
  * "navigator lock" de Supabase qui se bloque sur iOS Safari (Strict Mode +
@@ -61,11 +67,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     try {
-      const [{ data: roleRows }, { data: profileData }] = await Promise.all([
-        supabase.from("user_roles").select("role").eq("user_id", uid),
-        supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
-      ]);
+      const result = await withTimeout(
+        Promise.all([
+          supabase.from("user_roles").select("role").eq("user_id", uid),
+          supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
+        ]),
+        2500
+      );
       if (!mountedRef.current) return;
+      if (!result) {
+        setRoles(["employee"]);
+        setIsAdmin(false);
+        setIsSecretary(false);
+        setApprovalStatus("approved");
+        return;
+      }
+      const [{ data: roleRows }, { data: profileData }] = result;
       const roleSet = new Set<string>((roleRows || []).map((r: any) => r.role).filter(Boolean));
       if (roleSet.size === 0) roleSet.add("employee");
       setRoles(Array.from(roleSet));
