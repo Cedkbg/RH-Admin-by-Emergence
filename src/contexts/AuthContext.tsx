@@ -19,222 +19,97 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 /**
- * AuthProvider robuste :
- *  - Ne bloque JAMAIS l'UI plus de 3s sur le check initial
- *  - Détecte et purge les tokens JWT orphelins (user supprimé en BDD)
- *  - Charge les rôles en arrière-plan SANS bloquer le rendu
+ * Lecture directe de la session depuis localStorage — contourne le
+ * "navigator lock" de Supabase qui se bloque sur iOS Safari (Strict Mode +
+ * onglets multiples). On évite ainsi tout appel à getSession() au boot.
  */
+const readStoredSession = (): Session | null => {
+  try {
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    const key = `sb-${projectId}-auth-token`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Format Supabase v2 : { access_token, refresh_token, expires_at, user, ... }
+    if (parsed?.access_token && parsed?.user) return parsed as Session;
+    // Format wrapper { currentSession: {...} }
+    if (parsed?.currentSession?.access_token) return parsed.currentSession as Session;
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const initial = readStoredSession();
+  const [session, setSession] = useState<Session | null>(initial);
+  const [user, setUser] = useState<User | null>(initial?.user ?? null);
   const [roles, setRoles] = useState<string[]>([]);
-  const [rolesLoading, setRolesLoading] = useState(true);
+  const [rolesLoading, setRolesLoading] = useState(!!initial);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSecretary, setIsSecretary] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const mountedRef = useRef(true);
-  const currentUserIdRef = useRef<string | null>(null);
-  const rolesLoadedRef = useRef(false);
-
-  const applyUserData = (roleRows: any[] | null | undefined, profileData: any, useEmployeeFallback = false) => {
-    if (!mountedRef.current) return;
-    const roleSet = new Set<string>((roleRows || []).map((r: any) => r.role).filter(Boolean));
-    if (useEmployeeFallback && roleSet.size === 0) roleSet.add("employee");
-    setRoles(Array.from(roleSet));
-    setIsAdmin(roleSet.has("admin"));
-    setIsSecretary(roleSet.has("secretaire") || roleSet.has("admin"));
-    setApprovalStatus((profileData?.approval_status as any) ?? "pending");
-    rolesLoadedRef.current = true;
-    setRolesLoading(false);
-  };
 
   const refreshUserData = async (uid: string | undefined) => {
     if (!uid) {
       if (!mountedRef.current) return;
-      currentUserIdRef.current = null;
-      rolesLoadedRef.current = false;
-      setRoles([]);
-      setRolesLoading(false);
-      setIsAdmin(false);
-      setIsSecretary(false);
-      setApprovalStatus(null);
+      setRoles([]); setRolesLoading(false); setIsAdmin(false);
+      setIsSecretary(false); setApprovalStatus(null);
       return;
     }
-    setRolesLoading(true);
     try {
-      const queryPromise = Promise.all([
+      const [{ data: roleRows }, { data: profileData }] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", uid),
         supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
       ]);
-
-      const result: any = await Promise.race([
-        queryPromise.then((data) => ({ type: "data", data })).catch((error) => ({ type: "error", error })),
-        wait(3000).then(() => ({ type: "timeout" })),
-      ]);
-
       if (!mountedRef.current) return;
-
-      if (result.type === "timeout") {
-        console.warn("[Auth] Roles timeout iPhone/Safari — affichage agent forcé");
-        applyUserData([], null, true);
-        queryPromise
-          .then(([{ data: lateRoles }, { data: lateProfile }]) => {
-            if (mountedRef.current && currentUserIdRef.current === uid) {
-              applyUserData(lateRoles, lateProfile, true);
-            }
-          })
-          .catch((e) => console.error("Erreur refreshUserData tardive:", e));
-        return;
-      }
-
-      if (result.type === "error") throw result.error;
-      const [{ data: roles }, { data: profileData }] = result.data;
-      applyUserData(roles, profileData, true);
+      const roleSet = new Set<string>((roleRows || []).map((r: any) => r.role).filter(Boolean));
+      if (roleSet.size === 0) roleSet.add("employee");
+      setRoles(Array.from(roleSet));
+      setIsAdmin(roleSet.has("admin"));
+      setIsSecretary(roleSet.has("secretaire") || roleSet.has("admin"));
+      setApprovalStatus((profileData?.approval_status as any) ?? "pending");
     } catch (e) {
       console.error("Erreur refreshUserData:", e);
-      if (mountedRef.current) applyUserData([], null, true);
+      if (mountedRef.current) {
+        setRoles(["employee"]);
+        setIsAdmin(false);
+        setIsSecretary(false);
+        setApprovalStatus("pending");
+      }
+    } finally {
+      if (mountedRef.current) setRolesLoading(false);
     }
   };
 
   useEffect(() => {
     mountedRef.current = true;
 
-    // Filet de sécurité ABSOLU : après 3s, on débloque l'UI quoi qu'il arrive
-    const safety = setTimeout(() => {
-      if (mountedRef.current) {
-        console.warn("[Auth] Safety timeout — déblocage forcé");
-        setLoading(false);
-      }
-    }, 3000);
+    // Charger les rôles si on a une session initiale (depuis localStorage)
+    if (initial?.user?.id) {
+      setTimeout(() => refreshUserData(initial.user.id), 0);
+    }
 
-    // Listener — IMPORTANT: ne JAMAIS faire d'await ici (sinon deadlock Supabase)
-    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
+    // Listener : ne JAMAIS await ici (deadlock Supabase)
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (!mountedRef.current) return;
-
-      const nextUserId = newSession?.user?.id ?? null;
-      const sameUser = currentUserIdRef.current === nextUserId;
-      currentUserIdRef.current = nextUserId;
-
       setSession(newSession);
       setUser(newSession?.user ?? null);
       setLoading(false);
-      clearTimeout(safety);
-
-      // Charger les rôles en arrière-plan (différé)
-      if (nextUserId) {
-        const shouldRefreshRoles = !sameUser || !rolesLoadedRef.current || event === "SIGNED_IN";
-        setRolesLoading(shouldRefreshRoles);
-        if (shouldRefreshRoles) setTimeout(() => { refreshUserData(nextUserId); }, 0);
+      if (newSession?.user?.id) {
+        setRolesLoading(true);
+        setTimeout(() => refreshUserData(newSession.user.id), 0);
       } else {
-        rolesLoadedRef.current = false;
-        setRoles([]);
-        setRolesLoading(false);
-        setIsAdmin(false);
-        setIsSecretary(false);
-        setApprovalStatus(null);
+        setRoles([]); setRolesLoading(false); setIsAdmin(false);
+        setIsSecretary(false); setApprovalStatus(null);
       }
     });
 
-    // Initial check + validation du token (purge si user orphelin)
-    (async () => {
-      try {
-        const sessionResult: any = await Promise.race([
-          supabase.auth.getSession().then((result) => ({ type: "data", result })).catch((error) => ({ type: "error", error })),
-          wait(2500).then(() => ({ type: "timeout" })),
-        ]);
-        if (!mountedRef.current) return;
-
-        if (sessionResult.type === "timeout") {
-          console.warn("[Auth] getSession timeout — déblocage de l'interface");
-          setLoading(false);
-          setRolesLoading(false);
-          clearTimeout(safety);
-          return;
-        }
-
-        if (sessionResult.type === "error") throw sessionResult.error;
-        const { data } = sessionResult.result;
-
-        if (!data.session) {
-          currentUserIdRef.current = null;
-          rolesLoadedRef.current = false;
-          setSession(null);
-          setUser(null);
-          setRoles([]);
-          setRolesLoading(false);
-          setLoading(false);
-          clearTimeout(safety);
-          return;
-        }
-
-        // Vérifier que le user existe toujours (sub claim valide)
-        // IMPORTANT : ne purger QUE si l'erreur prouve un token invalide.
-        // Une erreur réseau transitoire ne doit JAMAIS déconnecter l'utilisateur.
-        const userResult: any = await Promise.race([
-          supabase.auth.getUser().then((result) => ({ type: "data", result })).catch((error) => ({ type: "error", error })),
-          wait(2500).then(() => ({ type: "timeout" })),
-        ]);
-        if (!mountedRef.current) return;
-
-        const userData = userResult.type === "data" ? userResult.result.data : { user: data.session.user };
-        const error = userResult.type === "data" ? userResult.result.error : userResult.error;
-
-        const isInvalidTokenError = (() => {
-          if (!error) return false;
-          const status = (error as any)?.status;
-          const msg = (error?.message || "").toLowerCase();
-          if (status === 401 || status === 403) return true;
-          return (
-            msg.includes("user not found") ||
-            msg.includes("user from sub claim") ||
-            msg.includes("invalid jwt") ||
-            msg.includes("jwt expired") ||
-            msg.includes("bad_jwt") ||
-            msg.includes("session_not_found")
-          );
-        })();
-
-        if (isInvalidTokenError) {
-          console.warn("[Auth] Token JWT orphelin détecté — purge");
-          await supabase.auth.signOut({ scope: "local" }).catch(() => {});
-          setSession(null);
-          setUser(null);
-          setRoles([]);
-          setRolesLoading(false);
-          setLoading(false);
-          clearTimeout(safety);
-          return;
-        }
-
-        // Si erreur réseau ou inconnue : on garde la session locale (rester connecté)
-        // et on tentera de rafraîchir les données plus tard.
-
-
-        setSession(data.session);
-        setUser(userData?.user ?? data.session.user);
-        currentUserIdRef.current = userData?.user?.id ?? data.session.user?.id ?? null;
-        setRolesLoading(true);
-        setLoading(false);
-        clearTimeout(safety);
-        const uid = userData?.user?.id ?? data.session.user?.id;
-        if (uid) setTimeout(() => { refreshUserData(uid); }, 0);
-
-      } catch (e) {
-        console.error("[Auth] Erreur init:", e);
-        if (mountedRef.current) {
-          setLoading(false);
-          clearTimeout(safety);
-        }
-      }
-    })();
-
     return () => {
       mountedRef.current = false;
-      clearTimeout(safety);
       sub.subscription.unsubscribe();
     };
   }, []);
@@ -251,12 +126,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: { full_name: fullName },
-      },
+      email, password,
+      options: { emailRedirectTo: redirectUrl, data: { full_name: fullName } },
     });
     return { error: error?.message ?? null };
   };
@@ -264,13 +135,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) await supabase.auth.signOut({ scope: "local" }).catch(() => {});
-    setSession(null);
-    setUser(null);
-    setRoles([]);
-    setRolesLoading(false);
-    setIsAdmin(false);
-    setIsSecretary(false);
-    setApprovalStatus(null);
+    setSession(null); setUser(null); setRoles([]); setRolesLoading(false);
+    setIsAdmin(false); setIsSecretary(false); setApprovalStatus(null);
     setLoading(false);
   };
 

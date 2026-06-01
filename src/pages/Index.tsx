@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Users, Building2, Briefcase, FileText } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
@@ -15,21 +15,10 @@ const STAFF_ROLES = ["admin", "dg", "dga", "manager", "rh", "secretaire", "assis
 const Index = () => {
   const { user, loading: authLoading, roles, rolesLoading } = useAuth();
   const [stats, setStats] = useState({ employees: 0, directions: 0, jobs: 0, documents: 0 });
-  const [rolesTimeout, setRolesTimeout] = useState(false);
   const isStaff = roles.some((r: string) => STAFF_ROLES.includes(r));
 
-  // Filet de sécurité iPhone/Safari : si le chargement des rôles dépasse 2s,
-  // on débloque l'UI et on affiche le dashboard agent par défaut.
-  useEffect(() => {
-    if (!rolesLoading) { setRolesTimeout(false); return; }
-    const t = setTimeout(() => setRolesTimeout(true), 2000);
-    return () => clearTimeout(t);
-  }, [rolesLoading]);
-
-  // Charger les stats si staff
   useEffect(() => {
     if (authLoading || rolesLoading || !isStaff) return;
-    
     (async () => {
       const [emp, dir, jobs, docs] = await Promise.all([
         supabase.from("employees").select("*", { count: "exact", head: true }),
@@ -46,7 +35,6 @@ const Index = () => {
     })();
   }, [authLoading, rolesLoading, isStaff]);
 
-  // Si auth pas pret, on attend un peu
   if (authLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -55,25 +43,15 @@ const Index = () => {
     );
   }
 
-  // Si pas d'user (race possible iOS Safari), redirige proprement via React Router
-  if (!user) {
-    return <Navigate to="/agent/login" replace />;
-  }
+  if (!user) return <Navigate to="/agent/login" replace />;
 
-  if (rolesLoading && !rolesTimeout) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-muted-foreground">Vérification des accès...</div>
-      </div>
-    );
-  }
-
-  // Afficher dashboard agent si:
-  // - Pas staff (pas de roles staff)
-  // - rolesLoading trop long (plus de 3 secondes)
-  if (!isStaff) {
+  // Pendant le chargement des rôles, on affiche directement le dashboard agent
+  // (rendu par défaut, instantané). Si l'utilisateur est staff, il switchera
+  // automatiquement vers le dashboard staff dès que les rôles seront chargés.
+  if (rolesLoading || !isStaff) {
     return <AgentDashboard />;
   }
+
 
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 animate-fade-in">
