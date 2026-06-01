@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, CheckCircle2, Clock, XCircle, Loader2, Paperclip, Search, Filter } from "lucide-react";
+import {
+  CalendarDays, CheckCircle2, Clock, XCircle, Loader2, Paperclip, Search, Filter,
+  Plane, Stethoscope, Baby, Wallet, FileText, Info, User2,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -28,18 +31,41 @@ interface LeaveRow {
 interface Emp { id: string; first_name: string; last_name: string; matricule: string | null; direction_id: string | null; }
 
 const TYPE_LABEL: Record<string, string> = {
-  annual: "Congé Annuel", sick: "Maladie", maternity: "Maternité",
+  annual: "Congé Annuel", sick: "Absence Maladie", maternity: "Maternité",
   paternity: "Paternité", unpaid: "Sans solde", circumstance: "Circonstance",
-  paid: "Payé", other: "Autre",
+  paid: "Congé Payé", other: "Autre",
 };
 
-const StatusBadge = ({ s }: { s: string }) => {
-  if (s === "approved") return <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/20 border-0"><CheckCircle2 className="mr-1 h-3 w-3" />Approuvé</Badge>;
-  if (s === "rejected") return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3" />Refusé</Badge>;
-  return <Badge variant="outline" className="border-amber-500 text-amber-700"><Clock className="mr-1 h-3 w-3" />En attente</Badge>;
+const typeIcon = (t: string) => {
+  switch (t) {
+    case "sick": return { icon: Stethoscope, bg: "bg-rose-100 text-rose-600" };
+    case "maternity":
+    case "paternity": return { icon: Baby, bg: "bg-pink-100 text-pink-600" };
+    case "unpaid": return { icon: Wallet, bg: "bg-amber-100 text-amber-700" };
+    case "annual":
+    case "paid": return { icon: Plane, bg: "bg-blue-100 text-blue-600" };
+    default: return { icon: FileText, bg: "bg-slate-100 text-slate-600" };
+  }
 };
 
-const fmt = (s: string) => new Date(s + "T00:00:00").toLocaleDateString("fr-FR");
+const StatusPill = ({ s }: { s: string }) => {
+  if (s === "approved")
+    return <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-semibold text-green-700"><CheckCircle2 className="h-3 w-3" />APPROUVÉ</span>;
+  if (s === "rejected")
+    return <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-semibold text-rose-700"><XCircle className="h-3 w-3" />REJETÉ</span>;
+  return <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700"><Clock className="h-3 w-3" />EN ATTENTE</span>;
+};
+
+const fmt = (s: string) =>
+  new Date(s + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+const fmtShort = (s: string) =>
+  new Date(s).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+
+const daysBetween = (a: string, b: string) => {
+  const d1 = new Date(a + "T00:00:00").getTime();
+  const d2 = new Date(b + "T00:00:00").getTime();
+  return Math.max(1, Math.round((d2 - d1) / 86400000) + 1);
+};
 
 const ValidationConges = () => {
   const { user, roles } = useAuth();
@@ -111,11 +137,20 @@ const ValidationConges = () => {
     load();
   };
 
+  const monthApproved = useMemo(() => {
+    const now = new Date();
+    return rows.filter((r) => {
+      if (r.status !== "approved" || !r.reviewed_at) return false;
+      const d = new Date(r.reviewed_at);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+  }, [rows]);
+
   const stats = useMemo(() => ({
     pending: rows.filter((r) => r.status === "pending").length,
-    approved: rows.filter((r) => r.status === "approved").length,
+    approved: monthApproved,
     rejected: rows.filter((r) => r.status === "rejected").length,
-  }), [rows]);
+  }), [rows, monthApproved]);
 
   if (!canValidate) {
     return (
@@ -129,107 +164,178 @@ const ValidationConges = () => {
   }
 
   return (
-    <div className="mx-auto max-w-[1300px] space-y-6 animate-fade-in">
+    <div className="mx-auto max-w-[1100px] space-y-6 animate-fade-in">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <CalendarDays className="h-6 w-6 text-primary" /> Validation des demandes de congé
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Examiner les demandes des agents, consulter les pièces jointes et notifier la décision.
+        <h1 className="text-3xl font-extrabold tracking-tight">Centre de Validation</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Examinez et traitez les demandes de congé de vos agents.
         </p>
       </header>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border-l-4 border-amber-500 bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between text-xs font-medium uppercase text-amber-700"><Clock className="h-4 w-4" /><span>En attente</span></div>
-          <p className="mt-2 text-2xl font-bold">{stats.pending}</p>
-        </div>
-        <div className="rounded-xl border-l-4 border-green-500 bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between text-xs font-medium uppercase text-green-700"><CheckCircle2 className="h-4 w-4" /><span>Approuvées</span></div>
-          <p className="mt-2 text-2xl font-bold">{stats.approved}</p>
-        </div>
-        <div className="rounded-xl border-l-4 border-destructive bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between text-xs font-medium uppercase text-destructive"><XCircle className="h-4 w-4" /><span>Refusées</span></div>
-          <p className="mt-2 text-2xl font-bold">{stats.rejected}</p>
-        </div>
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <button
+          onClick={() => setFilter("pending")}
+          className={`rounded-2xl border-t-4 border-amber-500 bg-card p-4 text-left shadow-sm transition hover:shadow-md ${filter === "pending" ? "ring-2 ring-amber-500/40" : ""}`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+              <Clock className="h-5 w-5" />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">En attente</span>
+          </div>
+          <p className="mt-3 text-3xl font-extrabold tabular-nums">{String(stats.pending).padStart(2, "0")}</p>
+          <p className="text-xs text-muted-foreground">Demandes en cours d'examen</p>
+        </button>
+
+        <button
+          onClick={() => setFilter("approved")}
+          className={`rounded-2xl border-t-4 border-green-500 bg-card p-4 text-left shadow-sm transition hover:shadow-md ${filter === "approved" ? "ring-2 ring-green-500/40" : ""}`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100 text-green-600">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-green-700">Approuvées</span>
+          </div>
+          <p className="mt-3 text-3xl font-extrabold tabular-nums">{String(stats.approved).padStart(2, "0")}</p>
+          <p className="text-xs text-muted-foreground">Validées ce mois</p>
+        </button>
+
+        <button
+          onClick={() => setFilter("rejected")}
+          className={`rounded-2xl border-t-4 border-rose-500 bg-card p-4 text-left shadow-sm transition hover:shadow-md ${filter === "rejected" ? "ring-2 ring-rose-500/40" : ""}`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
+              <XCircle className="h-5 w-5" />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700">Rejetées</span>
+          </div>
+          <p className="mt-3 text-3xl font-extrabold tabular-nums">{String(stats.rejected).padStart(2, "0")}</p>
+          <p className="text-xs text-muted-foreground">Requêtes refusées</p>
+        </button>
       </div>
 
+      {/* Search bar */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un agent ou un type…" className="pl-9" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher un agent ou un type…"
+            className="h-11 rounded-xl bg-muted/40 pl-9"
+          />
         </div>
-        <div className="inline-flex rounded-md border bg-card p-0.5 text-xs">
-          {(["pending", "approved", "rejected", "all"] as const).map((k) => (
-            <button
-              key={k}
-              onClick={() => setFilter(k)}
-              className={`rounded px-3 py-1.5 font-medium transition ${filter === k ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              {k === "pending" ? "En attente" : k === "approved" ? "Approuvées" : k === "rejected" ? "Refusées" : "Toutes"}
-            </button>
-          ))}
-        </div>
+        <Button
+          variant={filter === "all" ? "default" : "outline"}
+          className="h-11 rounded-xl"
+          onClick={() => setFilter(filter === "all" ? "pending" : "all")}
+        >
+          <Filter className="mr-2 h-4 w-4" />
+          {filter === "all" ? "Filtre actif" : "Toutes"}
+        </Button>
       </div>
 
-      {loading ? (
-        <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Chargement…
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed bg-card p-12 text-center text-sm text-muted-foreground">
-          Aucune demande {filter !== "all" ? "dans ce statut" : ""}.
-        </div>
-      ) : (
-        <ul className="space-y-3">
-          {filtered.map((r) => {
-            const e = emps.get(r.employee_id);
-            const name = e ? `${e.first_name} ${e.last_name}` : "Agent inconnu";
-            return (
-              <li key={r.id} className="rounded-xl border bg-card p-4 shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold">{name}</p>
-                      {e?.matricule && <Badge variant="outline" className="text-[10px]">{e.matricule}</Badge>}
-                      <StatusBadge s={r.status} />
+      {/* History list */}
+      <section>
+        <h2 className="mb-3 text-lg font-bold">
+          {filter === "pending" ? "Demandes à traiter"
+            : filter === "approved" ? "Demandes approuvées"
+            : filter === "rejected" ? "Demandes refusées"
+            : "Toutes les demandes"}
+        </h2>
+
+        {loading ? (
+          <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Chargement…
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-2xl border border-dashed bg-card p-12 text-center text-sm text-muted-foreground">
+            Aucune demande dans cette catégorie.
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {filtered.map((r) => {
+              const e = emps.get(r.employee_id);
+              const name = e ? `${e.first_name} ${e.last_name}` : "Agent inconnu";
+              const { icon: Icon, bg } = typeIcon(r.leave_type);
+              const dur = daysBetween(r.start_date, r.end_date);
+              const accent = r.status === "approved" ? "border-l-green-500"
+                : r.status === "rejected" ? "border-l-rose-500"
+                : "border-l-amber-500";
+              return (
+                <li
+                  key={r.id}
+                  className={`rounded-2xl border border-l-4 ${accent} bg-card p-4 shadow-sm transition hover:shadow-md`}
+                >
+                  <div className="flex flex-wrap items-start gap-4">
+                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${bg}`}>
+                      <Icon className="h-6 w-6" />
                     </div>
-                    <p className="mt-1 text-sm">
-                      <span className="font-medium">{TYPE_LABEL[r.leave_type] || r.leave_type}</span>
-                      {" — du "}<b>{fmt(r.start_date)}</b>{" au "}<b>{fmt(r.end_date)}</b>
-                    </p>
-                    {r.reason && <p className="mt-1 text-sm text-muted-foreground">{r.reason}</p>}
-                    {r.attachment_url && (
-                      <button
-                        onClick={() => openAttachment(r.attachment_url!)}
-                        className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                      >
-                        <Paperclip className="h-3 w-3" /> Voir la pièce jointe
-                      </button>
-                    )}
-                    {r.review_comment && r.status !== "pending" && (
-                      <p className="mt-2 rounded-md bg-muted/50 p-2 text-xs italic text-muted-foreground">
-                        <b>Décision :</b> {r.review_comment}
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-bold">{TYPE_LABEL[r.leave_type] || r.leave_type}</p>
+                        <StatusPill s={r.status} />
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Du <b className="text-foreground">{fmt(r.start_date)}</b> au <b className="text-foreground">{fmt(r.end_date)}</b>
+                        {" · "}{dur} jour{dur > 1 ? "s" : ""}
                       </p>
+                      <p className="mt-2 inline-flex items-center gap-1.5 text-sm">
+                        <User2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-medium">{name}</span>
+                        {e?.matricule && <span className="text-xs text-muted-foreground">· {e.matricule}</span>}
+                      </p>
+                      {r.reason && (
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{r.reason}</p>
+                      )}
+
+                      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+                        <span className="text-muted-foreground">Soumis le {fmtShort(r.created_at)}</span>
+                        {r.attachment_url && (
+                          <button
+                            onClick={() => openAttachment(r.attachment_url!)}
+                            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                          >
+                            <Paperclip className="h-3 w-3" /> Pièce jointe
+                          </button>
+                        )}
+                      </div>
+
+                      {r.review_comment && r.status !== "pending" && (
+                        <p className="mt-2 rounded-md bg-muted/50 p-2 text-xs italic text-muted-foreground">
+                          <b className="not-italic">Décision :</b> {r.review_comment}
+                        </p>
+                      )}
+                    </div>
+
+                    {r.status === "pending" && (
+                      <div className="flex w-full shrink-0 gap-2 sm:w-auto sm:flex-col">
+                        <Button size="sm" className="flex-1 sm:flex-none" onClick={() => openDecision(r, "approved")}>
+                          <CheckCircle2 className="mr-1 h-4 w-4" /> Approuver
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => openDecision(r, "rejected")}>
+                          <XCircle className="mr-1 h-4 w-4" /> Refuser
+                        </Button>
+                      </div>
                     )}
                   </div>
-                  {r.status === "pending" && (
-                    <div className="flex shrink-0 gap-2">
-                      <Button size="sm" variant="outline" onClick={() => openDecision(r, "rejected")}>
-                        <XCircle className="mr-1 h-4 w-4" /> Refuser
-                      </Button>
-                      <Button size="sm" onClick={() => openDecision(r, "approved")}>
-                        <CheckCircle2 className="mr-1 h-4 w-4" /> Approuver
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
+      <div className="flex items-start gap-2 rounded-xl bg-blue-50 p-3 text-xs text-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
+        <Info className="mt-0.5 h-4 w-4 shrink-0" />
+        <p>Chaque décision déclenche une notification automatique dans la boîte de l'agent concerné.</p>
+      </div>
+
+      {/* Decision dialog */}
       <Dialog open={!!target} onOpenChange={(o) => { if (!o) { setTarget(null); setDecision(null); } }}>
         <DialogContent>
           <DialogHeader>
