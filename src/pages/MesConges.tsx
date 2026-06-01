@@ -322,6 +322,26 @@ const MesConges = () => {
                           {r.reason && (
                             <p className="mt-1.5 text-sm text-foreground/80 line-clamp-2">{r.reason}</p>
                           )}
+                          {r.attachment_url && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const { data, error } = await supabase.storage
+                                  .from("documents")
+                                  .createSignedUrl(r.attachment_url!, 60);
+                                if (error || !data) { toast.error("Impossible d'ouvrir la pièce jointe"); return; }
+                                window.open(data.signedUrl, "_blank");
+                              }}
+                              className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                            >
+                              <Paperclip className="h-3 w-3" /> Voir la pièce jointe
+                            </button>
+                          )}
+                          {r.review_comment && r.status !== "pending" && (
+                            <p className="mt-1.5 rounded-md bg-muted/50 p-2 text-xs italic text-muted-foreground">
+                              <b>Réponse :</b> {r.review_comment}
+                            </p>
+                          )}
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
                           <StatusBadge status={r.status} />
