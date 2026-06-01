@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import "./lib/iosSupabaseLockFix";
 import { ThemeProvider } from "./components/theme-provider.tsx";
 import App from "./App.tsx";
 import "./index.css";
@@ -18,7 +19,9 @@ import "./index.css";
     if (isAuthLink && window.location.pathname !== "/reset-password") {
       window.history.replaceState({}, "", `/reset-password${search}${hash}`);
     }
-  } catch {}
+  } catch {
+    // Redirection précoce non critique : l'app continue si le navigateur refuse.
+  }
 })();
 
 createRoot(document.getElementById("root")!).render(

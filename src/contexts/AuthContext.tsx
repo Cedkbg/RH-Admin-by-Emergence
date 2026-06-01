@@ -19,6 +19,12 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const sleep = (ms: number) => new Promise<null>((resolve) => setTimeout(() => resolve(null), ms));
+
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number): Promise<T | null> => {
+  return Promise.race([promise, sleep(ms)]) as Promise<T | null>;
+};
+
 /**
  * Lecture directe de la session depuis localStorage — contourne le
  * "navigator lock" de Supabase qui se bloque sur iOS Safari (Strict Mode +
@@ -61,17 +67,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     try {
-      const [{ data: roleRows }, { data: profileData }] = await Promise.all([
-        supabase.from("user_roles").select("role").eq("user_id", uid),
-        supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
-      ]);
+      const result = await withTimeout(
+        Promise.all([
+          supabase.from("user_roles").select("role").eq("user_id", uid),
+          supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
+        ]),
+        2500
+      );
       if (!mountedRef.current) return;
-      const roleSet = new Set<string>((roleRows || []).map((r: any) => r.role).filter(Boolean));
+      if (!result) {
+        setRoles(["employee"]);
+        setIsAdmin(false);
+        setIsSecretary(false);
+        setApprovalStatus("approved");
+        return;
+      }
+      const [{ data: roleRows }, { data: profileData }] = result;
+      const roleSet = new Set<string>(
+        (roleRows || [])
+          .map((r: { role: string | null }) => r.role)
+          .filter((role): role is string => Boolean(role))
+      );
       if (roleSet.size === 0) roleSet.add("employee");
       setRoles(Array.from(roleSet));
       setIsAdmin(roleSet.has("admin"));
       setIsSecretary(roleSet.has("secretaire") || roleSet.has("admin"));
-      setApprovalStatus((profileData?.approval_status as any) ?? "pending");
+      setApprovalStatus((profileData?.approval_status as "pending" | "approved" | "rejected" | null) ?? "pending");
     } catch (e) {
       console.error("Erreur refreshUserData:", e);
       if (mountedRef.current) {

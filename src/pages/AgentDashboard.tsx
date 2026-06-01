@@ -20,8 +20,11 @@ interface PaySlip {
   cnss: number; ipr: number; inpp: number; onem: number; other_deductions: number;
   bonus_details?: { label?: string; type?: string; amount?: number }[] | null;
 }
-const fmt = (n: any) => Number(n || 0).toLocaleString("fr-FR");
-const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+type PrintableValue = string | number | null | undefined;
+const fmt = (n: PrintableValue) => Number(n || 0).toLocaleString("fr-FR");
+const esc = (s: PrintableValue) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+const sleep = (ms: number) => new Promise<null>((resolve) => setTimeout(() => resolve(null), ms));
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number): Promise<T | null> => Promise.race([promise, sleep(ms)]) as Promise<T | null>;
 
 // Heure limite d'arrivee (configurable plus tard via app_settings)
 const ARRIVAL_DEADLINE_HOUR = 9; // 09:00
@@ -55,13 +58,16 @@ const AgentDashboard = () => {
 
   const loadAttendance = async (employeeId: string) => {
     const today = new Date().toISOString().slice(0, 10);
-    const { data } = await supabase
-      .from("attendance")
-      .select("id,date,check_in,check_out,status")
-      .eq("employee_id", employeeId)
-      .eq("date", today)
-      .maybeSingle();
-    setTodayAttendance((data as Attendance | null) ?? null);
+    const result = await withTimeout(
+      supabase
+        .from("attendance")
+        .select("id,date,check_in,check_out,status")
+        .eq("employee_id", employeeId)
+        .eq("date", today)
+        .maybeSingle(),
+      1800
+    );
+    setTodayAttendance((result?.data as Attendance | null) ?? null);
   };
 
   // Timeout de secu : ne jamais laisser l'ecran sur Chargement
@@ -80,30 +86,45 @@ const AgentDashboard = () => {
 
     const fetchData = async () => {
       try {
-        const { data: emp } = await supabase
-          .from("employees")
-          .select("id, first_name, last_name, position, email, direction_id")
-          .ilike("email", user.email!)
-          .maybeSingle();
+        const empResult = await withTimeout(
+          supabase
+            .from("employees")
+            .select("id, first_name, last_name, position, email, direction_id")
+            .ilike("email", user.email!)
+            .maybeSingle(),
+          2200
+        );
+        const emp = empResult?.data;
         setMe(emp as Employee | null);
 
-        const { data: allDirs } = await supabase
-          .from("directions")
-          .select("id, name, code, manager_name, description")
-          .order("code");
+        const allDirsResult = await withTimeout(
+          supabase
+            .from("directions")
+            .select("id, name, code, manager_name, description")
+            .order("code"),
+          1800
+        );
+        const allDirs = allDirsResult?.data;
         setAllDirections((allDirs as Direction[]) || []);
 
         if (emp?.direction_id) {
-          const [{ data: dir }, { data: cols }] = await Promise.all([
-            supabase.from("directions").select("id, name, code, manager_name, description").eq("id", emp.direction_id).maybeSingle(),
-            supabase.from("employees").select("id, first_name, last_name, position, email, direction_id").eq("direction_id", emp.direction_id).order("last_name"),
-          ]);
-          setDirection(dir as Direction | null);
-          setColleagues((cols as Employee[]) || []);
+          const detailResult = await withTimeout(
+            Promise.all([
+              supabase.from("directions").select("id, name, code, manager_name, description").eq("id", emp.direction_id).maybeSingle(),
+              supabase.from("employees").select("id, first_name, last_name, position, email, direction_id").eq("direction_id", emp.direction_id).order("last_name"),
+            ]),
+            2200
+          );
+          setDirection((detailResult?.[0]?.data as Direction | null) ?? null);
+          setColleagues((detailResult?.[1]?.data as Employee[]) || []);
         }
         if (emp?.id) {
           await loadAttendance(emp.id).catch(() => null);
-          const { data: ps } = await supabase.from("payroll").select("*").eq("employee_id", emp.id).order("period", { ascending: false }).limit(12);
+          const psResult = await withTimeout(
+            supabase.from("payroll").select("*").eq("employee_id", emp.id).order("period", { ascending: false }).limit(12),
+            1800
+          );
+          const ps = psResult?.data;
           setPayslips((ps as PaySlip[]) || []);
         }
       } catch (err) {
@@ -334,7 +355,7 @@ const AgentDashboard = () => {
                   const w = window.open("", "_blank", "width=800,height=900");
                   if (!w) return;
                   const primes = Array.isArray(p.bonus_details) && p.bonus_details.length > 0
-                    ? p.bonus_details.map((b: any) => `<tr><td>Prime ${esc(b.label || b.type || "")}</td><td class="r">${fmt(b.amount)}</td></tr>`).join("")
+                    ? p.bonus_details.map((b) => `<tr><td>Prime ${esc(b.label || b.type || "")}</td><td class="r">${fmt(b.amount)}</td></tr>`).join("")
                     : `<tr><td>Prime ${esc(p.bonus_type || "")}</td><td class="r">${fmt(p.bonus)}</td></tr>`;
                   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Bulletin ${esc(p.period)}</title>
 <style>body{font-family:Arial;padding:32px;color:#222;max-width:780px;margin:auto}h1{margin:0 0 4px;font-size:20px}h2{font-size:14px;margin:18px 0 6px;border-bottom:2px solid #333}table{width:100%;border-collapse:collapse}td{padding:4px 6px;border-bottom:1px solid #eee;font-size:13px}.r{text-align:right}.tot{font-weight:bold;background:#f0f4ff}</style>
