@@ -19,6 +19,8 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
  * AuthProvider robuste :
  *  - Ne bloque JAMAIS l'UI plus de 3s sur le check initial
@@ -35,10 +37,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [approvalStatus, setApprovalStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(true);
+  const currentUserIdRef = useRef<string | null>(null);
+  const rolesLoadedRef = useRef(false);
+
+  const applyUserData = (roleRows: any[] | null | undefined, profileData: any, useEmployeeFallback = false) => {
+    if (!mountedRef.current) return;
+    const roleSet = new Set<string>((roleRows || []).map((r: any) => r.role).filter(Boolean));
+    if (useEmployeeFallback && roleSet.size === 0) roleSet.add("employee");
+    setRoles(Array.from(roleSet));
+    setIsAdmin(roleSet.has("admin"));
+    setIsSecretary(roleSet.has("secretaire") || roleSet.has("admin"));
+    setApprovalStatus((profileData?.approval_status as any) ?? "pending");
+    rolesLoadedRef.current = true;
+    setRolesLoading(false);
+  };
 
   const refreshUserData = async (uid: string | undefined) => {
     if (!uid) {
       if (!mountedRef.current) return;
+      currentUserIdRef.current = null;
+      rolesLoadedRef.current = false;
       setRoles([]);
       setRolesLoading(false);
       setIsAdmin(false);
@@ -47,30 +65,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     setRolesLoading(true);
-    // Filet de sécurité iPhone/Safari : si Supabase met >4s, on débloque
-    const rolesSafety = setTimeout(() => {
-      if (mountedRef.current) {
-        console.warn("[Auth] refreshUserData timeout — déblocage forcé");
-        setRolesLoading(false);
-      }
-    }, 4000);
     try {
-      const [{ data: roles }, { data: profileData }] = await Promise.all([
+      const queryPromise = Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", uid),
         supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
       ]);
+
+      const result: any = await Promise.race([
+        queryPromise.then((data) => ({ type: "data", data })).catch((error) => ({ type: "error", error })),
+        wait(3000).then(() => ({ type: "timeout" })),
+      ]);
+
       if (!mountedRef.current) return;
-      const roleSet = new Set<string>((roles || []).map((r: any) => r.role));
-      setRoles(Array.from(roleSet));
-      setIsAdmin(roleSet.has("admin"));
-      setIsSecretary(roleSet.has("secretaire") || roleSet.has("admin"));
-      setApprovalStatus((profileData?.approval_status as any) ?? "pending");
+
+      if (result.type === "timeout") {
+        console.warn("[Auth] Roles timeout iPhone/Safari — affichage agent forcé");
+        applyUserData([], null, true);
+        queryPromise
+          .then(([{ data: lateRoles }, { data: lateProfile }]) => {
+            if (mountedRef.current && currentUserIdRef.current === uid) {
+              applyUserData(lateRoles, lateProfile, true);
+            }
+          })
+          .catch((e) => console.error("Erreur refreshUserData tardive:", e));
+        return;
+      }
+
+      if (result.type === "error") throw result.error;
+      const [{ data: roles }, { data: profileData }] = result.data;
+      applyUserData(roles, profileData, true);
     } catch (e) {
       console.error("Erreur refreshUserData:", e);
-      if (mountedRef.current) setRoles([]);
-    } finally {
-      clearTimeout(rolesSafety);
-      if (mountedRef.current) setRolesLoading(false);
+      if (mountedRef.current) applyUserData([], null, true);
     }
   };
 
@@ -89,16 +115,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mountedRef.current) return;
 
+      const nextUserId = newSession?.user?.id ?? null;
+      const sameUser = currentUserIdRef.current === nextUserId;
+      currentUserIdRef.current = nextUserId;
+
       setSession(newSession);
       setUser(newSession?.user ?? null);
-      setRolesLoading(!!newSession?.user?.id);
       setLoading(false);
       clearTimeout(safety);
 
       // Charger les rôles en arrière-plan (différé)
-      if (newSession?.user?.id) {
-        setTimeout(() => { refreshUserData(newSession.user.id); }, 0);
+      if (nextUserId) {
+        const shouldRefreshRoles = !sameUser || !rolesLoadedRef.current || event === "SIGNED_IN";
+        setRolesLoading(shouldRefreshRoles);
+        if (shouldRefreshRoles) setTimeout(() => { refreshUserData(nextUserId); }, 0);
       } else {
+        rolesLoadedRef.current = false;
         setRoles([]);
         setRolesLoading(false);
         setIsAdmin(false);
@@ -110,10 +142,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Initial check + validation du token (purge si user orphelin)
     (async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const sessionResult: any = await Promise.race([
+          supabase.auth.getSession().then((result) => ({ type: "data", result })).catch((error) => ({ type: "error", error })),
+          wait(2500).then(() => ({ type: "timeout" })),
+        ]);
         if (!mountedRef.current) return;
 
+        if (sessionResult.type === "timeout") {
+          console.warn("[Auth] getSession timeout — déblocage de l'interface");
+          setLoading(false);
+          setRolesLoading(false);
+          clearTimeout(safety);
+          return;
+        }
+
+        if (sessionResult.type === "error") throw sessionResult.error;
+        const { data } = sessionResult.result;
+
         if (!data.session) {
+          currentUserIdRef.current = null;
+          rolesLoadedRef.current = false;
           setSession(null);
           setUser(null);
           setRoles([]);
@@ -126,8 +174,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Vérifier que le user existe toujours (sub claim valide)
         // IMPORTANT : ne purger QUE si l'erreur prouve un token invalide.
         // Une erreur réseau transitoire ne doit JAMAIS déconnecter l'utilisateur.
-        const { data: userData, error } = await supabase.auth.getUser();
+        const userResult: any = await Promise.race([
+          supabase.auth.getUser().then((result) => ({ type: "data", result })).catch((error) => ({ type: "error", error })),
+          wait(2500).then(() => ({ type: "timeout" })),
+        ]);
         if (!mountedRef.current) return;
+
+        const userData = userResult.type === "data" ? userResult.result.data : { user: data.session.user };
+        const error = userResult.type === "error" ? userResult.error : null;
 
         const isInvalidTokenError = (() => {
           if (!error) return false;
@@ -162,6 +216,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setSession(data.session);
         setUser(userData?.user ?? data.session.user);
+        currentUserIdRef.current = userData?.user?.id ?? data.session.user?.id ?? null;
         setRolesLoading(true);
         setLoading(false);
         clearTimeout(safety);
