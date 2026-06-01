@@ -22,6 +22,8 @@ interface RefRow { id: string; name: string; }
 
 const Presence = () => {
   const { isAdmin } = useAuth();
+  const { hasAny } = useUserRoles();
+  const canValidate = hasAny(["admin", "rh", "secretaire", "assistant_direction"]);
   const navigate = useNavigate();
   const [employees, setEmployees] = useState<Emp[]>([]);
   const [directions, setDirections] = useState<Map<string, string>>(new Map());
