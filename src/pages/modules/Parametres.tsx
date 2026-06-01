@@ -103,6 +103,7 @@ const Parametres = () => {
   const [saving, setSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string>("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const setField = (k: string, val: Json) => setV((s) => ({ ...s, [k]: val }));
