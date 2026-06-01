@@ -22,6 +22,16 @@ interface PaySlip {
 }
 const fmt = (n: any) => Number(n || 0).toLocaleString("fr-FR");
 const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const withTimeout = async <T,>(promise: PromiseLike<T>, ms = 3000): Promise<T | null> => {
+  const result: any = await Promise.race([
+    Promise.resolve(promise).then((data) => ({ type: "data", data })).catch((error) => ({ type: "error", error })),
+    wait(ms).then(() => ({ type: "timeout" })),
+  ]);
+  if (result.type === "timeout") return null;
+  if (result.type === "error") throw result.error;
+  return result.data;
+};
 
 // Heure limite d'arrivee (configurable plus tard via app_settings)
 const ARRIVAL_DEADLINE_HOUR = 9; // 09:00
@@ -64,14 +74,14 @@ const AgentDashboard = () => {
     setTodayAttendance((data as Attendance | null) ?? null);
   };
 
-  // Timeout de secu pour eviter le blocage (8 secondes)
+  // Timeout de secu iPhone/Safari : ne jamais laisser l'ecran sur Chargement
   useEffect(() => {
     const timer = setTimeout(() => {
       if (loading) {
         console.warn("AgentDashboard: timeout atteint, affichage force");
         setLoading(false);
       }
-    }, 8000);
+    }, 2500);
     return () => clearTimeout(timer);
   }, [loading]);
 
@@ -83,30 +93,34 @@ const AgentDashboard = () => {
     
     const fetchData = async () => {
       try {
-        const { data: emp } = await supabase
+        const empResult = await withTimeout(supabase
           .from("employees")
           .select("id, first_name, last_name, position, email, direction_id")
           .ilike("email", user.email!)
-          .maybeSingle();
+          .maybeSingle(), 2500);
+        const emp = (empResult as any)?.data;
         setMe(emp as Employee | null);
 
-        const { data: allDirs } = await supabase
+        const allDirsResult = await withTimeout(supabase
           .from("directions")
           .select("id, name, code, manager_name, description")
-          .order("code");
+          .order("code"), 2500);
+        const allDirs = (allDirsResult as any)?.data;
         setAllDirections((allDirs as Direction[]) || []);
 
         if (emp?.direction_id) {
-          const [{ data: dir }, { data: cols }] = await Promise.all([
+          const related = await withTimeout(Promise.all([
             supabase.from("directions").select("id, name, code, manager_name, description").eq("id", emp.direction_id).maybeSingle(),
             supabase.from("employees").select("id, first_name, last_name, position, email, direction_id").eq("direction_id", emp.direction_id).order("last_name"),
-          ]);
+          ]), 2500);
+          const [{ data: dir }, { data: cols }] = (related as any) || [{ data: null }, { data: [] }];
           setDirection(dir as Direction | null);
           setColleagues((cols as Employee[]) || []);
         }
         if (emp?.id) {
-          await loadAttendance(emp.id);
-          const { data: ps } = await supabase.from("payroll").select("*").eq("employee_id", emp.id).order("period", { ascending: false }).limit(12);
+          await withTimeout(loadAttendance(emp.id), 2000).catch(() => null);
+          const psResult = await withTimeout(supabase.from("payroll").select("*").eq("employee_id", emp.id).order("period", { ascending: false }).limit(12), 2500);
+          const ps = (psResult as any)?.data;
           setPayslips((ps as PaySlip[]) || []);
         }
       } catch (err) {
