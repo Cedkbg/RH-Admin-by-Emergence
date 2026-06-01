@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, CheckCircle2, Clock, XCircle, Send, Search, Info, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CalendarDays, CheckCircle2, Clock, XCircle, Send, Search, Info, Loader2, Paperclip, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,8 @@ interface LeaveRequest {
   reason: string | null;
   status: string;
   created_at: string;
+  attachment_url?: string | null;
+  review_comment?: string | null;
 }
 
 const LEAVE_TYPES: { value: string; label: string }[] = [
@@ -82,6 +84,8 @@ const MesConges = () => {
     end_date: "",
     reason: "",
   });
+  const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -119,7 +123,7 @@ const MesConges = () => {
         setEmployeeId(emp.id);
         const { data: rows } = await supabase
           .from("leave_requests")
-          .select("id, leave_type, start_date, end_date, reason, status, created_at")
+          .select("id, leave_type, start_date, end_date, reason, status, created_at, attachment_url, review_comment")
           .eq("employee_id", emp.id)
           .order("created_at", { ascending: false });
         if (!alive) return;
@@ -182,6 +186,19 @@ const MesConges = () => {
     }
     setSubmitting(true);
     try {
+      let attachment_url: string | null = null;
+      if (file) {
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error("Pièce jointe trop volumineuse (max 10 Mo).");
+        }
+        const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+        const path = `${user!.id}/leave-attachments/${Date.now()}-${safeName}`;
+        const { error: upErr } = await supabase.storage
+          .from("documents")
+          .upload(path, file, { upsert: false, contentType: file.type || undefined });
+        if (upErr) throw upErr;
+        attachment_url = path;
+      }
       const { data, error } = await supabase
         .from("leave_requests")
         .insert({
@@ -191,12 +208,15 @@ const MesConges = () => {
           end_date: form.end_date,
           reason: form.reason || null,
           status: "pending",
+          attachment_url,
         })
-        .select("id, leave_type, start_date, end_date, reason, status, created_at")
+        .select("id, leave_type, start_date, end_date, reason, status, created_at, attachment_url, review_comment")
         .single();
       if (error) throw error;
       setRequests((prev) => [data as LeaveRequest, ...prev]);
       setForm({ leave_type: "annual", start_date: "", end_date: "", reason: "" });
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       toast.success("Demande soumise avec succès ✅");
     } catch (err: any) {
       console.error(err);
