@@ -27,6 +27,23 @@ const ROLE_LABELS: Record<string, string> = {
 
 const ROLE_PRIORITY = ["admin", "dg", "dga", "rh", "manager", "assistant_direction", "secretaire", "employee"];
 
+const formatSafeDateTime = (value: string | null | undefined) => {
+  if (!value) return "Non disponible";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Non disponible";
+  try {
+    return new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  } catch {
+    return date.toLocaleString("fr-FR");
+  }
+};
+
 export function AppHeader({ title }: AppHeaderProps) {
   const { user, isAdmin, signOut } = useAuth();
   const { roles, loading: rolesLoading } = useUserRoles();
@@ -36,9 +53,7 @@ export function AppHeader({ title }: AppHeaderProps) {
   const primaryRole = ROLE_PRIORITY.find((r) => roles.includes(r));
   const roleLabel = primaryRole ? ROLE_LABELS[primaryRole] : null;
   const lastUpdated = user?.updated_at || user?.last_sign_in_at || user?.created_at;
-  const formattedLastUpdated = lastUpdated
-    ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(lastUpdated))
-    : "Non disponible";
+  const formattedLastUpdated = formatSafeDateTime(lastUpdated);
 
   const initials = (user?.user_metadata?.full_name || user?.email || "?")
     .split(" ")
