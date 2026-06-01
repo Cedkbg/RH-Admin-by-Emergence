@@ -97,19 +97,6 @@ export function AppSidebar() {
             );
           })}
 
-          {canValidateLeaves && (
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Validation des congés">
-                <NavLink
-                  to="/validation-conges"
-                  className={cn(location.pathname.startsWith("/validation-conges") && "bg-sidebar-accent text-sidebar-accent-foreground font-medium")}
-                >
-                  <CalendarCheck className="h-[18px] w-[18px] shrink-0" />
-                  <span className="truncate text-sm">Validation congés</span>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
 
           {canManageCabinets && (
             <SidebarMenuItem>
