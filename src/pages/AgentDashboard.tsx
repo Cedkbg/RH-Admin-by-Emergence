@@ -62,16 +62,11 @@ const AgentDashboard = () => {
       .eq("date", today)
       .maybeSingle();
     setTodayAttendance((data as Attendance | null) ?? null);
-  };
-
-  // Timeout de secu iPhone/Safari : ne jamais laisser l'ecran sur Chargement
+  // Timeout de secu : ne jamais laisser l'ecran sur Chargement
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (loading) {
-        console.warn("AgentDashboard: timeout atteint, affichage force");
-        setLoading(false);
-      }
-    }, 2500);
+      if (loading) setLoading(false);
+    }, 4000);
     return () => clearTimeout(timer);
   }, [loading]);
 
@@ -80,37 +75,33 @@ const AgentDashboard = () => {
       setLoading(false);
       return;
     }
-    
+
     const fetchData = async () => {
       try {
-        const empResult = await withTimeout(supabase
+        const { data: emp } = await supabase
           .from("employees")
           .select("id, first_name, last_name, position, email, direction_id")
           .ilike("email", user.email!)
-          .maybeSingle(), 2500);
-        const emp = (empResult as any)?.data;
+          .maybeSingle();
         setMe(emp as Employee | null);
 
-        const allDirsResult = await withTimeout(supabase
+        const { data: allDirs } = await supabase
           .from("directions")
           .select("id, name, code, manager_name, description")
-          .order("code"), 2500);
-        const allDirs = (allDirsResult as any)?.data;
+          .order("code");
         setAllDirections((allDirs as Direction[]) || []);
 
         if (emp?.direction_id) {
-          const related = await withTimeout(Promise.all([
+          const [{ data: dir }, { data: cols }] = await Promise.all([
             supabase.from("directions").select("id, name, code, manager_name, description").eq("id", emp.direction_id).maybeSingle(),
             supabase.from("employees").select("id, first_name, last_name, position, email, direction_id").eq("direction_id", emp.direction_id).order("last_name"),
-          ]), 2500);
-          const [{ data: dir }, { data: cols }] = (related as any) || [{ data: null }, { data: [] }];
+          ]);
           setDirection(dir as Direction | null);
           setColleagues((cols as Employee[]) || []);
         }
         if (emp?.id) {
-          await withTimeout(loadAttendance(emp.id), 2000).catch(() => null);
-          const psResult = await withTimeout(supabase.from("payroll").select("*").eq("employee_id", emp.id).order("period", { ascending: false }).limit(12), 2500);
-          const ps = (psResult as any)?.data;
+          await loadAttendance(emp.id).catch(() => null);
+          const { data: ps } = await supabase.from("payroll").select("*").eq("employee_id", emp.id).order("period", { ascending: false }).limit(12);
           setPayslips((ps as PaySlip[]) || []);
         }
       } catch (err) {
@@ -119,7 +110,7 @@ const AgentDashboard = () => {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, [user?.email]);
 
