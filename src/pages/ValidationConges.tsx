@@ -235,7 +235,7 @@ const ValidationConges = () => {
           {filtered.map((r) => {
             const e = emps.get(r.employee_id);
             const name = e ? `${e.first_name} ${e.last_name}` : "Agent inconnu";
-            const sub = e?.poste || e?.matricule || "—";
+            const sub = e?.position || e?.matricule || "—";
             const dur = daysBetween(r.start_date, r.end_date);
 
             return (
@@ -245,13 +245,9 @@ const ValidationConges = () => {
               >
                 <header className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    {e?.photo_url ? (
-                      <img src={e.photo_url} alt={name} className="h-11 w-11 rounded-full object-cover ring-2 ring-muted" />
-                    ) : (
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary ring-2 ring-muted">
-                        {initials(e)}
-                      </div>
-                    )}
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary ring-2 ring-muted">
+                      {initials(e)}
+                    </div>
                     <div className="min-w-0">
                       <p className="truncate font-bold">{name}</p>
                       <p className="truncate text-xs text-muted-foreground">{sub}</p>
