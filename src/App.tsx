@@ -39,6 +39,7 @@ import PresenceKiosk from "./pages/PresenceKiosk";
 import PresenceScan from "./pages/PresenceScan";
 import PresenceLocations from "./pages/PresenceLocations";
 import Install from "./pages/Install";
+import MesConges from "./pages/MesConges";
 import { RoleGuard } from "@/components/RoleGuard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -122,6 +123,7 @@ const App = () => (
                 <Route path="/paie" element={<Ops><Paie /></Ops>} />
                 <Route path="/presence" element={<PresenceGuard><Presence /></PresenceGuard>} />
                 <Route path="/presence/scan" element={<PresenceScan />} />
+                <Route path="/mes-conges" element={<MesConges />} />
                 <Route path="/presence/locations" element={<Field><PresenceLocations /></Field>} />
                 <Route path="/documents" element={<Ops><Documents /></Ops>} />
                 <Route path="/juridique" element={<Ops><Juridique /></Ops>} />

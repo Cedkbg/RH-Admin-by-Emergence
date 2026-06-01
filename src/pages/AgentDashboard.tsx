@@ -299,7 +299,7 @@ const AgentDashboard = () => {
       </Collapsible>
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Link to="/presence" className="group rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
+        <Link to="/mes-conges" className="group rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
           <div className="flex items-center gap-3">
             <div className="h-11 w-11 rounded-lg bg-module-green/10 text-module-green flex items-center justify-center">
               <CalendarDays className="h-5 w-5" />
