@@ -20,8 +20,9 @@ interface PaySlip {
   cnss: number; ipr: number; inpp: number; onem: number; other_deductions: number;
   bonus_details?: { label?: string; type?: string; amount?: number }[] | null;
 }
-const fmt = (n: any) => Number(n || 0).toLocaleString("fr-FR");
-const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+type PrintableValue = string | number | null | undefined;
+const fmt = (n: PrintableValue) => Number(n || 0).toLocaleString("fr-FR");
+const esc = (s: PrintableValue) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 const sleep = (ms: number) => new Promise<null>((resolve) => setTimeout(() => resolve(null), ms));
 const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number): Promise<T | null> => Promise.race([promise, sleep(ms)]) as Promise<T | null>;
 
@@ -354,7 +355,7 @@ const AgentDashboard = () => {
                   const w = window.open("", "_blank", "width=800,height=900");
                   if (!w) return;
                   const primes = Array.isArray(p.bonus_details) && p.bonus_details.length > 0
-                    ? p.bonus_details.map((b: any) => `<tr><td>Prime ${esc(b.label || b.type || "")}</td><td class="r">${fmt(b.amount)}</td></tr>`).join("")
+                    ? p.bonus_details.map((b) => `<tr><td>Prime ${esc(b.label || b.type || "")}</td><td class="r">${fmt(b.amount)}</td></tr>`).join("")
                     : `<tr><td>Prime ${esc(p.bonus_type || "")}</td><td class="r">${fmt(p.bonus)}</td></tr>`;
                   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Bulletin ${esc(p.period)}</title>
 <style>body{font-family:Arial;padding:32px;color:#222;max-width:780px;margin:auto}h1{margin:0 0 4px;font-size:20px}h2{font-size:14px;margin:18px 0 6px;border-bottom:2px solid #333}table{width:100%;border-collapse:collapse}td{padding:4px 6px;border-bottom:1px solid #eee;font-size:13px}.r{text-align:right}.tot{font-weight:bold;background:#f0f4ff}</style>
