@@ -1268,24 +1268,36 @@ export type Database = {
           comments: string | null
           created_at: string
           employee_id: string | null
+          energy_score: number | null
+          highlight: string | null
           id: string
+          moment: string
           mood_score: number | null
+          stress_score: number | null
           submitted_at: string | null
         }
         Insert: {
           comments?: string | null
           created_at?: string
           employee_id?: string | null
+          energy_score?: number | null
+          highlight?: string | null
           id?: string
+          moment?: string
           mood_score?: number | null
+          stress_score?: number | null
           submitted_at?: string | null
         }
         Update: {
           comments?: string | null
           created_at?: string
           employee_id?: string | null
+          energy_score?: number | null
+          highlight?: string | null
           id?: string
+          moment?: string
           mood_score?: number | null
+          stress_score?: number | null
           submitted_at?: string | null
         }
         Relationships: [
