@@ -66,6 +66,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    const isAdminCaller = roles.has("admin");
+    const isResetRequested = reset_password === true || (typeof custom_password === "string" && custom_password.trim().length >= 6);
+
+    // Only admins can force-reset another user's password or set a custom one
+    if (isResetRequested && !isAdminCaller) {
+      return new Response(JSON.stringify({ error: "Seul un administrateur peut réinitialiser le mot de passe d'un compte existant." }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Mot de passe : custom (>=6 chars) si fourni, sinon généré
     const tempPassword = (typeof custom_password === "string" && custom_password.trim().length >= 6)
       ? custom_password.trim()
