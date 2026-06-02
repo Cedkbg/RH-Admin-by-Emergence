@@ -91,8 +91,10 @@ Deno.serve(async (req) => {
 
     if (existing) {
       invitedUserId = existing.id;
-      // Si demandé OU si l'utilisateur n'avait pas confirmé son email : on (re)définit le mot de passe
-      if (reset_password || !existing.email_confirmed_at) {
+      // Only admin can (re)set password on existing accounts. For non-admins,
+      // we never touch the password — we only link the profile / employee record.
+      const shouldResetPassword = isAdminCaller && (reset_password || !existing.email_confirmed_at);
+      if (shouldResetPassword) {
         const { error: updErr } = await admin.auth.admin.updateUserById(existing.id, {
           password: tempPassword,
           email_confirm: true,
@@ -105,8 +107,6 @@ Deno.serve(async (req) => {
           });
         }
       } else {
-        // Compte existe déjà et est actif : ne pas écraser le mot de passe,
-        // mais continuer pour approuver le profil, lier la fiche agent et préserver ses rôles existants.
         alreadyActive = true;
       }
     } else {
