@@ -66,6 +66,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    const isAdminCaller = roles.has("admin");
+    const isResetRequested = reset_password === true || (typeof custom_password === "string" && custom_password.trim().length >= 6);
+
+    // Only admins can force-reset another user's password or set a custom one
+    if (isResetRequested && !isAdminCaller) {
+      return new Response(JSON.stringify({ error: "Seul un administrateur peut réinitialiser le mot de passe d'un compte existant." }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Mot de passe : custom (>=6 chars) si fourni, sinon généré
     const tempPassword = (typeof custom_password === "string" && custom_password.trim().length >= 6)
       ? custom_password.trim()
@@ -81,8 +91,10 @@ Deno.serve(async (req) => {
 
     if (existing) {
       invitedUserId = existing.id;
-      // Si demandé OU si l'utilisateur n'avait pas confirmé son email : on (re)définit le mot de passe
-      if (reset_password || !existing.email_confirmed_at) {
+      // Only admin can (re)set password on existing accounts. For non-admins,
+      // we never touch the password — we only link the profile / employee record.
+      const shouldResetPassword = isAdminCaller && (reset_password || !existing.email_confirmed_at);
+      if (shouldResetPassword) {
         const { error: updErr } = await admin.auth.admin.updateUserById(existing.id, {
           password: tempPassword,
           email_confirm: true,
@@ -95,8 +107,6 @@ Deno.serve(async (req) => {
           });
         }
       } else {
-        // Compte existe déjà et est actif : ne pas écraser le mot de passe,
-        // mais continuer pour approuver le profil, lier la fiche agent et préserver ses rôles existants.
         alreadyActive = true;
       }
     } else {
