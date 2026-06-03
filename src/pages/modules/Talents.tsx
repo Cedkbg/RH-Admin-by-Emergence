@@ -413,6 +413,154 @@ export default function Talents() {
               ))}
             </div>
           )}
+        {/* PLAN DE CARRIÈRE */}
+        <TabsContent value="career" className="mt-4">
+          {filtered.filter((t) => t.career_plan || t.target_position).length === 0 ? (
+            <Card><CardContent className="py-12 text-center text-muted-foreground">
+              Aucun plan de carrière défini. Renseignez le « Plan de carrière » ou « Poste cible » dans une fiche talent.
+            </CardContent></Card>
+          ) : (
+            <div className="space-y-3">
+              {filtered.filter((t) => t.career_plan || t.target_position).map((t) => {
+                const emp = empMap[t.employee_id];
+                const currentPos = emp?.position || "Poste actuel";
+                return (
+                  <Card key={t.id} className="overflow-hidden">
+                    <CardContent className="p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+                        <div>
+                          <div className="font-semibold text-lg">{empName(t.employee_id)}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Mentor : {t.mentor_id ? empName(t.mentor_id) : "Non assigné"}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{READINESS_LABEL[t.readiness]}</Badge>
+                          <Button size="sm" variant="ghost" onClick={() => openEdit(t)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Timeline carrière */}
+                      <div className="flex items-center gap-2 mb-4 flex-wrap">
+                        <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                          <Briefcase className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="text-[10px] uppercase text-muted-foreground">Aujourd'hui</div>
+                            <div className="text-sm font-medium">{currentPos}</div>
+                          </div>
+                        </div>
+                        {t.target_position && (
+                          <>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div className="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2">
+                              <Target className="h-4 w-4 text-primary" />
+                              <div>
+                                <div className="text-[10px] uppercase text-primary">Objectif</div>
+                                <div className="text-sm font-medium">{t.target_position}</div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {t.career_plan && (
+                        <div className="rounded-lg border bg-card p-3 mb-3">
+                          <div className="text-xs font-semibold text-muted-foreground mb-1">📋 Plan de carrière</div>
+                          <p className="text-sm whitespace-pre-wrap">{t.career_plan}</p>
+                        </div>
+                      )}
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {t.strengths && (
+                          <div className="rounded-lg border bg-emerald-500/5 border-emerald-500/20 p-3">
+                            <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">💪 Forces</div>
+                            <p className="text-xs">{t.strengths}</p>
+                          </div>
+                        )}
+                        {t.development_areas && (
+                          <div className="rounded-lg border bg-orange-500/5 border-orange-500/20 p-3">
+                            <div className="text-xs font-semibold text-orange-700 dark:text-orange-400 mb-1">🎯 À développer</div>
+                            <p className="text-xs">{t.development_areas}</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* RÉCOMPENSES */}
+        <TabsContent value="rewards" className="mt-4 space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            <KpiTile icon={Trophy} label="Récompenses totales" value={rewardKpis.total} tone="text-amber-500" />
+            <KpiTile icon={Calendar} label="Cette année" value={rewardKpis.thisYear} tone="text-blue-500" />
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Montant total alloué</div>
+                    <div className="mt-1 text-2xl font-bold">{rewardKpis.totalAmount.toLocaleString("fr-FR")} <span className="text-sm font-normal text-muted-foreground">FC</span></div>
+                  </div>
+                  <Gift className="h-5 w-5 text-emerald-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => openCreateReward()} className="gap-2">
+              <Plus className="h-4 w-4" /> Attribuer une récompense
+            </Button>
+          </div>
+
+          {rewards.length === 0 ? (
+            <Card><CardContent className="py-12 text-center text-muted-foreground">
+              Aucune récompense attribuée. Reconnaissez vos meilleurs talents !
+            </CardContent></Card>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {rewards.map((r) => {
+                const meta = REWARD_TYPES[r.reward_type] || REWARD_TYPES.recognition;
+                const Icon = meta.icon;
+                return (
+                  <Card key={r.id} className="overflow-hidden">
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className={cn("rounded-lg border p-2", meta.tone)}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <Badge variant="outline" className="text-[10px]">{meta.label}</Badge>
+                      </div>
+                      <div>
+                        <div className="font-semibold">{r.title}</div>
+                        <div className="text-xs text-muted-foreground">{empName(r.employee_id)}</div>
+                      </div>
+                      {r.description && <p className="text-xs text-muted-foreground line-clamp-2">{r.description}</p>}
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(r.awarded_at).toLocaleDateString("fr-FR")}
+                        </div>
+                        {r.amount != null && (
+                          <div className="text-sm font-semibold text-emerald-600">
+                            {Number(r.amount).toLocaleString("fr-FR")} FC
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => openEditReward(r)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => removeReward(r.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
