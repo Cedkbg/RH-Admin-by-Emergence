@@ -288,7 +288,7 @@ const BienEtre = () => {
 
       {/* Historique */}
       <section className="rounded-xl border bg-card p-5 shadow-sm">
-        <h2 className="mb-3 font-semibold">Mon historique</h2>
+        <h2 className="mb-3 font-semibold">{isHrPrivileged ? "Historique des agents" : "Mon historique"}</h2>
         {mine.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Aucune entrée pour l'instant.</p>
         ) : (
@@ -304,7 +304,14 @@ const BienEtre = () => {
                     <Meh className="h-4 w-4 text-muted-foreground shrink-0" />
                   )}
                   <div className="min-w-0">
-                    <div className="text-xs">{new Date(i.submitted_at).toLocaleDateString("fr-FR")}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium truncate">
+                        {i.employees ? `${i.employees.first_name} ${i.employees.last_name}` : "—"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(i.submitted_at).toLocaleDateString("fr-FR")}
+                      </span>
+                    </div>
                     {i.highlight && <div className="truncate text-xs text-muted-foreground">{i.highlight}</div>}
                   </div>
                 </div>
