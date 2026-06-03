@@ -236,13 +236,36 @@ export default function Talents() {
     return m;
   }, [rewards]);
 
-  // KPIs récompenses
+  // KPIs récompenses (globaux ou filtrés sur l'agent sélectionné)
   const rewardKpis = useMemo(() => {
-    const total = rewards.length;
-    const thisYear = rewards.filter((r) => r.awarded_at?.startsWith(String(new Date().getFullYear()))).length;
-    const totalAmount = rewards.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    return { total, thisYear, totalAmount };
-  }, [rewards]);
+    const list = selectedRewardEmp ? rewardsByEmp[selectedRewardEmp] || [] : rewards;
+    const total = list.length;
+    const thisYear = list.filter((r) => r.awarded_at?.startsWith(String(new Date().getFullYear()))).length;
+    const totalAmount = list.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    let done = 0, totalTasks = 0;
+    if (selectedRewardEmp) {
+      const a = tasksAgg[selectedRewardEmp];
+      if (a) { done = a.done; totalTasks = a.total; }
+    } else {
+      Object.values(tasksAgg).forEach((a) => { done += a.done; totalTasks += a.total; });
+    }
+    const completionRate = totalTasks > 0 ? Math.round((done / totalTasks) * 100) : 0;
+    return { total, thisYear, totalAmount, done, totalTasks, completionRate };
+  }, [rewards, rewardsByEmp, selectedRewardEmp, tasksAgg]);
+
+  // Stats par agent pour la liste (récompenses + taux d'exécution des tâches)
+  const agentStats = useMemo(() => {
+    const ids = new Set<string>([...Object.keys(rewardsByEmp), ...Object.keys(tasksAgg)]);
+    return Array.from(ids).map((id) => {
+      const rw = rewardsByEmp[id] || [];
+      const tk = tasksAgg[id] || { done: 0, total: 0 };
+      const rate = tk.total > 0 ? Math.round((tk.done / tk.total) * 100) : 0;
+      const amount = rw.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+      return { id, rewards: rw.length, amount, done: tk.done, total: tk.total, rate };
+    }).sort((a, b) => (b.rewards - a.rewards) || (b.rate - a.rate));
+  }, [rewardsByEmp, tasksAgg]);
+
+
 
 
   // Plan de succession : grouper par target_position
