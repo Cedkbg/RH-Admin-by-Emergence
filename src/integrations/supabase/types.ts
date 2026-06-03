@@ -1114,28 +1114,55 @@ export type Database = {
         Row: {
           career_plan: string | null
           created_at: string
+          development_areas: string | null
           employee_id: string
           id: string
+          last_review_at: string | null
+          mentor_id: string | null
+          performance_score: number | null
           potential: string
+          readiness: string
+          retention_risk: string
+          review_notes: string | null
           skills: string | null
+          strengths: string | null
+          target_position: string | null
           updated_at: string
         }
         Insert: {
           career_plan?: string | null
           created_at?: string
+          development_areas?: string | null
           employee_id: string
           id?: string
+          last_review_at?: string | null
+          mentor_id?: string | null
+          performance_score?: number | null
           potential?: string
+          readiness?: string
+          retention_risk?: string
+          review_notes?: string | null
           skills?: string | null
+          strengths?: string | null
+          target_position?: string | null
           updated_at?: string
         }
         Update: {
           career_plan?: string | null
           created_at?: string
+          development_areas?: string | null
           employee_id?: string
           id?: string
+          last_review_at?: string | null
+          mentor_id?: string | null
+          performance_score?: number | null
           potential?: string
+          readiness?: string
+          retention_risk?: string
+          review_notes?: string | null
           skills?: string | null
+          strengths?: string | null
+          target_position?: string | null
           updated_at?: string
         }
         Relationships: [
