@@ -281,10 +281,12 @@ export default function Talents() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="matrix">Matrice 9-Box</TabsTrigger>
           <TabsTrigger value="cards">Fiches talents</TabsTrigger>
+          <TabsTrigger value="career">Plan de carrière</TabsTrigger>
           <TabsTrigger value="succession">Plan de succession</TabsTrigger>
+          <TabsTrigger value="rewards">Récompenses</TabsTrigger>
         </TabsList>
 
         {/* 9-BOX */}
