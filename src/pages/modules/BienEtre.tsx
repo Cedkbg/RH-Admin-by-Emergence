@@ -90,15 +90,20 @@ const BienEtre = () => {
 
   const today = new Date().toISOString().slice(0, 10);
   const mine = useMemo(() => items.filter((i) => i.employee_id), [items]);
+  const personalItems = useMemo(() => {
+    if (!isHrPrivileged) return mine; // agents: RLS already restricts to own rows
+    if (!myEmployeeId) return [];
+    return items.filter((i) => i.employee_id === myEmployeeId);
+  }, [mine, items, isHrPrivileged, myEmployeeId]);
   const todayMine = useMemo(
-    () => mine.filter((i) => i.submitted_at === today),
-    [mine, today],
+    () => personalItems.filter((i) => i.submitted_at === today),
+    [personalItems, today],
   );
   const doneMorning = todayMine.some((i) => i.moment === "morning");
   const doneEvening = todayMine.some((i) => i.moment === "evening");
 
   const avgFor = (key: "mood_score" | "energy_score" | "stress_score") => {
-    const vals = mine.map((i) => i[key]).filter((v): v is number => v != null);
+    const vals = personalItems.map((i) => i[key]).filter((v): v is number => v != null);
     if (!vals.length) return null;
     return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
   };
