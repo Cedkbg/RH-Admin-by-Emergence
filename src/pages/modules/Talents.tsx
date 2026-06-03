@@ -88,6 +88,7 @@ export default function Talents() {
   const [talents, setTalents] = useState<Talent[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
+  const [tasksAgg, setTasksAgg] = useState<Record<string, { done: number; total: number }>>({});
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
