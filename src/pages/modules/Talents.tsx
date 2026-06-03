@@ -823,3 +823,132 @@ function ReviewView({ talents, empName, matrix, kpis }: {
     </div>
   );
 }
+
+/* -------- Graphiques des réalisations -------- */
+const CHART_COLORS = ["hsl(217 91% 60%)", "hsl(160 70% 45%)", "hsl(280 70% 60%)", "hsl(38 92% 55%)", "hsl(190 80% 50%)"];
+
+function RewardsCharts({ rewards, title, global, empName }: {
+  rewards: Reward[]; title: string; global: boolean; empName: (id: string | null) => string;
+}) {
+  // Répartition par type
+  const byType = Object.entries(REWARD_TYPES).map(([k, v]) => ({
+    type: v.label,
+    count: rewards.filter((r) => r.reward_type === k).length,
+    montant: rewards.filter((r) => r.reward_type === k).reduce((s, r) => s + (Number(r.amount) || 0), 0),
+  })).filter((d) => d.count > 0);
+
+  // Évolution mensuelle (12 derniers mois)
+  const months: { label: string; key: string }[] = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ label: d.toLocaleDateString("fr-FR", { month: "short" }), key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` });
+  }
+  const trend = months.map((m) => ({
+    mois: m.label,
+    Réalisations: rewards.filter((r) => (r.awarded_at || "").startsWith(m.key)).length,
+    Montant: rewards.filter((r) => (r.awarded_at || "").startsWith(m.key)).reduce((s, r) => s + (Number(r.amount) || 0), 0),
+  }));
+
+  // Top agents (vue globale uniquement)
+  const topAgents = global
+    ? Object.entries(rewards.reduce((acc, r) => {
+        acc[r.employee_id] = (acc[r.employee_id] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>))
+        .map(([id, count]) => ({ agent: empName(id), count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8)
+    : [];
+
+  if (rewards.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-sm">{title}</CardTitle></CardHeader>
+        <CardContent className="py-12 text-center text-sm text-muted-foreground">
+          Aucune réalisation à afficher. Attribuez une récompense pour voir le graphique.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" /> {title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Répartition par type */}
+          <div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">Par type de récompense</div>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={byType} dataKey="count" nameKey="type" cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3}>
+                    {byType.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Evolution */}
+          <div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">Évolution sur 12 mois</div>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 6" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="mois" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Line type="monotone" dataKey="Réalisations" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Top agents — global only */}
+        {global && topAgents.length > 0 && (
+          <div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">Top agents récompensés</div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topAgents} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 6" stroke="hsl(var(--border))" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <YAxis type="category" dataKey="agent" tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }} axisLine={false} tickLine={false} width={140} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Montant par type (si présent) */}
+        {byType.some((d) => d.montant > 0) && (
+          <div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">Montants alloués par type (FC)</div>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={byType} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 6" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="type" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} formatter={(v: number) => `${v.toLocaleString("fr-FR")} FC`} />
+                  <Bar dataKey="montant" fill="hsl(160 70% 45%)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
