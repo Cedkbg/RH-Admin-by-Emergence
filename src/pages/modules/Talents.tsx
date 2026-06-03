@@ -31,6 +31,24 @@ interface Talent {
   mentor_id: string | null;
   last_review_at: string | null;
 }
+interface Reward {
+  id: string;
+  employee_id: string;
+  reward_type: string;
+  title: string;
+  description: string | null;
+  amount: number | null;
+  awarded_at: string;
+  awarded_by: string | null;
+}
+
+const REWARD_TYPES: Record<string, { label: string; tone: string; icon: any }> = {
+  recognition: { label: "Reconnaissance", tone: "bg-blue-500/10 text-blue-600 border-blue-500/30", icon: Award },
+  bonus: { label: "Prime", tone: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30", icon: Gift },
+  promotion: { label: "Promotion", tone: "bg-purple-500/10 text-purple-600 border-purple-500/30", icon: TrendingUp },
+  distinction: { label: "Distinction", tone: "bg-amber-500/10 text-amber-600 border-amber-500/30", icon: Trophy },
+  training: { label: "Formation offerte", tone: "bg-cyan-500/10 text-cyan-600 border-cyan-500/30", icon: GraduationCap },
+};
 
 const POTENTIAL_LABEL: Record<string, string> = { low: "Faible", medium: "Moyen", high: "Élevé" };
 const PERF_LABEL: Record<number, string> = { 1: "Sous attentes", 2: "Conforme", 3: "Au-dessus" };
