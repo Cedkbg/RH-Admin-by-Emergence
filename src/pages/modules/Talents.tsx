@@ -992,15 +992,17 @@ function RewardsCharts({ rewards, tasks, tasksAgg, title, global, empName }: {
         {/* Top agents — global only */}
         {global && topAgents.length > 0 && (
           <div>
-            <div className="text-xs font-medium text-muted-foreground mb-2">Top agents récompensés</div>
-            <div className="h-64">
+            <div className="text-xs font-medium text-muted-foreground mb-2">Top agents — récompenses & tâches accomplies</div>
+            <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topAgents} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 6" stroke="hsl(var(--border))" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <YAxis type="category" dataKey="agent" tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }} axisLine={false} tickLine={false} width={140} />
                   <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
+                  <Bar dataKey="Tâches accomplies" stackId="a" fill="hsl(160 70% 45%)" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="Récompenses" stackId="a" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
