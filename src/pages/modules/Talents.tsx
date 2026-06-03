@@ -106,13 +106,15 @@ export default function Talents() {
       supabase.from("talents").select("*").order("created_at", { ascending: false }),
       supabase.from("employees").select("id,first_name,last_name,position,direction_id").order("last_name"),
       supabase.from("talent_rewards" as any).select("*").order("awarded_at", { ascending: false }),
-      supabase.from("tasks").select("assignee_id,status"),
+      supabase.from("tasks").select("assignee_id,status,updated_at,priority"),
     ]);
     setTalents((t.data as any) || []);
     setEmployees((e.data as any) || []);
     setRewards((r.data as any) || []);
+    const rows = ((tk.data as any[]) || []);
+    setTasks(rows as any);
     const agg: Record<string, { done: number; total: number }> = {};
-    ((tk.data as any[]) || []).forEach((row) => {
+    rows.forEach((row) => {
       if (!row.assignee_id) return;
       agg[row.assignee_id] ||= { done: 0, total: 0 };
       agg[row.assignee_id].total += 1;
