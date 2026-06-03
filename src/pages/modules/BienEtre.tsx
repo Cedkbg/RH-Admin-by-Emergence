@@ -211,77 +211,94 @@ const BienEtre = () => {
 
       {/* Formulaire */}
       <section className="rounded-xl border bg-card p-5 shadow-sm">
-        <Tabs value={moment} onValueChange={(v) => setMoment(v as Moment)}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="morning" disabled={doneMorning}>
-              <Sunrise className="mr-2 h-4 w-4" /> Matin
-            </TabsTrigger>
-            <TabsTrigger value="evening" disabled={doneEvening}>
-              <Sunset className="mr-2 h-4 w-4" /> Soir
-            </TabsTrigger>
-          </TabsList>
+        <div className="grid w-full grid-cols-2 gap-1 rounded-md bg-muted p-1">
+          <button
+            type="button"
+            onClick={() => !doneMorning && setMoment("morning")}
+            disabled={doneMorning}
+            className={cn(
+              "flex items-center justify-center rounded px-3 py-1.5 text-sm font-medium transition",
+              moment === "morning" ? "bg-background shadow-sm" : "text-muted-foreground",
+              doneMorning && "opacity-50 cursor-not-allowed",
+            )}
+          >
+            <Sunrise className="mr-2 h-4 w-4" /> Matin
+          </button>
+          <button
+            type="button"
+            onClick={() => !doneEvening && setMoment("evening")}
+            disabled={doneEvening}
+            className={cn(
+              "flex items-center justify-center rounded px-3 py-1.5 text-sm font-medium transition",
+              moment === "evening" ? "bg-background shadow-sm" : "text-muted-foreground",
+              doneEvening && "opacity-50 cursor-not-allowed",
+            )}
+          >
+            <Sunset className="mr-2 h-4 w-4" /> Soir
+          </button>
+        </div>
 
-          <TabsContent value={moment} className="mt-5">
-            <form onSubmit={submit} className="space-y-5">
-              {fullName && (
-                <p className="text-sm font-medium text-muted-foreground">
-                  {moment === "morning" ? "Bonjour" : "Bonsoir"}, <span className="text-foreground font-semibold">{fullName}</span>
-                </p>
-              )}
-              <div>
-                <Label className="mb-2 flex items-center gap-2"><HeartHandshake className="h-4 w-4" /> Humeur</Label>
-                <div className="flex justify-between gap-2">
-                  {[1, 2, 3, 4, 5].map((n) => {
-                    const Icon = moodIcons[n - 1];
-                    return (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => setMood(n)}
-                        className={cn(
-                          "flex flex-1 flex-col items-center gap-1 rounded-lg border-2 p-2 transition",
-                          mood === n ? "border-primary bg-primary/10" : "border-border hover:border-primary/50",
-                        )}
-                      >
-                        <Icon className={cn("h-6 w-6", mood === n ? "text-primary" : "text-muted-foreground")} />
-                        <span className="text-[10px] font-medium">{moodLabels[n - 1]}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+        <div className="mt-5">
+          <form onSubmit={submit} className="space-y-5">
+            {fullName && (
+              <p className="text-sm font-medium text-muted-foreground">
+                {moment === "morning" ? "Bonjour" : "Bonsoir"}, <span className="text-foreground font-semibold">{fullName}</span>
+              </p>
+            )}
+            <div>
+              <Label className="mb-2 flex items-center gap-2"><HeartHandshake className="h-4 w-4" /> Humeur</Label>
+              <div className="flex justify-between gap-2">
+                {[1, 2, 3, 4, 5].map((n) => {
+                  const Icon = moodIcons[n - 1];
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setMood(n)}
+                      className={cn(
+                        "flex flex-1 flex-col items-center gap-1 rounded-lg border-2 p-2 transition",
+                        mood === n ? "border-primary bg-primary/10" : "border-border hover:border-primary/50",
+                      )}
+                    >
+                      <Icon className={cn("h-6 w-6", mood === n ? "text-primary" : "text-muted-foreground")} />
+                      <span className="text-[10px] font-medium">{moodLabels[n - 1]}</span>
+                    </button>
+                  );
+                })}
               </div>
+            </div>
 
-              <div>
-                <Label className="mb-2 flex items-center gap-2"><Zap className="h-4 w-4 text-yellow-500" /> Énergie</Label>
-                <Scale value={energy} onChange={setEnergy} />
-              </div>
+            <div>
+              <Label className="mb-2 flex items-center gap-2"><Zap className="h-4 w-4 text-yellow-500" /> Énergie</Label>
+              <Scale value={energy} onChange={setEnergy} />
+            </div>
 
-              <div>
-                <Label className="mb-2 flex items-center gap-2"><Activity className="h-4 w-4 text-red-500" /> Niveau de stress</Label>
-                <Scale value={stress} onChange={setStress} />
-              </div>
+            <div>
+              <Label className="mb-2 flex items-center gap-2"><Activity className="h-4 w-4 text-red-500" /> Niveau de stress</Label>
+              <Scale value={stress} onChange={setStress} />
+            </div>
 
-              <div>
-                <Label className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-violet-500" /> {moment === "morning" ? "Objectif du jour" : "Point fort de la journée"}</Label>
-                <Input
-                  value={highlight}
-                  onChange={(e) => setHighlight(e.target.value)}
-                  placeholder={moment === "morning" ? "Ex : Finir le rapport mensuel" : "Ex : Réunion réussie avec l'équipe"}
-                  className="mt-1"
-                />
-              </div>
+            <div>
+              <Label className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-violet-500" /> {moment === "morning" ? "Objectif du jour" : "Point fort de la journée"}</Label>
+              <Input
+                value={highlight}
+                onChange={(e) => setHighlight(e.target.value)}
+                placeholder={moment === "morning" ? "Ex : Finir le rapport mensuel" : "Ex : Réunion réussie avec l'équipe"}
+                className="mt-1"
+              />
+            </div>
 
-              <div>
-                <Label>Commentaire (optionnel)</Label>
-                <Textarea value={comments} onChange={(e) => setComments(e.target.value)} rows={2} className="mt-1" />
-              </div>
+            <div>
+              <Label>Commentaire (optionnel)</Label>
+              <Textarea value={comments} onChange={(e) => setComments(e.target.value)} rows={2} className="mt-1" />
+            </div>
 
-              <Button type="submit" disabled={submitting || !mood} className="w-full">
-                {moment === "morning" ? "Démarrer ma journée" : "Clôturer ma journée"}
-              </Button>
-            </form>
-          </TabsContent>
-        </Tabs>
+            <Button type="submit" disabled={submitting || !mood} className="w-full">
+              {moment === "morning" ? "Démarrer ma journée" : "Clôturer ma journée"}
+            </Button>
+          </form>
+        </div>
+
       </section>
 
       {/* Mes statistiques */}
