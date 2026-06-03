@@ -31,6 +31,8 @@ type Moment = "morning" | "evening";
 
 const BienEtre = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [fullName, setFullName] = useState<string>("");
   const [items, setItems] = useState<Survey[]>([]);
   const [moment, setMoment] = useState<Moment>(() => (new Date().getHours() < 14 ? "morning" : "evening"));
   const [mood, setMood] = useState<number | null>(null);
