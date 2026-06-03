@@ -88,6 +88,7 @@ export default function Talents() {
   const [talents, setTalents] = useState<Talent[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
+  const [tasksAgg, setTasksAgg] = useState<Record<string, { done: number; total: number }>>({});
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -100,14 +101,23 @@ export default function Talents() {
 
   const load = async () => {
     setLoading(true);
-    const [t, e, r] = await Promise.all([
+    const [t, e, r, tk] = await Promise.all([
       supabase.from("talents").select("*").order("created_at", { ascending: false }),
       supabase.from("employees").select("id,first_name,last_name,position,direction_id").order("last_name"),
       supabase.from("talent_rewards" as any).select("*").order("awarded_at", { ascending: false }),
+      supabase.from("tasks").select("assignee_id,status"),
     ]);
     setTalents((t.data as any) || []);
     setEmployees((e.data as any) || []);
     setRewards((r.data as any) || []);
+    const agg: Record<string, { done: number; total: number }> = {};
+    ((tk.data as any[]) || []).forEach((row) => {
+      if (!row.assignee_id) return;
+      agg[row.assignee_id] ||= { done: 0, total: 0 };
+      agg[row.assignee_id].total += 1;
+      if (row.status === "done" || row.status === "completed") agg[row.assignee_id].done += 1;
+    });
+    setTasksAgg(agg);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -226,13 +236,36 @@ export default function Talents() {
     return m;
   }, [rewards]);
 
-  // KPIs récompenses
+  // KPIs récompenses (globaux ou filtrés sur l'agent sélectionné)
   const rewardKpis = useMemo(() => {
-    const total = rewards.length;
-    const thisYear = rewards.filter((r) => r.awarded_at?.startsWith(String(new Date().getFullYear()))).length;
-    const totalAmount = rewards.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    return { total, thisYear, totalAmount };
-  }, [rewards]);
+    const list = selectedRewardEmp ? rewardsByEmp[selectedRewardEmp] || [] : rewards;
+    const total = list.length;
+    const thisYear = list.filter((r) => r.awarded_at?.startsWith(String(new Date().getFullYear()))).length;
+    const totalAmount = list.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    let done = 0, totalTasks = 0;
+    if (selectedRewardEmp) {
+      const a = tasksAgg[selectedRewardEmp];
+      if (a) { done = a.done; totalTasks = a.total; }
+    } else {
+      Object.values(tasksAgg).forEach((a) => { done += a.done; totalTasks += a.total; });
+    }
+    const completionRate = totalTasks > 0 ? Math.round((done / totalTasks) * 100) : 0;
+    return { total, thisYear, totalAmount, done, totalTasks, completionRate };
+  }, [rewards, rewardsByEmp, selectedRewardEmp, tasksAgg]);
+
+  // Stats par agent pour la liste (récompenses + taux d'exécution des tâches)
+  const agentStats = useMemo(() => {
+    const ids = new Set<string>([...Object.keys(rewardsByEmp), ...Object.keys(tasksAgg)]);
+    return Array.from(ids).map((id) => {
+      const rw = rewardsByEmp[id] || [];
+      const tk = tasksAgg[id] || { done: 0, total: 0 };
+      const rate = tk.total > 0 ? Math.round((tk.done / tk.total) * 100) : 0;
+      const amount = rw.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+      return { id, rewards: rw.length, amount, done: tk.done, total: tk.total, rate };
+    }).sort((a, b) => (b.rewards - a.rewards) || (b.rate - a.rate));
+  }, [rewardsByEmp, tasksAgg]);
+
+
 
 
   // Plan de succession : grouper par target_position
@@ -500,138 +533,162 @@ export default function Talents() {
 
         {/* RÉCOMPENSES */}
         <TabsContent value="rewards" className="mt-4 space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <KpiTile icon={Trophy} label="Réalisations totales" value={rewardKpis.total} tone="text-amber-500" />
+          {/* Header avec retour si agent sélectionné */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              {selectedRewardEmp && (
+                <Button size="sm" variant="outline" onClick={() => setSelectedRewardEmp(null)} className="gap-2">
+                  <ArrowRight className="h-4 w-4 rotate-180" /> Vue globale
+                </Button>
+              )}
+              <div>
+                <div className="text-base font-semibold flex items-center gap-2">
+                  {selectedRewardEmp ? (
+                    <><Trophy className="h-4 w-4 text-amber-500" /> {empName(selectedRewardEmp)}</>
+                  ) : (
+                    <><BarChart3 className="h-4 w-4 text-primary" /> Réalisations & récompenses — Vue globale</>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {selectedRewardEmp ? "Détail des réalisations et performance de cet agent" : "Cliquez sur un agent pour voir son détail"}
+                </div>
+              </div>
+            </div>
+            <Button size="sm" onClick={() => openCreateReward(selectedRewardEmp || undefined)} className="gap-2">
+              <Plus className="h-4 w-4" /> Attribuer une récompense
+            </Button>
+          </div>
+
+          {/* KPIs : globaux ou filtrés */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <KpiTile icon={Trophy} label="Réalisations" value={rewardKpis.total} tone="text-amber-500" />
             <KpiTile icon={Calendar} label="Cette année" value={rewardKpis.thisYear} tone="text-blue-500" />
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="text-xs text-muted-foreground">Montant total alloué</div>
+                    <div className="text-xs text-muted-foreground">Montant alloué</div>
                     <div className="mt-1 text-2xl font-bold">{rewardKpis.totalAmount.toLocaleString("fr-FR")} <span className="text-sm font-normal text-muted-foreground">FC</span></div>
                   </div>
                   <Gift className="h-5 w-5 text-emerald-500" />
                 </div>
               </CardContent>
             </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Taux de réalisation</div>
+                    <div className="mt-1 text-2xl font-bold">{rewardKpis.completionRate}<span className="text-sm font-normal text-muted-foreground">%</span></div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{rewardKpis.done}/{rewardKpis.totalTasks} tâches</div>
+                  </div>
+                  <Target className="h-5 w-5 text-primary" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          <div className="flex justify-end">
-            <Button size="sm" onClick={() => openCreateReward(selectedRewardEmp || undefined)} className="gap-2">
-              <Plus className="h-4 w-4" /> Attribuer une récompense
-            </Button>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-            {/* Liste des agents avec compteurs */}
+          {/* Liste des agents (cachée quand un agent est sélectionné) */}
+          {!selectedRewardEmp && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Users className="h-4 w-4" /> Agents récompensés
+                  <Users className="h-4 w-4" /> Agents — réalisations & taux d'exécution
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0 max-h-[520px] overflow-y-auto">
-                <button
-                  onClick={() => setSelectedRewardEmp(null)}
-                  className={cn(
-                    "w-full flex items-center justify-between px-4 py-2.5 text-sm border-b hover:bg-muted/50 transition",
-                    !selectedRewardEmp && "bg-primary/10 text-primary font-medium"
-                  )}
-                >
-                  <span className="flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Vue globale</span>
-                  <Badge variant="secondary" className="h-5">{rewards.length}</Badge>
-                </button>
-                {Object.entries(rewardsByEmp)
-                  .sort((a, b) => b[1].length - a[1].length)
-                  .map(([empId, list]) => (
+              <CardContent className="p-0">
+                <div className="max-h-[420px] overflow-y-auto divide-y">
+                  {agentStats.length === 0 ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">
+                      Aucun agent avec récompense ou tâche enregistrée.
+                    </div>
+                  ) : agentStats.map((s) => (
                     <button
-                      key={empId}
-                      onClick={() => setSelectedRewardEmp(empId)}
-                      className={cn(
-                        "w-full flex items-center justify-between px-4 py-2.5 text-sm border-b hover:bg-muted/50 transition",
-                        selectedRewardEmp === empId && "bg-primary/10 text-primary font-medium"
-                      )}
+                      key={s.id}
+                      onClick={() => setSelectedRewardEmp(s.id)}
+                      className="w-full grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition"
                     >
-                      <span className="truncate text-left">{empName(empId)}</span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Badge variant="outline" className="h-5">{list.length}</Badge>
-                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{empName(s.id)}</div>
+                        <div className="text-[11px] text-muted-foreground truncate">
+                          {empMap[s.id]?.position || "—"}
+                        </div>
                       </div>
+                      <Badge variant="outline" className="gap-1"><Trophy className="h-3 w-3 text-amber-500" />{s.rewards}</Badge>
+                      <Badge variant="secondary" className="gap-1"><Target className="h-3 w-3" />{s.done}/{s.total} · {s.rate}%</Badge>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </button>
                   ))}
-                {Object.keys(rewardsByEmp).length === 0 && (
-                  <div className="py-8 text-center text-xs text-muted-foreground">Aucune réalisation</div>
-                )}
+                </div>
               </CardContent>
             </Card>
+          )}
 
-            {/* Graphiques + détail */}
-            <div className="space-y-4">
-              <RewardsCharts
-                rewards={selectedRewardEmp ? rewardsByEmp[selectedRewardEmp] || [] : rewards}
-                title={selectedRewardEmp ? `Réalisations — ${empName(selectedRewardEmp)}` : "Réalisations globales (tous agents)"}
-                global={!selectedRewardEmp}
-                empName={empName}
-              />
+          {/* Graphiques (globaux ou agent) */}
+          <RewardsCharts
+            rewards={selectedRewardEmp ? rewardsByEmp[selectedRewardEmp] || [] : rewards}
+            title={selectedRewardEmp ? `Évolution des réalisations — ${empName(selectedRewardEmp)}` : "Évolution globale des réalisations"}
+            global={!selectedRewardEmp}
+            empName={empName}
+          />
 
-              {/* Liste détaillée */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">
-                    {selectedRewardEmp ? "Historique des récompenses" : "Dernières récompenses"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {(() => {
-                    const list = selectedRewardEmp ? rewardsByEmp[selectedRewardEmp] || [] : rewards.slice(0, 9);
-                    if (list.length === 0) {
-                      return <div className="py-8 text-center text-sm text-muted-foreground">Aucune réalisation enregistrée.</div>;
-                    }
-                    return (
-                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                        {list.map((r) => {
-                          const meta = REWARD_TYPES[r.reward_type] || REWARD_TYPES.recognition;
-                          const Icon = meta.icon;
-                          return (
-                            <div key={r.id} className="rounded-lg border bg-card p-3 space-y-2">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className={cn("rounded-md border p-1.5", meta.tone)}>
-                                  <Icon className="h-3.5 w-3.5" />
-                                </div>
-                                <Badge variant="outline" className="text-[10px]">{meta.label}</Badge>
-                              </div>
-                              <div>
-                                <div className="font-semibold text-sm">{r.title}</div>
-                                {!selectedRewardEmp && (
-                                  <div className="text-xs text-muted-foreground">{empName(r.employee_id)}</div>
-                                )}
-                              </div>
-                              {r.description && <p className="text-xs text-muted-foreground line-clamp-2">{r.description}</p>}
-                              <div className="flex items-center justify-between pt-2 border-t">
-                                <div className="text-[11px] text-muted-foreground">
-                                  {new Date(r.awarded_at).toLocaleDateString("fr-FR")}
-                                </div>
-                                {r.amount != null && (
-                                  <div className="text-xs font-semibold text-emerald-600">
-                                    {Number(r.amount).toLocaleString("fr-FR")} FC
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex justify-end gap-1">
-                                <Button size="sm" variant="ghost" onClick={() => openEditReward(r)}><Pencil className="h-3 w-3" /></Button>
-                                <Button size="sm" variant="ghost" onClick={() => removeReward(r.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
-                              </div>
+          {/* Historique détaillé */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">
+                {selectedRewardEmp ? "Historique des récompenses" : "Dernières récompenses"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const list = selectedRewardEmp ? rewardsByEmp[selectedRewardEmp] || [] : rewards.slice(0, 9);
+                if (list.length === 0) {
+                  return <div className="py-8 text-center text-sm text-muted-foreground">Aucune réalisation enregistrée.</div>;
+                }
+                return (
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {list.map((r) => {
+                      const meta = REWARD_TYPES[r.reward_type] || REWARD_TYPES.recognition;
+                      const Icon = meta.icon;
+                      return (
+                        <div key={r.id} className="rounded-lg border bg-card p-3 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className={cn("rounded-md border p-1.5", meta.tone)}>
+                              <Icon className="h-3.5 w-3.5" />
                             </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+                            <Badge variant="outline" className="text-[10px]">{meta.label}</Badge>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-sm">{r.title}</div>
+                            {!selectedRewardEmp && (
+                              <div className="text-xs text-muted-foreground">{empName(r.employee_id)}</div>
+                            )}
+                          </div>
+                          {r.description && <p className="text-xs text-muted-foreground line-clamp-2">{r.description}</p>}
+                          <div className="flex items-center justify-between pt-2 border-t">
+                            <div className="text-[11px] text-muted-foreground">
+                              {new Date(r.awarded_at).toLocaleDateString("fr-FR")}
+                            </div>
+                            {r.amount != null && (
+                              <div className="text-xs font-semibold text-emerald-600">
+                                {Number(r.amount).toLocaleString("fr-FR")} FC
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex justify-end gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => openEditReward(r)}><Pencil className="h-3 w-3" /></Button>
+                            <Button size="sm" variant="ghost" onClick={() => removeReward(r.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
         </TabsContent>
+
 
       </Tabs>
 
