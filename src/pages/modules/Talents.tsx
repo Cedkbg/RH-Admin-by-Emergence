@@ -630,7 +630,9 @@ export default function Talents() {
           {/* Graphiques (globaux ou agent) */}
           <RewardsCharts
             rewards={selectedRewardEmp ? rewardsByEmp[selectedRewardEmp] || [] : rewards}
-            title={selectedRewardEmp ? `Évolution des réalisations — ${empName(selectedRewardEmp)}` : "Évolution globale des réalisations"}
+            tasks={selectedRewardEmp ? tasks.filter((t) => t.assignee_id === selectedRewardEmp) : tasks}
+            tasksAgg={tasksAgg}
+            title={selectedRewardEmp ? `Réalisations & tâches — ${empName(selectedRewardEmp)}` : "Vue globale — récompenses & tâches accomplies"}
             global={!selectedRewardEmp}
             empName={empName}
           />
