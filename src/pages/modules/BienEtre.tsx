@@ -183,6 +183,11 @@ const BienEtre = () => {
 
           <TabsContent value={moment} className="mt-5">
             <form onSubmit={submit} className="space-y-5">
+              {fullName && (
+                <p className="text-sm font-medium text-muted-foreground">
+                  {moment === "morning" ? "Bonjour" : "Bonsoir"}, <span className="text-foreground font-semibold">{fullName}</span>
+                </p>
+              )}
               <div>
                 <Label className="mb-2 flex items-center gap-2"><HeartHandshake className="h-4 w-4" /> Humeur</Label>
                 <div className="flex justify-between gap-2">
