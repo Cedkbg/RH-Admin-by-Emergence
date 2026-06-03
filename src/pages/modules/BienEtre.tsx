@@ -54,6 +54,18 @@ const BienEtre = () => {
     refresh();
   }, []);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.full_name) setFullName(data.full_name);
+      });
+  }, [user?.id]);
+
   const today = new Date().toISOString().slice(0, 10);
   const mine = useMemo(() => items.filter((i) => i.employee_id), [items]);
   const todayMine = useMemo(
