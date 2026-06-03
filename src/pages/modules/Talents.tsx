@@ -587,8 +587,8 @@ export default function Talents() {
                 options={[{ value: "low", label: "Faible" }, { value: "medium", label: "Moyen" }, { value: "high", label: "Élevé" }]} />
               <TextField label="Poste cible" value={editing.target_position || ""} onChange={(v) => setEditing({ ...editing, target_position: v })}
                 placeholder="Ex: Chef de département IT" span={2} />
-              <SelectField label="Mentor" value={editing.mentor_id || ""} onChange={(v) => setEditing({ ...editing, mentor_id: v || null as any })}
-                options={[{ value: "", label: "— Aucun —" }, ...employees.map((e) => ({ value: e.id, label: `${e.first_name} ${e.last_name}` }))]} span={2} />
+              <SelectField label="Mentor" value={editing.mentor_id || "__none__"} onChange={(v) => setEditing({ ...editing, mentor_id: v === "__none__" ? null : v })}
+                options={[{ value: "__none__", label: "— Aucun —" }, ...employees.map((e) => ({ value: e.id, label: `${e.first_name} ${e.last_name}` }))]} span={2} />
               <AreaField label="Compétences clés" value={editing.skills || ""} onChange={(v) => setEditing({ ...editing, skills: v })} />
               <AreaField label="Forces" value={editing.strengths || ""} onChange={(v) => setEditing({ ...editing, strengths: v })} />
               <AreaField label="Axes de développement" value={editing.development_areas || ""} onChange={(v) => setEditing({ ...editing, development_areas: v })} />
