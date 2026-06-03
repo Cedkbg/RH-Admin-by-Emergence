@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Survey {
   id: string;
@@ -30,6 +31,8 @@ type Moment = "morning" | "evening";
 
 const BienEtre = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [fullName, setFullName] = useState<string>("");
   const [items, setItems] = useState<Survey[]>([]);
   const [moment, setMoment] = useState<Moment>(() => (new Date().getHours() < 14 ? "morning" : "evening"));
   const [mood, setMood] = useState<number | null>(null);
@@ -50,6 +53,18 @@ const BienEtre = () => {
   useEffect(() => {
     refresh();
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.full_name) setFullName(data.full_name);
+      });
+  }, [user?.id]);
 
   const today = new Date().toISOString().slice(0, 10);
   const mine = useMemo(() => items.filter((i) => i.employee_id), [items]);
@@ -168,6 +183,11 @@ const BienEtre = () => {
 
           <TabsContent value={moment} className="mt-5">
             <form onSubmit={submit} className="space-y-5">
+              {fullName && (
+                <p className="text-sm font-medium text-muted-foreground">
+                  {moment === "morning" ? "Bonjour" : "Bonsoir"}, <span className="text-foreground font-semibold">{fullName}</span>
+                </p>
+              )}
               <div>
                 <Label className="mb-2 flex items-center gap-2"><HeartHandshake className="h-4 w-4" /> Humeur</Label>
                 <div className="flex justify-between gap-2">
