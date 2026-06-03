@@ -101,14 +101,23 @@ export default function Talents() {
 
   const load = async () => {
     setLoading(true);
-    const [t, e, r] = await Promise.all([
+    const [t, e, r, tk] = await Promise.all([
       supabase.from("talents").select("*").order("created_at", { ascending: false }),
       supabase.from("employees").select("id,first_name,last_name,position,direction_id").order("last_name"),
       supabase.from("talent_rewards" as any).select("*").order("awarded_at", { ascending: false }),
+      supabase.from("tasks").select("assignee_id,status"),
     ]);
     setTalents((t.data as any) || []);
     setEmployees((e.data as any) || []);
     setRewards((r.data as any) || []);
+    const agg: Record<string, { done: number; total: number }> = {};
+    ((tk.data as any[]) || []).forEach((row) => {
+      if (!row.assignee_id) return;
+      agg[row.assignee_id] ||= { done: 0, total: 0 };
+      agg[row.assignee_id].total += 1;
+      if (row.status === "done" || row.status === "completed") agg[row.assignee_id].done += 1;
+    });
+    setTasksAgg(agg);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
