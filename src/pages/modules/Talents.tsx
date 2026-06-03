@@ -612,6 +612,36 @@ export default function Talents() {
           <ReviewView talents={talents} empName={empName} matrix={matrix} kpis={kpis} />
         </DialogContent>
       </Dialog>
+
+      {/* Dialog Récompense */}
+      <Dialog open={rewardDialogOpen} onOpenChange={setRewardDialogOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{editingReward?.id ? "Modifier la récompense" : "Attribuer une récompense"}</DialogTitle>
+          </DialogHeader>
+          {editingReward && (
+            <FormGrid>
+              <SelectField label="Agent *" value={editingReward.employee_id || ""} onChange={(v) => setEditingReward({ ...editingReward, employee_id: v })}
+                options={employees.map((e) => ({ value: e.id, label: `${e.first_name} ${e.last_name}` }))} span={2} />
+              <SelectField label="Type" value={editingReward.reward_type || "recognition"} onChange={(v) => setEditingReward({ ...editingReward, reward_type: v })}
+                options={Object.entries(REWARD_TYPES).map(([k, v]) => ({ value: k, label: v.label }))} />
+              <TextField label="Date" type="date" value={editingReward.awarded_at || ""}
+                onChange={(v) => setEditingReward({ ...editingReward, awarded_at: v })} />
+              <TextField label="Titre *" value={editingReward.title || ""}
+                onChange={(v) => setEditingReward({ ...editingReward, title: v })} placeholder="Ex: Employé du mois" span={2} />
+              <TextField label="Montant (FC)" type="number" min="0"
+                value={(editingReward.amount ?? "") as any}
+                onChange={(v) => setEditingReward({ ...editingReward, amount: v as any })} placeholder="Optionnel" span={2} />
+              <AreaField label="Description" value={editingReward.description || ""}
+                onChange={(v) => setEditingReward({ ...editingReward, description: v })} />
+            </FormGrid>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRewardDialogOpen(false)}>Annuler</Button>
+            <Button onClick={saveReward}>Enregistrer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
