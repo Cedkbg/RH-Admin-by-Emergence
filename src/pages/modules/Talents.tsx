@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { TextField, AreaField, SelectField, FormGrid } from "@/lib/forms";
-import { Sparkles, AlertTriangle, Crown, TrendingUp, Users, Maximize2, Plus, Pencil, Trash2, Search, Award, Target, Trophy, GraduationCap, Briefcase, ArrowRight, Gift, Calendar } from "lucide-react";
+import { Sparkles, AlertTriangle, Crown, TrendingUp, Users, Maximize2, Plus, Pencil, Trash2, Search, Award, Target, Trophy, GraduationCap, Briefcase, ArrowRight, Gift, Calendar, BarChart3, ChevronRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 
 interface Employee {
   id: string; first_name: string; last_name: string; position: string | null;
@@ -94,6 +95,7 @@ export default function Talents() {
   const [rewardDialogOpen, setRewardDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Talent> | null>(null);
   const [editingReward, setEditingReward] = useState<Partial<Reward> | null>(null);
+  const [selectedRewardEmp, setSelectedRewardEmp] = useState<string | null>(null);
   const [tab, setTab] = useState("matrix");
 
   const load = async () => {
@@ -499,7 +501,7 @@ export default function Talents() {
         {/* RÉCOMPENSES */}
         <TabsContent value="rewards" className="mt-4 space-y-4">
           <div className="grid grid-cols-3 gap-3">
-            <KpiTile icon={Trophy} label="Récompenses totales" value={rewardKpis.total} tone="text-amber-500" />
+            <KpiTile icon={Trophy} label="Réalisations totales" value={rewardKpis.total} tone="text-amber-500" />
             <KpiTile icon={Calendar} label="Cette année" value={rewardKpis.thisYear} tone="text-blue-500" />
             <Card>
               <CardContent className="p-4">
@@ -515,55 +517,122 @@ export default function Talents() {
           </div>
 
           <div className="flex justify-end">
-            <Button size="sm" onClick={() => openCreateReward()} className="gap-2">
+            <Button size="sm" onClick={() => openCreateReward(selectedRewardEmp || undefined)} className="gap-2">
               <Plus className="h-4 w-4" /> Attribuer une récompense
             </Button>
           </div>
 
-          {rewards.length === 0 ? (
-            <Card><CardContent className="py-12 text-center text-muted-foreground">
-              Aucune récompense attribuée. Reconnaissez vos meilleurs talents !
-            </CardContent></Card>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {rewards.map((r) => {
-                const meta = REWARD_TYPES[r.reward_type] || REWARD_TYPES.recognition;
-                const Icon = meta.icon;
-                return (
-                  <Card key={r.id} className="overflow-hidden">
-                    <CardContent className="p-4 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className={cn("rounded-lg border p-2", meta.tone)}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <Badge variant="outline" className="text-[10px]">{meta.label}</Badge>
+          <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+            {/* Liste des agents avec compteurs */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Users className="h-4 w-4" /> Agents récompensés
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 max-h-[520px] overflow-y-auto">
+                <button
+                  onClick={() => setSelectedRewardEmp(null)}
+                  className={cn(
+                    "w-full flex items-center justify-between px-4 py-2.5 text-sm border-b hover:bg-muted/50 transition",
+                    !selectedRewardEmp && "bg-primary/10 text-primary font-medium"
+                  )}
+                >
+                  <span className="flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Vue globale</span>
+                  <Badge variant="secondary" className="h-5">{rewards.length}</Badge>
+                </button>
+                {Object.entries(rewardsByEmp)
+                  .sort((a, b) => b[1].length - a[1].length)
+                  .map(([empId, list]) => (
+                    <button
+                      key={empId}
+                      onClick={() => setSelectedRewardEmp(empId)}
+                      className={cn(
+                        "w-full flex items-center justify-between px-4 py-2.5 text-sm border-b hover:bg-muted/50 transition",
+                        selectedRewardEmp === empId && "bg-primary/10 text-primary font-medium"
+                      )}
+                    >
+                      <span className="truncate text-left">{empName(empId)}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant="outline" className="h-5">{list.length}</Badge>
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                       </div>
-                      <div>
-                        <div className="font-semibold">{r.title}</div>
-                        <div className="text-xs text-muted-foreground">{empName(r.employee_id)}</div>
+                    </button>
+                  ))}
+                {Object.keys(rewardsByEmp).length === 0 && (
+                  <div className="py-8 text-center text-xs text-muted-foreground">Aucune réalisation</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Graphiques + détail */}
+            <div className="space-y-4">
+              <RewardsCharts
+                rewards={selectedRewardEmp ? rewardsByEmp[selectedRewardEmp] || [] : rewards}
+                title={selectedRewardEmp ? `Réalisations — ${empName(selectedRewardEmp)}` : "Réalisations globales (tous agents)"}
+                global={!selectedRewardEmp}
+                empName={empName}
+              />
+
+              {/* Liste détaillée */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">
+                    {selectedRewardEmp ? "Historique des récompenses" : "Dernières récompenses"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const list = selectedRewardEmp ? rewardsByEmp[selectedRewardEmp] || [] : rewards.slice(0, 9);
+                    if (list.length === 0) {
+                      return <div className="py-8 text-center text-sm text-muted-foreground">Aucune réalisation enregistrée.</div>;
+                    }
+                    return (
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        {list.map((r) => {
+                          const meta = REWARD_TYPES[r.reward_type] || REWARD_TYPES.recognition;
+                          const Icon = meta.icon;
+                          return (
+                            <div key={r.id} className="rounded-lg border bg-card p-3 space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className={cn("rounded-md border p-1.5", meta.tone)}>
+                                  <Icon className="h-3.5 w-3.5" />
+                                </div>
+                                <Badge variant="outline" className="text-[10px]">{meta.label}</Badge>
+                              </div>
+                              <div>
+                                <div className="font-semibold text-sm">{r.title}</div>
+                                {!selectedRewardEmp && (
+                                  <div className="text-xs text-muted-foreground">{empName(r.employee_id)}</div>
+                                )}
+                              </div>
+                              {r.description && <p className="text-xs text-muted-foreground line-clamp-2">{r.description}</p>}
+                              <div className="flex items-center justify-between pt-2 border-t">
+                                <div className="text-[11px] text-muted-foreground">
+                                  {new Date(r.awarded_at).toLocaleDateString("fr-FR")}
+                                </div>
+                                {r.amount != null && (
+                                  <div className="text-xs font-semibold text-emerald-600">
+                                    {Number(r.amount).toLocaleString("fr-FR")} FC
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex justify-end gap-1">
+                                <Button size="sm" variant="ghost" onClick={() => openEditReward(r)}><Pencil className="h-3 w-3" /></Button>
+                                <Button size="sm" variant="ghost" onClick={() => removeReward(r.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      {r.description && <p className="text-xs text-muted-foreground line-clamp-2">{r.description}</p>}
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(r.awarded_at).toLocaleDateString("fr-FR")}
-                        </div>
-                        {r.amount != null && (
-                          <div className="text-sm font-semibold text-emerald-600">
-                            {Number(r.amount).toLocaleString("fr-FR")} FC
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => openEditReward(r)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button size="sm" variant="ghost" onClick={() => removeReward(r.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                    );
+                  })()}
+                </CardContent>
+              </Card>
             </div>
-          )}
+          </div>
         </TabsContent>
+
       </Tabs>
 
       {/* Dialog création/édition */}
@@ -754,3 +823,132 @@ function ReviewView({ talents, empName, matrix, kpis }: {
     </div>
   );
 }
+
+/* -------- Graphiques des réalisations -------- */
+const CHART_COLORS = ["hsl(217 91% 60%)", "hsl(160 70% 45%)", "hsl(280 70% 60%)", "hsl(38 92% 55%)", "hsl(190 80% 50%)"];
+
+function RewardsCharts({ rewards, title, global, empName }: {
+  rewards: Reward[]; title: string; global: boolean; empName: (id: string | null) => string;
+}) {
+  // Répartition par type
+  const byType = Object.entries(REWARD_TYPES).map(([k, v]) => ({
+    type: v.label,
+    count: rewards.filter((r) => r.reward_type === k).length,
+    montant: rewards.filter((r) => r.reward_type === k).reduce((s, r) => s + (Number(r.amount) || 0), 0),
+  })).filter((d) => d.count > 0);
+
+  // Évolution mensuelle (12 derniers mois)
+  const months: { label: string; key: string }[] = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ label: d.toLocaleDateString("fr-FR", { month: "short" }), key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` });
+  }
+  const trend = months.map((m) => ({
+    mois: m.label,
+    Réalisations: rewards.filter((r) => (r.awarded_at || "").startsWith(m.key)).length,
+    Montant: rewards.filter((r) => (r.awarded_at || "").startsWith(m.key)).reduce((s, r) => s + (Number(r.amount) || 0), 0),
+  }));
+
+  // Top agents (vue globale uniquement)
+  const topAgents = global
+    ? Object.entries(rewards.reduce((acc, r) => {
+        acc[r.employee_id] = (acc[r.employee_id] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>))
+        .map(([id, count]) => ({ agent: empName(id), count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8)
+    : [];
+
+  if (rewards.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-sm">{title}</CardTitle></CardHeader>
+        <CardContent className="py-12 text-center text-sm text-muted-foreground">
+          Aucune réalisation à afficher. Attribuez une récompense pour voir le graphique.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" /> {title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Répartition par type */}
+          <div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">Par type de récompense</div>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={byType} dataKey="count" nameKey="type" cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3}>
+                    {byType.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Evolution */}
+          <div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">Évolution sur 12 mois</div>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 6" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="mois" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Line type="monotone" dataKey="Réalisations" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Top agents — global only */}
+        {global && topAgents.length > 0 && (
+          <div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">Top agents récompensés</div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topAgents} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 6" stroke="hsl(var(--border))" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <YAxis type="category" dataKey="agent" tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }} axisLine={false} tickLine={false} width={140} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Montant par type (si présent) */}
+        {byType.some((d) => d.montant > 0) && (
+          <div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">Montants alloués par type (FC)</div>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={byType} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 6" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="type" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} formatter={(v: number) => `${v.toLocaleString("fr-FR")} FC`} />
+                  <Bar dataKey="montant" fill="hsl(160 70% 45%)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
