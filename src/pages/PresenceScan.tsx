@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Camera, CheckCircle2, MapPin, AlertTriangle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Status = "idle" | "gps" | "gpsReady" | "scanning" | "validating" | "success" | "error";
 
@@ -27,6 +28,7 @@ const cameraErrorMessage = (error: unknown) => {
 
 const PresenceScan = () => {
   const navigate = useNavigate();
+  const { session } = useAuth();
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const coordsRef = useRef<GeolocationCoordinates | null>(null);
   const mountedRef = useRef(true);
@@ -192,10 +194,28 @@ const PresenceScan = () => {
     setTimeout(() => startCamera(), 300);
   };
 
+  const getAccessToken = async () => {
+    const now = Math.floor(Date.now() / 1000);
+    if (session?.access_token && (!session.expires_at || session.expires_at > now + 30)) {
+      return session.access_token;
+    }
+
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
+    const fresh = await Promise.race([supabase.auth.getSession(), timeout]);
+    return fresh?.data?.session?.access_token || session?.access_token || null;
+  };
+
   const validate = async (qrToken: string, gps: GeolocationCoordinates) => {
     setStatus("validating");
     setMessage("Validation en cours…");
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      setStatus("error");
+      setMessage("Session expirée. Reconnectez-vous puis relancez le scan.");
+      return;
+    }
     const { data, error } = await supabase.functions.invoke("attendance-scan", {
+      headers: { Authorization: `Bearer ${accessToken}` },
       body: {
         qr_token: qrToken,
         gps_lat: gps.latitude,
