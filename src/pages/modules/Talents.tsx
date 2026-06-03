@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { TextField, AreaField, SelectField, FormGrid } from "@/lib/forms";
-import { Sparkles, AlertTriangle, Crown, TrendingUp, Users, Maximize2, Plus, Pencil, Trash2, Search, Award, Target, Trophy, GraduationCap, Briefcase, ArrowRight, Gift, Calendar } from "lucide-react";
+import { Sparkles, AlertTriangle, Crown, TrendingUp, Users, Maximize2, Plus, Pencil, Trash2, Search, Award, Target, Trophy, GraduationCap, Briefcase, ArrowRight, Gift, Calendar, BarChart3, ChevronRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 
 interface Employee {
   id: string; first_name: string; last_name: string; position: string | null;
