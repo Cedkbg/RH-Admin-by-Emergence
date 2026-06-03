@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { TextField, AreaField, SelectField, FormGrid } from "@/lib/forms";
-import { Sparkles, AlertTriangle, Crown, TrendingUp, Users, Maximize2, Plus, Pencil, Trash2, Search, Award, Target } from "lucide-react";
+import { Sparkles, AlertTriangle, Crown, TrendingUp, Users, Maximize2, Plus, Pencil, Trash2, Search, Award, Target, Trophy, GraduationCap, Briefcase, ArrowRight, Gift, Calendar } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +31,24 @@ interface Talent {
   mentor_id: string | null;
   last_review_at: string | null;
 }
+interface Reward {
+  id: string;
+  employee_id: string;
+  reward_type: string;
+  title: string;
+  description: string | null;
+  amount: number | null;
+  awarded_at: string;
+  awarded_by: string | null;
+}
+
+const REWARD_TYPES: Record<string, { label: string; tone: string; icon: any }> = {
+  recognition: { label: "Reconnaissance", tone: "bg-blue-500/10 text-blue-600 border-blue-500/30", icon: Award },
+  bonus: { label: "Prime", tone: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30", icon: Gift },
+  promotion: { label: "Promotion", tone: "bg-purple-500/10 text-purple-600 border-purple-500/30", icon: TrendingUp },
+  distinction: { label: "Distinction", tone: "bg-amber-500/10 text-amber-600 border-amber-500/30", icon: Trophy },
+  training: { label: "Formation offerte", tone: "bg-cyan-500/10 text-cyan-600 border-cyan-500/30", icon: GraduationCap },
+};
 
 const POTENTIAL_LABEL: Record<string, string> = { low: "Faible", medium: "Moyen", high: "Élevé" };
 const PERF_LABEL: Record<number, string> = { 1: "Sous attentes", 2: "Conforme", 3: "Au-dessus" };
@@ -68,21 +86,26 @@ const emptyForm = (): Partial<Talent> => ({
 export default function Talents() {
   const [talents, setTalents] = useState<Talent[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [rewardDialogOpen, setRewardDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Talent> | null>(null);
+  const [editingReward, setEditingReward] = useState<Partial<Reward> | null>(null);
   const [tab, setTab] = useState("matrix");
 
   const load = async () => {
     setLoading(true);
-    const [t, e] = await Promise.all([
+    const [t, e, r] = await Promise.all([
       supabase.from("talents").select("*").order("created_at", { ascending: false }),
       supabase.from("employees").select("id,first_name,last_name,position,direction_id").order("last_name"),
+      supabase.from("talent_rewards" as any).select("*").order("awarded_at", { ascending: false }),
     ]);
     setTalents((t.data as any) || []);
     setEmployees((e.data as any) || []);
+    setRewards((r.data as any) || []);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -92,6 +115,7 @@ export default function Talents() {
     if (!id) return "—";
     const e = empMap[id]; return e ? `${e.first_name} ${e.last_name}` : "—";
   };
+
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -159,6 +183,56 @@ export default function Talents() {
     toast({ title: "Supprimé" }); load();
   };
 
+  /* ---------- Récompenses ---------- */
+  const openCreateReward = (employee_id?: string) => {
+    setEditingReward({ employee_id: employee_id || "", reward_type: "recognition", title: "", description: "", amount: null, awarded_at: new Date().toISOString().slice(0, 10) });
+    setRewardDialogOpen(true);
+  };
+  const openEditReward = (r: Reward) => { setEditingReward({ ...r }); setRewardDialogOpen(true); };
+
+  const saveReward = async () => {
+    if (!editingReward?.employee_id || !editingReward?.title) {
+      toast({ title: "Agent et titre requis", variant: "destructive" }); return;
+    }
+    const payload: any = {
+      employee_id: editingReward.employee_id,
+      reward_type: editingReward.reward_type || "recognition",
+      title: editingReward.title,
+      description: editingReward.description || null,
+      amount: editingReward.amount === ("" as any) || editingReward.amount == null ? null : Number(editingReward.amount),
+      awarded_at: editingReward.awarded_at || new Date().toISOString().slice(0, 10),
+    };
+    const { error } = editingReward.id
+      ? await supabase.from("talent_rewards" as any).update(payload).eq("id", editingReward.id)
+      : await supabase.from("talent_rewards" as any).insert(payload);
+    if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
+    toast({ title: editingReward.id ? "Récompense mise à jour" : "Récompense ajoutée" });
+    setRewardDialogOpen(false); setEditingReward(null); load();
+  };
+
+  const removeReward = async (id: string) => {
+    if (!confirm("Supprimer cette récompense ?")) return;
+    const { error } = await supabase.from("talent_rewards" as any).delete().eq("id", id);
+    if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Supprimé" }); load();
+  };
+
+  // Rewards par employé
+  const rewardsByEmp = useMemo(() => {
+    const m: Record<string, Reward[]> = {};
+    rewards.forEach((r) => { (m[r.employee_id] ||= []).push(r); });
+    return m;
+  }, [rewards]);
+
+  // KPIs récompenses
+  const rewardKpis = useMemo(() => {
+    const total = rewards.length;
+    const thisYear = rewards.filter((r) => r.awarded_at?.startsWith(String(new Date().getFullYear()))).length;
+    const totalAmount = rewards.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    return { total, thisYear, totalAmount };
+  }, [rewards]);
+
+
   // Plan de succession : grouper par target_position
   const succession = useMemo(() => {
     const map: Record<string, { readiness: string; talents: Talent[] }[]> = {};
@@ -207,10 +281,12 @@ export default function Talents() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="matrix">Matrice 9-Box</TabsTrigger>
           <TabsTrigger value="cards">Fiches talents</TabsTrigger>
+          <TabsTrigger value="career">Plan de carrière</TabsTrigger>
           <TabsTrigger value="succession">Plan de succession</TabsTrigger>
+          <TabsTrigger value="rewards">Récompenses</TabsTrigger>
         </TabsList>
 
         {/* 9-BOX */}
@@ -338,6 +414,156 @@ export default function Talents() {
             </div>
           )}
         </TabsContent>
+
+        {/* PLAN DE CARRIÈRE */}
+        <TabsContent value="career" className="mt-4">
+          {filtered.filter((t) => t.career_plan || t.target_position).length === 0 ? (
+            <Card><CardContent className="py-12 text-center text-muted-foreground">
+              Aucun plan de carrière défini. Renseignez le « Plan de carrière » ou « Poste cible » dans une fiche talent.
+            </CardContent></Card>
+          ) : (
+            <div className="space-y-3">
+              {filtered.filter((t) => t.career_plan || t.target_position).map((t) => {
+                const emp = empMap[t.employee_id];
+                const currentPos = emp?.position || "Poste actuel";
+                return (
+                  <Card key={t.id} className="overflow-hidden">
+                    <CardContent className="p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+                        <div>
+                          <div className="font-semibold text-lg">{empName(t.employee_id)}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Mentor : {t.mentor_id ? empName(t.mentor_id) : "Non assigné"}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{READINESS_LABEL[t.readiness]}</Badge>
+                          <Button size="sm" variant="ghost" onClick={() => openEdit(t)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Timeline carrière */}
+                      <div className="flex items-center gap-2 mb-4 flex-wrap">
+                        <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                          <Briefcase className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="text-[10px] uppercase text-muted-foreground">Aujourd'hui</div>
+                            <div className="text-sm font-medium">{currentPos}</div>
+                          </div>
+                        </div>
+                        {t.target_position && (
+                          <>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div className="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2">
+                              <Target className="h-4 w-4 text-primary" />
+                              <div>
+                                <div className="text-[10px] uppercase text-primary">Objectif</div>
+                                <div className="text-sm font-medium">{t.target_position}</div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {t.career_plan && (
+                        <div className="rounded-lg border bg-card p-3 mb-3">
+                          <div className="text-xs font-semibold text-muted-foreground mb-1">📋 Plan de carrière</div>
+                          <p className="text-sm whitespace-pre-wrap">{t.career_plan}</p>
+                        </div>
+                      )}
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {t.strengths && (
+                          <div className="rounded-lg border bg-emerald-500/5 border-emerald-500/20 p-3">
+                            <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">💪 Forces</div>
+                            <p className="text-xs">{t.strengths}</p>
+                          </div>
+                        )}
+                        {t.development_areas && (
+                          <div className="rounded-lg border bg-orange-500/5 border-orange-500/20 p-3">
+                            <div className="text-xs font-semibold text-orange-700 dark:text-orange-400 mb-1">🎯 À développer</div>
+                            <p className="text-xs">{t.development_areas}</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* RÉCOMPENSES */}
+        <TabsContent value="rewards" className="mt-4 space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            <KpiTile icon={Trophy} label="Récompenses totales" value={rewardKpis.total} tone="text-amber-500" />
+            <KpiTile icon={Calendar} label="Cette année" value={rewardKpis.thisYear} tone="text-blue-500" />
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Montant total alloué</div>
+                    <div className="mt-1 text-2xl font-bold">{rewardKpis.totalAmount.toLocaleString("fr-FR")} <span className="text-sm font-normal text-muted-foreground">FC</span></div>
+                  </div>
+                  <Gift className="h-5 w-5 text-emerald-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => openCreateReward()} className="gap-2">
+              <Plus className="h-4 w-4" /> Attribuer une récompense
+            </Button>
+          </div>
+
+          {rewards.length === 0 ? (
+            <Card><CardContent className="py-12 text-center text-muted-foreground">
+              Aucune récompense attribuée. Reconnaissez vos meilleurs talents !
+            </CardContent></Card>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {rewards.map((r) => {
+                const meta = REWARD_TYPES[r.reward_type] || REWARD_TYPES.recognition;
+                const Icon = meta.icon;
+                return (
+                  <Card key={r.id} className="overflow-hidden">
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className={cn("rounded-lg border p-2", meta.tone)}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <Badge variant="outline" className="text-[10px]">{meta.label}</Badge>
+                      </div>
+                      <div>
+                        <div className="font-semibold">{r.title}</div>
+                        <div className="text-xs text-muted-foreground">{empName(r.employee_id)}</div>
+                      </div>
+                      {r.description && <p className="text-xs text-muted-foreground line-clamp-2">{r.description}</p>}
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(r.awarded_at).toLocaleDateString("fr-FR")}
+                        </div>
+                        {r.amount != null && (
+                          <div className="text-sm font-semibold text-emerald-600">
+                            {Number(r.amount).toLocaleString("fr-FR")} FC
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => openEditReward(r)}><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => removeReward(r.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Dialog création/édition */}
@@ -384,6 +610,36 @@ export default function Talents() {
             <DialogTitle className="text-2xl">Revue de talents — {new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</DialogTitle>
           </DialogHeader>
           <ReviewView talents={talents} empName={empName} matrix={matrix} kpis={kpis} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Récompense */}
+      <Dialog open={rewardDialogOpen} onOpenChange={setRewardDialogOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{editingReward?.id ? "Modifier la récompense" : "Attribuer une récompense"}</DialogTitle>
+          </DialogHeader>
+          {editingReward && (
+            <FormGrid>
+              <SelectField label="Agent *" value={editingReward.employee_id || ""} onChange={(v) => setEditingReward({ ...editingReward, employee_id: v })}
+                options={employees.map((e) => ({ value: e.id, label: `${e.first_name} ${e.last_name}` }))} span={2} />
+              <SelectField label="Type" value={editingReward.reward_type || "recognition"} onChange={(v) => setEditingReward({ ...editingReward, reward_type: v })}
+                options={Object.entries(REWARD_TYPES).map(([k, v]) => ({ value: k, label: v.label }))} />
+              <TextField label="Date" type="date" value={editingReward.awarded_at || ""}
+                onChange={(v) => setEditingReward({ ...editingReward, awarded_at: v })} />
+              <TextField label="Titre *" value={editingReward.title || ""}
+                onChange={(v) => setEditingReward({ ...editingReward, title: v })} placeholder="Ex: Employé du mois" span={2} />
+              <TextField label="Montant (FC)" type="number" min="0"
+                value={(editingReward.amount ?? "") as any}
+                onChange={(v) => setEditingReward({ ...editingReward, amount: v as any })} placeholder="Optionnel" span={2} />
+              <AreaField label="Description" value={editingReward.description || ""}
+                onChange={(v) => setEditingReward({ ...editingReward, description: v })} />
+            </FormGrid>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRewardDialogOpen(false)}>Annuler</Button>
+            <Button onClick={saveReward}>Enregistrer</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
