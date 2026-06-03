@@ -11,6 +11,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRoles } from "@/hooks/useUserRoles";
+
+interface EmployeeShort {
+  first_name: string;
+  last_name: string;
+}
 
 interface Survey {
   id: string;
@@ -22,6 +28,7 @@ interface Survey {
   moment: string;
   submitted_at: string;
   employee_id: string | null;
+  employees?: EmployeeShort | null;
 }
 
 const moodIcons = [Frown, Frown, Meh, Smile, Smile];
@@ -32,7 +39,10 @@ type Moment = "morning" | "evening";
 const BienEtre = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { hasAny } = useUserRoles();
+  const isHrPrivileged = hasAny(["admin", "rh", "dg", "dga", "manager", "assistant_direction", "secretaire"]);
   const [fullName, setFullName] = useState<string>("");
+  const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);
   const [items, setItems] = useState<Survey[]>([]);
   const [moment, setMoment] = useState<Moment>(() => (new Date().getHours() < 14 ? "morning" : "evening"));
   const [mood, setMood] = useState<number | null>(null);
@@ -45,10 +55,10 @@ const BienEtre = () => {
   const refresh = async () => {
     const { data } = await supabase
       .from("wellbeing_surveys")
-      .select("*")
+      .select("*, employees(first_name, last_name)")
       .order("submitted_at", { ascending: false })
       .limit(60);
-    setItems((data as Survey[]) || []);
+    setItems((data as unknown as Survey[]) || []);
   };
   useEffect(() => {
     refresh();
@@ -66,17 +76,34 @@ const BienEtre = () => {
       });
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!user?.email) return;
+    supabase
+      .from("employees")
+      .select("id")
+      .ilike("email", user.email)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.id) setMyEmployeeId(data.id);
+      });
+  }, [user?.email]);
+
   const today = new Date().toISOString().slice(0, 10);
   const mine = useMemo(() => items.filter((i) => i.employee_id), [items]);
+  const personalItems = useMemo(() => {
+    if (!isHrPrivileged) return mine; // agents: RLS already restricts to own rows
+    if (!myEmployeeId) return [];
+    return items.filter((i) => i.employee_id === myEmployeeId);
+  }, [mine, items, isHrPrivileged, myEmployeeId]);
   const todayMine = useMemo(
-    () => mine.filter((i) => i.submitted_at === today),
-    [mine, today],
+    () => personalItems.filter((i) => i.submitted_at === today),
+    [personalItems, today],
   );
   const doneMorning = todayMine.some((i) => i.moment === "morning");
   const doneEvening = todayMine.some((i) => i.moment === "evening");
 
   const avgFor = (key: "mood_score" | "energy_score" | "stress_score") => {
-    const vals = mine.map((i) => i[key]).filter((v): v is number => v != null);
+    const vals = personalItems.map((i) => i[key]).filter((v): v is number => v != null);
     if (!vals.length) return null;
     return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
   };
@@ -261,7 +288,7 @@ const BienEtre = () => {
 
       {/* Historique */}
       <section className="rounded-xl border bg-card p-5 shadow-sm">
-        <h2 className="mb-3 font-semibold">Mon historique</h2>
+        <h2 className="mb-3 font-semibold">{isHrPrivileged ? "Historique des agents" : "Mon historique"}</h2>
         {mine.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Aucune entrée pour l'instant.</p>
         ) : (
@@ -277,7 +304,14 @@ const BienEtre = () => {
                     <Meh className="h-4 w-4 text-muted-foreground shrink-0" />
                   )}
                   <div className="min-w-0">
-                    <div className="text-xs">{new Date(i.submitted_at).toLocaleDateString("fr-FR")}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium truncate">
+                        {i.employees ? `${i.employees.first_name} ${i.employees.last_name}` : "—"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(i.submitted_at).toLocaleDateString("fr-FR")}
+                      </span>
+                    </div>
                     {i.highlight && <div className="truncate text-xs text-muted-foreground">{i.highlight}</div>}
                   </div>
                 </div>
