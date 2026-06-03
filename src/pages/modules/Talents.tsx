@@ -413,6 +413,8 @@ export default function Talents() {
               ))}
             </div>
           )}
+        </TabsContent>
+
         {/* PLAN DE CARRIÈRE */}
         <TabsContent value="career" className="mt-4">
           {filtered.filter((t) => t.career_plan || t.target_position).length === 0 ? (
