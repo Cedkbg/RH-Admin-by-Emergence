@@ -1110,6 +1110,45 @@ export type Database = {
         }
         Relationships: []
       }
+      talent_rewards: {
+        Row: {
+          amount: number | null
+          awarded_at: string
+          awarded_by: string | null
+          created_at: string
+          description: string | null
+          employee_id: string
+          id: string
+          reward_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          awarded_at?: string
+          awarded_by?: string | null
+          created_at?: string
+          description?: string | null
+          employee_id: string
+          id?: string
+          reward_type?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          awarded_at?: string
+          awarded_by?: string | null
+          created_at?: string
+          description?: string | null
+          employee_id?: string
+          id?: string
+          reward_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       talents: {
         Row: {
           career_plan: string | null
