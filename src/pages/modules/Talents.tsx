@@ -501,7 +501,7 @@ export default function Talents() {
         {/* RÉCOMPENSES */}
         <TabsContent value="rewards" className="mt-4 space-y-4">
           <div className="grid grid-cols-3 gap-3">
-            <KpiTile icon={Trophy} label="Récompenses totales" value={rewardKpis.total} tone="text-amber-500" />
+            <KpiTile icon={Trophy} label="Réalisations totales" value={rewardKpis.total} tone="text-amber-500" />
             <KpiTile icon={Calendar} label="Cette année" value={rewardKpis.thisYear} tone="text-blue-500" />
             <Card>
               <CardContent className="p-4">
@@ -517,55 +517,122 @@ export default function Talents() {
           </div>
 
           <div className="flex justify-end">
-            <Button size="sm" onClick={() => openCreateReward()} className="gap-2">
+            <Button size="sm" onClick={() => openCreateReward(selectedRewardEmp || undefined)} className="gap-2">
               <Plus className="h-4 w-4" /> Attribuer une récompense
             </Button>
           </div>
 
-          {rewards.length === 0 ? (
-            <Card><CardContent className="py-12 text-center text-muted-foreground">
-              Aucune récompense attribuée. Reconnaissez vos meilleurs talents !
-            </CardContent></Card>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {rewards.map((r) => {
-                const meta = REWARD_TYPES[r.reward_type] || REWARD_TYPES.recognition;
-                const Icon = meta.icon;
-                return (
-                  <Card key={r.id} className="overflow-hidden">
-                    <CardContent className="p-4 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className={cn("rounded-lg border p-2", meta.tone)}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <Badge variant="outline" className="text-[10px]">{meta.label}</Badge>
+          <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+            {/* Liste des agents avec compteurs */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Users className="h-4 w-4" /> Agents récompensés
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 max-h-[520px] overflow-y-auto">
+                <button
+                  onClick={() => setSelectedRewardEmp(null)}
+                  className={cn(
+                    "w-full flex items-center justify-between px-4 py-2.5 text-sm border-b hover:bg-muted/50 transition",
+                    !selectedRewardEmp && "bg-primary/10 text-primary font-medium"
+                  )}
+                >
+                  <span className="flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Vue globale</span>
+                  <Badge variant="secondary" className="h-5">{rewards.length}</Badge>
+                </button>
+                {Object.entries(rewardsByEmp)
+                  .sort((a, b) => b[1].length - a[1].length)
+                  .map(([empId, list]) => (
+                    <button
+                      key={empId}
+                      onClick={() => setSelectedRewardEmp(empId)}
+                      className={cn(
+                        "w-full flex items-center justify-between px-4 py-2.5 text-sm border-b hover:bg-muted/50 transition",
+                        selectedRewardEmp === empId && "bg-primary/10 text-primary font-medium"
+                      )}
+                    >
+                      <span className="truncate text-left">{empName(empId)}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant="outline" className="h-5">{list.length}</Badge>
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                       </div>
-                      <div>
-                        <div className="font-semibold">{r.title}</div>
-                        <div className="text-xs text-muted-foreground">{empName(r.employee_id)}</div>
+                    </button>
+                  ))}
+                {Object.keys(rewardsByEmp).length === 0 && (
+                  <div className="py-8 text-center text-xs text-muted-foreground">Aucune réalisation</div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Graphiques + détail */}
+            <div className="space-y-4">
+              <RewardsCharts
+                rewards={selectedRewardEmp ? rewardsByEmp[selectedRewardEmp] || [] : rewards}
+                title={selectedRewardEmp ? `Réalisations — ${empName(selectedRewardEmp)}` : "Réalisations globales (tous agents)"}
+                global={!selectedRewardEmp}
+                empName={empName}
+              />
+
+              {/* Liste détaillée */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">
+                    {selectedRewardEmp ? "Historique des récompenses" : "Dernières récompenses"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const list = selectedRewardEmp ? rewardsByEmp[selectedRewardEmp] || [] : rewards.slice(0, 9);
+                    if (list.length === 0) {
+                      return <div className="py-8 text-center text-sm text-muted-foreground">Aucune réalisation enregistrée.</div>;
+                    }
+                    return (
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        {list.map((r) => {
+                          const meta = REWARD_TYPES[r.reward_type] || REWARD_TYPES.recognition;
+                          const Icon = meta.icon;
+                          return (
+                            <div key={r.id} className="rounded-lg border bg-card p-3 space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className={cn("rounded-md border p-1.5", meta.tone)}>
+                                  <Icon className="h-3.5 w-3.5" />
+                                </div>
+                                <Badge variant="outline" className="text-[10px]">{meta.label}</Badge>
+                              </div>
+                              <div>
+                                <div className="font-semibold text-sm">{r.title}</div>
+                                {!selectedRewardEmp && (
+                                  <div className="text-xs text-muted-foreground">{empName(r.employee_id)}</div>
+                                )}
+                              </div>
+                              {r.description && <p className="text-xs text-muted-foreground line-clamp-2">{r.description}</p>}
+                              <div className="flex items-center justify-between pt-2 border-t">
+                                <div className="text-[11px] text-muted-foreground">
+                                  {new Date(r.awarded_at).toLocaleDateString("fr-FR")}
+                                </div>
+                                {r.amount != null && (
+                                  <div className="text-xs font-semibold text-emerald-600">
+                                    {Number(r.amount).toLocaleString("fr-FR")} FC
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex justify-end gap-1">
+                                <Button size="sm" variant="ghost" onClick={() => openEditReward(r)}><Pencil className="h-3 w-3" /></Button>
+                                <Button size="sm" variant="ghost" onClick={() => removeReward(r.id)}><Trash2 className="h-3 w-3 text-destructive" /></Button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      {r.description && <p className="text-xs text-muted-foreground line-clamp-2">{r.description}</p>}
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(r.awarded_at).toLocaleDateString("fr-FR")}
-                        </div>
-                        {r.amount != null && (
-                          <div className="text-sm font-semibold text-emerald-600">
-                            {Number(r.amount).toLocaleString("fr-FR")} FC
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => openEditReward(r)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button size="sm" variant="ghost" onClick={() => removeReward(r.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                    );
+                  })()}
+                </CardContent>
+              </Card>
             </div>
-          )}
+          </div>
         </TabsContent>
+
       </Tabs>
 
       {/* Dialog création/édition */}
