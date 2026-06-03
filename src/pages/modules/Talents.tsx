@@ -183,6 +183,56 @@ export default function Talents() {
     toast({ title: "Supprimé" }); load();
   };
 
+  /* ---------- Récompenses ---------- */
+  const openCreateReward = (employee_id?: string) => {
+    setEditingReward({ employee_id: employee_id || "", reward_type: "recognition", title: "", description: "", amount: null, awarded_at: new Date().toISOString().slice(0, 10) });
+    setRewardDialogOpen(true);
+  };
+  const openEditReward = (r: Reward) => { setEditingReward({ ...r }); setRewardDialogOpen(true); };
+
+  const saveReward = async () => {
+    if (!editingReward?.employee_id || !editingReward?.title) {
+      toast({ title: "Agent et titre requis", variant: "destructive" }); return;
+    }
+    const payload: any = {
+      employee_id: editingReward.employee_id,
+      reward_type: editingReward.reward_type || "recognition",
+      title: editingReward.title,
+      description: editingReward.description || null,
+      amount: editingReward.amount === ("" as any) || editingReward.amount == null ? null : Number(editingReward.amount),
+      awarded_at: editingReward.awarded_at || new Date().toISOString().slice(0, 10),
+    };
+    const { error } = editingReward.id
+      ? await supabase.from("talent_rewards" as any).update(payload).eq("id", editingReward.id)
+      : await supabase.from("talent_rewards" as any).insert(payload);
+    if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
+    toast({ title: editingReward.id ? "Récompense mise à jour" : "Récompense ajoutée" });
+    setRewardDialogOpen(false); setEditingReward(null); load();
+  };
+
+  const removeReward = async (id: string) => {
+    if (!confirm("Supprimer cette récompense ?")) return;
+    const { error } = await supabase.from("talent_rewards" as any).delete().eq("id", id);
+    if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Supprimé" }); load();
+  };
+
+  // Rewards par employé
+  const rewardsByEmp = useMemo(() => {
+    const m: Record<string, Reward[]> = {};
+    rewards.forEach((r) => { (m[r.employee_id] ||= []).push(r); });
+    return m;
+  }, [rewards]);
+
+  // KPIs récompenses
+  const rewardKpis = useMemo(() => {
+    const total = rewards.length;
+    const thisYear = rewards.filter((r) => r.awarded_at?.startsWith(String(new Date().getFullYear()))).length;
+    const totalAmount = rewards.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    return { total, thisYear, totalAmount };
+  }, [rewards]);
+
+
   // Plan de succession : grouper par target_position
   const succession = useMemo(() => {
     const map: Record<string, { readiness: string; talents: Talent[] }[]> = {};
