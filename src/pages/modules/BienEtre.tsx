@@ -11,6 +11,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRoles } from "@/hooks/useUserRoles";
+
+interface EmployeeShort {
+  first_name: string;
+  last_name: string;
+}
 
 interface Survey {
   id: string;
@@ -22,6 +28,7 @@ interface Survey {
   moment: string;
   submitted_at: string;
   employee_id: string | null;
+  employees?: EmployeeShort | null;
 }
 
 const moodIcons = [Frown, Frown, Meh, Smile, Smile];
@@ -32,7 +39,10 @@ type Moment = "morning" | "evening";
 const BienEtre = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { hasAny } = useUserRoles();
+  const isHrPrivileged = hasAny(["admin", "rh", "dg", "dga", "manager", "assistant_direction", "secretaire"]);
   const [fullName, setFullName] = useState<string>("");
+  const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);
   const [items, setItems] = useState<Survey[]>([]);
   const [moment, setMoment] = useState<Moment>(() => (new Date().getHours() < 14 ? "morning" : "evening"));
   const [mood, setMood] = useState<number | null>(null);
@@ -45,10 +55,10 @@ const BienEtre = () => {
   const refresh = async () => {
     const { data } = await supabase
       .from("wellbeing_surveys")
-      .select("*")
+      .select("*, employees(first_name, last_name)")
       .order("submitted_at", { ascending: false })
       .limit(60);
-    setItems((data as Survey[]) || []);
+    setItems((data as unknown as Survey[]) || []);
   };
   useEffect(() => {
     refresh();
@@ -65,6 +75,18 @@ const BienEtre = () => {
         if (data?.full_name) setFullName(data.full_name);
       });
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.email) return;
+    supabase
+      .from("employees")
+      .select("id")
+      .ilike("email", user.email)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.id) setMyEmployeeId(data.id);
+      });
+  }, [user?.email]);
 
   const today = new Date().toISOString().slice(0, 10);
   const mine = useMemo(() => items.filter((i) => i.employee_id), [items]);
