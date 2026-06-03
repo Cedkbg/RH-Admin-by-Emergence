@@ -86,21 +86,26 @@ const emptyForm = (): Partial<Talent> => ({
 export default function Talents() {
   const [talents, setTalents] = useState<Talent[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [rewardDialogOpen, setRewardDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Talent> | null>(null);
+  const [editingReward, setEditingReward] = useState<Partial<Reward> | null>(null);
   const [tab, setTab] = useState("matrix");
 
   const load = async () => {
     setLoading(true);
-    const [t, e] = await Promise.all([
+    const [t, e, r] = await Promise.all([
       supabase.from("talents").select("*").order("created_at", { ascending: false }),
       supabase.from("employees").select("id,first_name,last_name,position,direction_id").order("last_name"),
+      supabase.from("talent_rewards" as any).select("*").order("awarded_at", { ascending: false }),
     ]);
     setTalents((t.data as any) || []);
     setEmployees((e.data as any) || []);
+    setRewards((r.data as any) || []);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -110,6 +115,7 @@ export default function Talents() {
     if (!id) return "—";
     const e = empMap[id]; return e ? `${e.first_name} ${e.last_name}` : "—";
   };
+
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
