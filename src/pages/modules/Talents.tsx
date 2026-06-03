@@ -95,6 +95,7 @@ export default function Talents() {
   const [rewardDialogOpen, setRewardDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Talent> | null>(null);
   const [editingReward, setEditingReward] = useState<Partial<Reward> | null>(null);
+  const [selectedRewardEmp, setSelectedRewardEmp] = useState<string | null>(null);
   const [tab, setTab] = useState("matrix");
 
   const load = async () => {
