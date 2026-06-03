@@ -5,7 +5,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -53,12 +52,26 @@ const BienEtre = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const refresh = async () => {
-    const { data } = await supabase
-      .from("wellbeing_surveys")
-      .select("*, employees(first_name, last_name)")
-      .order("submitted_at", { ascending: false })
-      .limit(60);
-    setItems((data as unknown as Survey[]) || []);
+    try {
+      let { data, error } = await supabase
+        .from("wellbeing_surveys")
+        .select("*, employees(first_name, last_name)")
+        .order("submitted_at", { ascending: false })
+        .limit(60);
+      if (error) {
+        // Fallback if the embed fails (RLS / relationship issue)
+        const res = await supabase
+          .from("wellbeing_surveys")
+          .select("*")
+          .order("submitted_at", { ascending: false })
+          .limit(60);
+        data = res.data as unknown as typeof data;
+      }
+      setItems((data as unknown as Survey[]) || []);
+    } catch (e) {
+      console.error("BienEtre refresh failed", e);
+      setItems([]);
+    }
   };
   useEffect(() => {
     refresh();
