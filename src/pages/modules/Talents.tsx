@@ -89,6 +89,7 @@ export default function Talents() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [tasksAgg, setTasksAgg] = useState<Record<string, { done: number; total: number }>>({});
+  const [tasks, setTasks] = useState<{ assignee_id: string | null; status: string; updated_at: string | null; priority?: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -105,13 +106,15 @@ export default function Talents() {
       supabase.from("talents").select("*").order("created_at", { ascending: false }),
       supabase.from("employees").select("id,first_name,last_name,position,direction_id").order("last_name"),
       supabase.from("talent_rewards" as any).select("*").order("awarded_at", { ascending: false }),
-      supabase.from("tasks").select("assignee_id,status"),
+      supabase.from("tasks").select("assignee_id,status,updated_at,priority"),
     ]);
     setTalents((t.data as any) || []);
     setEmployees((e.data as any) || []);
     setRewards((r.data as any) || []);
+    const rows = ((tk.data as any[]) || []);
+    setTasks(rows as any);
     const agg: Record<string, { done: number; total: number }> = {};
-    ((tk.data as any[]) || []).forEach((row) => {
+    rows.forEach((row) => {
       if (!row.assignee_id) return;
       agg[row.assignee_id] ||= { done: 0, total: 0 };
       agg[row.assignee_id].total += 1;
@@ -627,7 +630,9 @@ export default function Talents() {
           {/* Graphiques (globaux ou agent) */}
           <RewardsCharts
             rewards={selectedRewardEmp ? rewardsByEmp[selectedRewardEmp] || [] : rewards}
-            title={selectedRewardEmp ? `Évolution des réalisations — ${empName(selectedRewardEmp)}` : "Évolution globale des réalisations"}
+            tasks={selectedRewardEmp ? tasks.filter((t) => t.assignee_id === selectedRewardEmp) : tasks}
+            tasksAgg={tasksAgg}
+            title={selectedRewardEmp ? `Réalisations & tâches — ${empName(selectedRewardEmp)}` : "Vue globale — récompenses & tâches accomplies"}
             global={!selectedRewardEmp}
             empName={empName}
           />
@@ -884,8 +889,13 @@ function ReviewView({ talents, empName, matrix, kpis }: {
 /* -------- Graphiques des réalisations -------- */
 const CHART_COLORS = ["hsl(217 91% 60%)", "hsl(160 70% 45%)", "hsl(280 70% 60%)", "hsl(38 92% 55%)", "hsl(190 80% 50%)"];
 
-function RewardsCharts({ rewards, title, global, empName }: {
-  rewards: Reward[]; title: string; global: boolean; empName: (id: string | null) => string;
+function RewardsCharts({ rewards, tasks, tasksAgg, title, global, empName }: {
+  rewards: Reward[];
+  tasks: { assignee_id: string | null; status: string; updated_at: string | null }[];
+  tasksAgg: Record<string, { done: number; total: number }>;
+  title: string;
+  global: boolean;
+  empName: (id: string | null) => string;
 }) {
   // Répartition par type
   const byType = Object.entries(REWARD_TYPES).map(([k, v]) => ({
@@ -894,31 +904,39 @@ function RewardsCharts({ rewards, title, global, empName }: {
     montant: rewards.filter((r) => r.reward_type === k).reduce((s, r) => s + (Number(r.amount) || 0), 0),
   })).filter((d) => d.count > 0);
 
-  // Évolution mensuelle (12 derniers mois)
+  // Évolution mensuelle (12 derniers mois) — récompenses + tâches accomplies
   const months: { label: string; key: string }[] = [];
   const now = new Date();
   for (let i = 11; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     months.push({ label: d.toLocaleDateString("fr-FR", { month: "short" }), key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` });
   }
+  const doneTasks = tasks.filter((t) => t.status === "done" || t.status === "completed");
   const trend = months.map((m) => ({
     mois: m.label,
-    Réalisations: rewards.filter((r) => (r.awarded_at || "").startsWith(m.key)).length,
-    Montant: rewards.filter((r) => (r.awarded_at || "").startsWith(m.key)).reduce((s, r) => s + (Number(r.amount) || 0), 0),
+    Récompenses: rewards.filter((r) => (r.awarded_at || "").startsWith(m.key)).length,
+    "Tâches accomplies": doneTasks.filter((t) => (t.updated_at || "").startsWith(m.key)).length,
   }));
 
-  // Top agents (vue globale uniquement)
+  // Top agents (vue globale uniquement) — récompenses + tâches accomplies
   const topAgents = global
-    ? Object.entries(rewards.reduce((acc, r) => {
-        acc[r.employee_id] = (acc[r.employee_id] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>))
-        .map(([id, count]) => ({ agent: empName(id), count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 8)
+    ? (() => {
+        const ids = new Set<string>([
+          ...rewards.map((r) => r.employee_id),
+          ...Object.keys(tasksAgg),
+        ]);
+        return Array.from(ids).map((id) => ({
+          agent: empName(id),
+          Récompenses: rewards.filter((r) => r.employee_id === id).length,
+          "Tâches accomplies": tasksAgg[id]?.done || 0,
+        }))
+          .sort((a, b) => (b["Tâches accomplies"] + b.Récompenses) - (a["Tâches accomplies"] + a.Récompenses))
+          .slice(0, 8);
+      })()
     : [];
 
-  if (rewards.length === 0) {
+  const totalTasksDone = doneTasks.length;
+  if (rewards.length === 0 && totalTasksDone === 0) {
     return (
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm">{title}</CardTitle></CardHeader>
@@ -962,7 +980,9 @@ function RewardsCharts({ rewards, title, global, empName }: {
                   <XAxis dataKey="mois" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                  <Line type="monotone" dataKey="Réalisations" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
+                  <Line type="monotone" dataKey="Récompenses" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                  <Line type="monotone" dataKey="Tâches accomplies" stroke="hsl(160 70% 45%)" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -972,15 +992,17 @@ function RewardsCharts({ rewards, title, global, empName }: {
         {/* Top agents — global only */}
         {global && topAgents.length > 0 && (
           <div>
-            <div className="text-xs font-medium text-muted-foreground mb-2">Top agents récompensés</div>
-            <div className="h-64">
+            <div className="text-xs font-medium text-muted-foreground mb-2">Top agents — récompenses & tâches accomplies</div>
+            <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topAgents} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 6" stroke="hsl(var(--border))" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <YAxis type="category" dataKey="agent" tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }} axisLine={false} tickLine={false} width={140} />
                   <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
+                  <Bar dataKey="Tâches accomplies" stackId="a" fill="hsl(160 70% 45%)" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="Récompenses" stackId="a" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
