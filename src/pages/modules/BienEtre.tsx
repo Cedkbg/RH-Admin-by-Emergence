@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { HeartHandshake, Smile, Frown, Meh, ArrowLeft, Sunrise, Sunset, Zap, Activity, Sparkles } from "lucide-react";
+import { HeartHandshake, Smile, Frown, Meh, ArrowLeft, Sunrise, Sunset, Zap, Activity, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -152,6 +152,13 @@ const BienEtre = () => {
     toast.success(moment === "morning" ? "Bonne journée ! ☀️" : "Bonne soirée ! 🌙");
     reset();
     refresh();
+  };
+
+  const removeSurvey = async (id: string) => {
+    if (!confirm("Supprimer cette entrée ?")) return;
+    const { error } = await supabase.from("wellbeing_surveys").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Supprimée"); refresh();
   };
 
   const Scale = ({
