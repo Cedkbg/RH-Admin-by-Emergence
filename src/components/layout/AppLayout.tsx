@@ -6,10 +6,13 @@ import { modules } from "@/data/modules";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
-const isIosWebKit = () => {
+const isMobileDevice = () => {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
-  return /iP(ad|hone|od)/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+  if (/iP(ad|hone|od)|Android|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)) return true;
+  if (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) return true;
+  if (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width: 768px)").matches) return true;
+  return false;
 };
 
 const STAFF_ROLES = new Set(["admin", "dg", "dga", "manager", "rh", "secretaire", "assistant_direction"]);
@@ -32,7 +35,7 @@ export function AppLayout() {
   );
   const title = current?.label ?? "EMERGENCE DRC";
 
-  if (isIosWebKit()) {
+  if (isMobileDevice()) {
     const hasStaff = roles.some((r) => STAFF_ROLES.has(r));
     const hasOps = roles.some((r) => OPS_ROLES.has(r));
     const hasField = roles.some((r) => ["admin", "manager", "rh", "assistant_direction"].includes(r));
