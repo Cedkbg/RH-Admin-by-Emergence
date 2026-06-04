@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ClipboardList, Plus, ArrowLeft, QrCode, MapPinned, ShieldCheck } from "lucide-react";
+import { CalendarDays, ClipboardList, Plus, ArrowLeft, QrCode, MapPinned, ShieldCheck, Trash2, Eraser } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +88,28 @@ const Presence = () => {
     if (error) { toast.error(error.message); return; }
     toast.success(status === "approved" ? "Approuvée" : "Refusée");
     refresh();
+  };
+
+  const deleteAttendance = async (id: string) => {
+    if (!confirm("Supprimer ce pointage ?")) return;
+    const { error } = await supabase.from("attendance").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Pointage supprimé"); refresh();
+  };
+
+  const purgeOldAttendance = async () => {
+    if (!confirm("Supprimer tous les pointages de plus de 90 jours ?")) return;
+    const cutoff = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    const { error } = await supabase.from("attendance").delete().lt("date", cutoff);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Anciens pointages supprimés"); refresh();
+  };
+
+  const deleteLeave = async (id: string) => {
+    if (!confirm("Supprimer cette demande de congé ?")) return;
+    const { error } = await supabase.from("leave_requests").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Demande supprimée"); refresh();
   };
 
   return (
