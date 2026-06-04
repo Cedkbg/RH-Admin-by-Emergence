@@ -34,6 +34,7 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
   const [mode, setMode] = useState<Mode>("month");
   const [att, setAtt] = useState<AttRow[]>([]);
   const [employee, setEmployee] = useState<Employee | null>(null);
+  const [totalActive, setTotalActive] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(0);
 
@@ -52,6 +53,11 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
     supabase.from("employees").select("id,first_name,last_name").eq("id", selectedAgentId).maybeSingle()
       .then(({ data }) => setEmployee(data as Employee | null));
   }, [selectedAgentId]);
+
+  useEffect(() => {
+    supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active")
+      .then(({ count }) => setTotalActive(count ?? 0));
+  }, [refresh]);
 
   useEffect(() => {
     setLoading(true);
@@ -101,8 +107,8 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
         presence = expected > 0 ? Math.round((present / expected) * 100) : 0;
       } else {
         const totalPresences = inRange.filter((a) => a.status === "present" || a.status === "mission" || a.status === "deplacement").length;
-        const distinct = new Set(att.map((a) => a.employee_id)).size || 1;
-        presence = expected > 0 ? Math.round((totalPresences / (expected * distinct)) * 100) : 0;
+        const headcount = totalActive || new Set(att.map((a) => a.employee_id)).size || 1;
+        presence = expected > 0 ? Math.min(100, Math.round((totalPresences / (expected * headcount)) * 100)) : 0;
       }
       const hours = +inRange.reduce((s, a) => s + hoursBetween(a.check_in, a.check_out), 0).toFixed(1);
       return { label: b.label, Présence: presence, Heures: hours };
