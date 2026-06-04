@@ -395,7 +395,7 @@ const AgentDashboard = () => {
             {colleagues.map((c) => (
               <li key={c.id} className="flex items-center gap-3 p-3">
                 <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
-                  {(c.first_name[0] || "") + (c.last_name[0] || "")}
+                  {((c.first_name || "")[0] || "") + ((c.last_name || "")[0] || "")}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{c.first_name} {c.last_name} {c.id === me?.id && <span className="text-xs text-muted-foreground">(vous)</span>}</p>

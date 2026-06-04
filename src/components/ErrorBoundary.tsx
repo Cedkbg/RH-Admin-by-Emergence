@@ -1,18 +1,12 @@
 import { Component, ReactNode } from "react";
 
-const isIosWebKit = () => {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent || "";
-  return /iP(ad|hone|od)/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
-};
-
 interface State { hasError: boolean; error: Error | null; }
 
 /**
  * ErrorBoundary : affiche un écran de secours (jamais un écran blanc).
- * On NE remet PAS automatiquement hasError à false, sinon on entre dans
- * une boucle infinie render → erreur → null → reset → render → erreur
- * (exactement ce qui causait l'écran blanc sur iPhone pour certains agents).
+ * Le bouton "Réinitialiser la connexion" est désormais toujours visible
+ * pour permettre à un agent bloqué (cache/auth corrompu) de repartir
+ * d'une session propre, sur tous les navigateurs.
  */
 export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   state: State = { hasError: false, error: null };
@@ -53,20 +47,25 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
           <p className="max-w-md text-sm text-muted-foreground">
             L'application a rencontré un problème. Veuillez recharger la page.
           </p>
-          <button
-            onClick={this.handleReload}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:opacity-90"
-          >
-            Recharger la page
-          </button>
-          {isIosWebKit() && (
+          {this.state.error?.message && (
+            <pre className="max-w-md overflow-auto rounded-md bg-muted p-3 text-left text-xs text-destructive whitespace-pre-wrap">
+              {this.state.error.message}
+            </pre>
+          )}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={this.handleReload}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:opacity-90"
+            >
+              Recharger la page
+            </button>
             <button
               onClick={this.handleReset}
-              className="text-sm font-medium text-primary underline underline-offset-4"
+              className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
             >
               Réinitialiser la connexion
             </button>
-          )}
+          </div>
         </div>
       );
     }
