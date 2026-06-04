@@ -35,6 +35,12 @@ interface Comment {
   author_name: string | null;
   content: string;
   created_at: string;
+interface ChatMessage {
+  id: string;
+  author_id: string;
+  author_name: string | null;
+  content: string;
+  created_at: string;
 }
 
 const COLUMNS: { id: string; label: string; tone: string }[] = [
