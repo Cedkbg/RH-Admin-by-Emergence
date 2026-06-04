@@ -27,6 +27,20 @@ const ROLE_LABELS: Record<string, string> = {
 
 const ROLE_PRIORITY = ["admin", "dg", "dga", "rh", "manager", "assistant_direction", "secretaire", "employee"];
 
+const safeUserName = (value: unknown, fallback: string | null | undefined) => {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  return fallback || "Compte agent";
+};
+
+const makeInitials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((s) => s.charAt(0))
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "?";
+
 const formatSafeDateTime = (value: string | null | undefined) => {
   if (!value) return "Non disponible";
   const date = new Date(value);
@@ -54,13 +68,8 @@ export function AppHeader({ title }: AppHeaderProps) {
   const roleLabel = primaryRole ? ROLE_LABELS[primaryRole] : null;
   const lastUpdated = user?.updated_at || user?.last_sign_in_at || user?.created_at;
   const formattedLastUpdated = formatSafeDateTime(lastUpdated);
-
-  const initials = (user?.user_metadata?.full_name || user?.email || "?")
-    .split(" ")
-    .map((s: string) => s[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  const displayName = safeUserName(user?.user_metadata?.full_name, user?.email);
+  const initials = makeInitials(displayName);
 
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +103,7 @@ export function AppHeader({ title }: AppHeaderProps) {
             </div>
             <div className="hidden text-left sm:block">
               <div className="text-sm font-semibold leading-tight text-foreground flex items-center gap-2">
-                <span>{user?.user_metadata?.full_name || user?.email}</span>
+                <span>{displayName}</span>
                 {roleLabel && (
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                     {roleLabel}
