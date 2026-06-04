@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Calendar, User, Trash2, Pencil, Loader2, MessageSquare, Send } from "lucide-react";
+import { Plus, Calendar, User, Trash2, Pencil, Loader2, MessageSquare, Send, MessagesSquare, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -31,6 +31,13 @@ interface Employee { id: string; first_name: string; last_name: string }
 interface Comment {
   id: string;
   task_id: string;
+  author_id: string;
+  author_name: string | null;
+  content: string;
+  created_at: string;
+}
+interface ChatMessage {
+  id: string;
   author_id: string;
   author_name: string | null;
   content: string;
@@ -71,6 +78,11 @@ const Taches = () => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
 
   useEffect(() => { setViewMode(canManage ? "all" : "mine"); }, [canManage]);
 
@@ -111,6 +123,44 @@ const Taches = () => {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [editing?.id]);
+
+  // Chat d'équipe global (module)
+  useEffect(() => {
+    supabase.from("task_chat_messages").select("*").order("created_at", { ascending: true }).limit(200)
+      .then(({ data }) => setChatMessages((data as ChatMessage[]) || []));
+    const ch = supabase
+      .channel("task-chat-global")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "task_chat_messages" }, (payload) => {
+        const msg = payload.new as ChatMessage;
+        setChatMessages((cur) => [...cur, msg]);
+        setChatUnread((u) => (msg.author_id === user?.id ? u : u + 1));
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "task_chat_messages" }, (payload) => {
+        setChatMessages((cur) => cur.filter((m) => m.id !== (payload.old as ChatMessage).id));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user?.id]);
+
+  useEffect(() => { if (chatOpen) setChatUnread(0); }, [chatOpen, chatMessages.length]);
+
+  const handleSendChat = async () => {
+    if (!chatInput.trim() || !user) return;
+    setChatSending(true);
+    const me = employees.find((e) => e.id === myEmployeeId);
+    const authorName = me ? `${me.first_name} ${me.last_name}` : (user.email || "Moi");
+    const { error } = await supabase.from("task_chat_messages").insert({
+      author_id: user.id, author_name: authorName, content: chatInput.trim(),
+    });
+    setChatSending(false);
+    if (error) { toast.error("Envoi impossible", { description: error.message }); return; }
+    setChatInput("");
+  };
+
+  const handleDeleteChat = async (id: string) => {
+    const { error } = await supabase.from("task_chat_messages").delete().eq("id", id);
+    if (error) toast.error(error.message);
+  };
 
   const visibleTasks = useMemo(() => {
     let arr = tasks;
@@ -231,7 +281,7 @@ const Taches = () => {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Tâches & Projets</h1>
           <p className="text-sm text-muted-foreground">
-            {canManage ? "Tableau Kanban — glissez les cartes entre les colonnes" : "Vos tâches assignées — glissez pour mettre à jour le statut"}
+            {canManage ? "Glissez les cartes entre les colonnes pour suivre l'avancement" : "Vos tâches assignées — glissez pour mettre à jour le statut"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
@@ -463,6 +513,73 @@ const Taches = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Espace de discussion d'équipe — flottant */}
+      <div className="fixed bottom-4 right-4 z-50 w-[min(380px,calc(100vw-2rem))]">
+        {chatOpen ? (
+          <Card className="shadow-2xl border-primary/20 flex flex-col h-[70vh] max-h-[560px]">
+            <CardHeader className="p-3 border-b flex-row items-center justify-between space-y-0 bg-primary text-primary-foreground rounded-t-lg">
+              <div className="flex items-center gap-2">
+                <MessagesSquare className="h-4 w-4" />
+                <CardTitle className="text-sm">Discussion d'équipe</CardTitle>
+              </div>
+              <Button size="icon" variant="ghost" className="h-7 w-7 text-primary-foreground hover:bg-primary-foreground/20" onClick={() => setChatOpen(false)}>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto p-3 space-y-2">
+              {chatMessages.length === 0 && (
+                <p className="text-xs text-muted-foreground italic text-center py-8">
+                  Aucun message. Lancez la discussion avec votre équipe 👋
+                </p>
+              )}
+              {chatMessages.map((m) => {
+                const mine = m.author_id === user?.id;
+                return (
+                  <div key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
+                    <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                      {!mine && <div className="text-[10px] font-medium opacity-80 mb-0.5">{m.author_name || "Utilisateur"}</div>}
+                      <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 px-1">
+                      <span className="text-[10px] text-muted-foreground">
+                        {format(new Date(m.created_at), "d MMM HH:mm", { locale: fr })}
+                      </span>
+                      {mine && (
+                        <button onClick={() => handleDeleteChat(m.id)} className="text-[10px] text-muted-foreground hover:text-destructive">
+                          Supprimer
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+            <div className="p-2 border-t flex gap-2">
+              <Textarea
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Écrire un message…"
+                rows={1}
+                className="resize-none min-h-[40px]"
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
+              />
+              <Button size="icon" onClick={handleSendChat} disabled={!chatInput.trim() || chatSending}>
+                {chatSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <Button onClick={() => setChatOpen(true)} className="rounded-full shadow-2xl h-14 w-14 p-0 relative ml-auto flex" size="icon">
+            <MessagesSquare className="h-6 w-6" />
+            {chatUnread > 0 && (
+              <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full h-5 min-w-5 px-1 flex items-center justify-center">
+                {chatUnread > 9 ? "9+" : chatUnread}
+              </span>
+            )}
+          </Button>
+        )}
+      </div>
     </div>
   );
 };
