@@ -35,6 +35,7 @@ interface Comment {
   author_name: string | null;
   content: string;
   created_at: string;
+}
 interface ChatMessage {
   id: string;
   author_id: string;
