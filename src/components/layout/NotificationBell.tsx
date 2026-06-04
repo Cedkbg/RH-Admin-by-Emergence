@@ -173,27 +173,40 @@ export function NotificationBell() {
                 }
                 const n = row.data as Notif;
                 return (
-                  <button
-                    key={"n-" + n.id}
-                    onClick={() => { setOpen(false); if (n.link) navigate(n.link); }}
-                    className="block w-full px-3 py-3 text-left hover:bg-muted/50"
-                  >
-                    <div className="mb-1 flex items-center gap-2">
-                      <span className="text-sm font-semibold truncate">{n.title}</span>
-                      {!n.read_at && <Badge variant="secondary" className="ml-auto text-[9px] px-1 py-0">Nouveau</Badge>}
-                    </div>
-                    {n.message && <p className="line-clamp-2 text-xs text-muted-foreground">{n.message}</p>}
-                    <div className="mt-1 text-[10px] text-muted-foreground">{formatSafeDateTime(n.created_at)}</div>
-                  </button>
+                  <div key={"n-" + n.id} className="group relative flex items-start hover:bg-muted/50">
+                    <button
+                      onClick={() => { setOpen(false); if (n.link) navigate(n.link); }}
+                      className="block flex-1 px-3 py-3 text-left"
+                    >
+                      <div className="mb-1 flex items-center gap-2 pr-6">
+                        <span className="text-sm font-semibold truncate">{n.title}</span>
+                        {!n.read_at && <Badge variant="secondary" className="ml-auto text-[9px] px-1 py-0">Nouveau</Badge>}
+                      </div>
+                      {n.message && <p className="line-clamp-2 text-xs text-muted-foreground">{n.message}</p>}
+                      <div className="mt-1 text-[10px] text-muted-foreground">{formatSafeDateTime(n.created_at)}</div>
+                    </button>
+                    <button
+                      onClick={(e) => deleteNotif(e, n.id)}
+                      className="absolute right-1 top-1 rounded p-1 text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-background hover:text-destructive"
+                      title="Supprimer"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 );
               })}
             </div>
           )}
         </ScrollArea>
-        {unreadNotif > 0 && (
-          <div className="border-t p-2">
-            <Button variant="ghost" size="sm" className="w-full text-xs" onClick={markAllRead}>
-              <CheckCheck className="mr-1 h-3.5 w-3.5" /> Marquer tout comme lu
+        {notifs.length > 0 && (
+          <div className="border-t p-2 flex gap-2">
+            {unreadNotif > 0 && (
+              <Button variant="ghost" size="sm" className="flex-1 text-xs" onClick={markAllRead}>
+                <CheckCheck className="mr-1 h-3.5 w-3.5" /> Tout lu
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" className="flex-1 text-xs text-destructive" onClick={clearAllNotifs}>
+              <X className="mr-1 h-3.5 w-3.5" /> Vider
             </Button>
           </div>
         )}
