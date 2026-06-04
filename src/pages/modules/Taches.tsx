@@ -27,7 +27,7 @@ interface Task {
   due_date: string | null;
   created_at: string;
 }
-interface Employee { id: string; first_name: string; last_name: string }
+interface Employee { id: string; first_name: string; last_name: string; email?: string | null }
 interface Comment {
   id: string;
   task_id: string;
