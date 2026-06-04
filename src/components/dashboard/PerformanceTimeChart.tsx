@@ -55,6 +55,11 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
   }, [selectedAgentId]);
 
   useEffect(() => {
+    supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active")
+      .then(({ count }) => setTotalActive(count ?? 0));
+  }, [refresh]);
+
+  useEffect(() => {
     setLoading(true);
     const fromStr = format(from, "yyyy-MM-dd");
     const toStr = format(to, "yyyy-MM-dd");
