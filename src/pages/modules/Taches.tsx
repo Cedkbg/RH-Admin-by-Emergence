@@ -238,7 +238,7 @@ const Taches = () => {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Tâches & Projets</h1>
           <p className="text-sm text-muted-foreground">
-            {canManage ? "Tableau Kanban — glissez les cartes entre les colonnes" : "Vos tâches assignées — glissez pour mettre à jour le statut"}
+            {canManage ? "Glissez les cartes entre les colonnes pour suivre l'avancement" : "Vos tâches assignées — glissez pour mettre à jour le statut"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
