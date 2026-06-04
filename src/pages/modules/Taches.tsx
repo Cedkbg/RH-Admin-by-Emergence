@@ -513,6 +513,73 @@ const Taches = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Espace de discussion d'équipe — flottant */}
+      <div className="fixed bottom-4 right-4 z-50 w-[min(380px,calc(100vw-2rem))]">
+        {chatOpen ? (
+          <Card className="shadow-2xl border-primary/20 flex flex-col h-[70vh] max-h-[560px]">
+            <CardHeader className="p-3 border-b flex-row items-center justify-between space-y-0 bg-primary text-primary-foreground rounded-t-lg">
+              <div className="flex items-center gap-2">
+                <MessagesSquare className="h-4 w-4" />
+                <CardTitle className="text-sm">Discussion d'équipe</CardTitle>
+              </div>
+              <Button size="icon" variant="ghost" className="h-7 w-7 text-primary-foreground hover:bg-primary-foreground/20" onClick={() => setChatOpen(false)}>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto p-3 space-y-2">
+              {chatMessages.length === 0 && (
+                <p className="text-xs text-muted-foreground italic text-center py-8">
+                  Aucun message. Lancez la discussion avec votre équipe 👋
+                </p>
+              )}
+              {chatMessages.map((m) => {
+                const mine = m.author_id === user?.id;
+                return (
+                  <div key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
+                    <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                      {!mine && <div className="text-[10px] font-medium opacity-80 mb-0.5">{m.author_name || "Utilisateur"}</div>}
+                      <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 px-1">
+                      <span className="text-[10px] text-muted-foreground">
+                        {format(new Date(m.created_at), "d MMM HH:mm", { locale: fr })}
+                      </span>
+                      {mine && (
+                        <button onClick={() => handleDeleteChat(m.id)} className="text-[10px] text-muted-foreground hover:text-destructive">
+                          Supprimer
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+            <div className="p-2 border-t flex gap-2">
+              <Textarea
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Écrire un message…"
+                rows={1}
+                className="resize-none min-h-[40px]"
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
+              />
+              <Button size="icon" onClick={handleSendChat} disabled={!chatInput.trim() || chatSending}>
+                {chatSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <Button onClick={() => setChatOpen(true)} className="rounded-full shadow-2xl h-14 w-14 p-0 relative ml-auto flex" size="icon">
+            <MessagesSquare className="h-6 w-6" />
+            {chatUnread > 0 && (
+              <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full h-5 min-w-5 px-1 flex items-center justify-center">
+                {chatUnread > 9 ? "9+" : chatUnread}
+              </span>
+            )}
+          </Button>
+        )}
+      </div>
     </div>
   );
 };
