@@ -101,6 +101,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (mountedRef.current) {
         setRoles((current) => current);
         setApprovalStatus((current) => current ?? "pending");
+        keepLoadingForRetry = true;
+        window.setTimeout(() => {
+          if (mountedRef.current) refreshUserData(uid);
+        }, 1500);
       }
     } finally {
       if (mountedRef.current && !keepLoadingForRetry) setRolesLoading(false);
