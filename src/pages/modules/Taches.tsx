@@ -78,6 +78,11 @@ const Taches = () => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const [chatUnread, setChatUnread] = useState(0);
 
   useEffect(() => { setViewMode(canManage ? "all" : "mine"); }, [canManage]);
 
