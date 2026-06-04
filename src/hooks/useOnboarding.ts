@@ -8,13 +8,13 @@ import { useAuth } from "@/contexts/AuthContext";
  * sinon un admin qui confirme son email après la création reste bloqué ici.
  */
 export function useOnboarding() {
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading, rolesLoading } = useAuth();
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Tant que l'auth charge, on attend
-    if (authLoading) return;
+    // Tant que l'auth ou les rôles chargent, on attend
+    if (authLoading || rolesLoading) return;
 
     // Pas d'utilisateur connecté → pas d'onboarding
     if (!user) {
@@ -64,7 +64,7 @@ export function useOnboarding() {
       cancelled = true;
       clearTimeout(safety);
     };
-  }, [user?.id, isAdmin, authLoading]);
+  }, [user?.id, isAdmin, authLoading, rolesLoading]);
 
   return { needsOnboarding, loading, refresh: async () => {} };
 }

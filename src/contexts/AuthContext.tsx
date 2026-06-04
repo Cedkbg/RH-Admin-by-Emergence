@@ -66,20 +66,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsSecretary(false); setApprovalStatus(null);
       return;
     }
+    setRolesLoading(true);
+    let keepLoadingForRetry = false;
     try {
       const result = await withTimeout(
         Promise.all([
           supabase.from("user_roles").select("role").eq("user_id", uid),
           supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
         ]),
-        2500
+        6000
       );
       if (!mountedRef.current) return;
       if (!result) {
-        setRoles(["employee"]);
-        setIsAdmin(false);
-        setIsSecretary(false);
-        setApprovalStatus("approved");
+        console.warn("Lecture des rôles trop lente, nouvel essai…");
+        keepLoadingForRetry = true;
+        window.setTimeout(() => {
+          if (mountedRef.current) refreshUserData(uid);
+        }, 1200);
         return;
       }
       const [{ data: roleRows }, { data: profileData }] = result;
@@ -96,13 +99,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (e) {
       console.error("Erreur refreshUserData:", e);
       if (mountedRef.current) {
-        setRoles(["employee"]);
-        setIsAdmin(false);
-        setIsSecretary(false);
-        setApprovalStatus("pending");
+        setRoles((current) => current);
+        setApprovalStatus((current) => current ?? "pending");
+        keepLoadingForRetry = true;
+        window.setTimeout(() => {
+          if (mountedRef.current) refreshUserData(uid);
+        }, 1500);
       }
     } finally {
-      if (mountedRef.current) setRolesLoading(false);
+      if (mountedRef.current && !keepLoadingForRetry) setRolesLoading(false);
     }
   };
 

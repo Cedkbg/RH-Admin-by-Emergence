@@ -5,7 +5,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { getSetupStatus } from "@/lib/setupStatus";
 
 export const Protected = ({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) => {
-  const { session, loading } = useAuth();
+  const { session, loading, rolesLoading, isAdmin } = useAuth();
   const { needsOnboarding, loading: onboardingLoading } = useOnboarding();
   const location = useLocation();
   const [companyChecked, setCompanyChecked] = useState(false);
@@ -46,6 +46,14 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
       }
       return <Navigate to="/agent/login" replace state={{ from: location }} />;
     }
+    if (adminOnly && rolesLoading) {
+      return (
+        <div className="flex h-screen items-center justify-center text-muted-foreground">
+          Vérification des accès…
+        </div>
+      );
+    }
+    if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
     return <>{children}</>;
   }
 
@@ -67,6 +75,17 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
 
   if (needsOnboarding && location.pathname !== "/onboarding") {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  if (adminOnly) {
+    if (rolesLoading) {
+      return (
+        <div className="flex h-screen items-center justify-center text-muted-foreground">
+          Vérification des accès…
+        </div>
+      );
+    }
+    if (!isAdmin) return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

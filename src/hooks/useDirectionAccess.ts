@@ -8,11 +8,11 @@ import { useAuth } from "@/contexts/AuthContext";
  * or a direct direction_executives assignment to that direction.
  */
 export function useDirectionAccess(directionCode: string | undefined) {
-  const { user, isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading, rolesLoading } = useAuth();
   const [allowed, setAllowed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || rolesLoading) return;
     if (!directionCode) { setAllowed(false); return; }
     if (!user) { setAllowed(false); return; }
     if (isAdmin) { setAllowed(true); return; }
@@ -25,7 +25,7 @@ export function useDirectionAccess(directionCode: string | undefined) {
       if (error) { setAllowed(false); return; }
       setAllowed(Boolean(data));
     })();
-  }, [user?.id, isAdmin, authLoading, directionCode]);
+  }, [user?.id, isAdmin, authLoading, rolesLoading, directionCode]);
 
   return { allowed, loading: allowed === null };
 }
