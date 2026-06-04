@@ -1008,6 +1008,41 @@ export type Database = {
           },
         ]
       }
+      performance_review_comments: {
+        Row: {
+          author_id: string
+          author_name: string | null
+          content: string
+          created_at: string
+          id: string
+          review_id: string
+        }
+        Insert: {
+          author_id: string
+          author_name?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          review_id: string
+        }
+        Update: {
+          author_id?: string
+          author_name?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          review_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_review_comments_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "performance_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       performance_reviews: {
         Row: {
           comments: string | null
