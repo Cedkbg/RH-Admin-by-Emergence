@@ -45,10 +45,15 @@ const Index = () => {
 
   if (!user) return <Navigate to="/agent/login" replace />;
 
-  // Pendant le chargement des rôles, on affiche directement le dashboard agent
-  // (rendu par défaut, instantané). Si l'utilisateur est staff, il switchera
-  // automatiquement vers le dashboard staff dès que les rôles seront chargés.
-  if (rolesLoading || !isStaff) {
+  if (rolesLoading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center text-muted-foreground">
+        Vérification des accès…
+      </div>
+    );
+  }
+
+  if (!isStaff) {
     return <AgentDashboard />;
   }
 
