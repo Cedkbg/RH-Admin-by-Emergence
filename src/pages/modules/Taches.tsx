@@ -111,7 +111,8 @@ const Taches = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => loadAll())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email]);
 
   // Charger commentaires + realtime de la tâche ouverte
   useEffect(() => {
