@@ -27,7 +27,7 @@ interface Task {
   due_date: string | null;
   created_at: string;
 }
-interface Employee { id: string; first_name: string; last_name: string }
+interface Employee { id: string; first_name: string; last_name: string; email?: string | null }
 interface Comment {
   id: string;
   task_id: string;
@@ -88,14 +88,19 @@ const Taches = () => {
 
   const loadAll = async () => {
     setLoading(true);
-    const [{ data: t }, { data: e }, { data: meId }] = await Promise.all([
+    const [{ data: t }, { data: e }] = await Promise.all([
       supabase.from("tasks").select("*").order("created_at", { ascending: false }),
-      supabase.from("employees").select("id,first_name,last_name").order("last_name"),
-      supabase.rpc("current_employee_id"),
+      supabase.from("employees").select("id,first_name,last_name,email").order("last_name"),
     ]);
     setTasks((t as Task[]) || []);
     setEmployees((e as Employee[]) || []);
-    setMyEmployeeId((meId as string) || null);
+    // Récupération de l'employee_id du compte connecté via l'email (le RPC n'est
+    // pas exécutable côté client — on retombe donc sur une simple jointure email).
+    const myEmail = user?.email?.toLowerCase();
+    const me = (e as { id: string; email: string | null }[] | null)?.find(
+      (row) => row.email && row.email.toLowerCase() === myEmail,
+    );
+    setMyEmployeeId(me?.id ?? null);
     setLoading(false);
   };
 
@@ -106,7 +111,8 @@ const Taches = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => loadAll())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email]);
 
   // Charger commentaires + realtime de la tâche ouverte
   useEffect(() => {

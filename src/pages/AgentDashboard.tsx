@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, Users, QrCode, CalendarDays, Mail, ChevronDown, Network, CheckCircle2, Clock, AlertTriangle, Smartphone, LogIn, LogOut, Wallet, Printer, HeartHandshake } from "lucide-react";
+import { Building2, Users, QrCode, CalendarDays, Mail, ChevronDown, Network, CheckCircle2, Clock, AlertTriangle, Smartphone, LogIn, LogOut, Wallet, Printer, HeartHandshake, ListChecks, MessagesSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -298,7 +298,29 @@ const AgentDashboard = () => {
         </section>
       </Collapsible>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <Link to="/taches" className="group rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 rounded-lg bg-module-blue/10 text-module-blue flex items-center justify-center">
+              <ListChecks className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Mes tâches</h3>
+              <p className="text-xs text-muted-foreground">Projets &amp; tâches</p>
+            </div>
+          </div>
+        </Link>
+        <Link to="/communication" className="group rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <MessagesSquare className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Communication</h3>
+              <p className="text-xs text-muted-foreground">Annonces internes</p>
+            </div>
+          </div>
+        </Link>
         <Link to="/bien-etre" className="group rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5">
           <div className="flex items-center gap-3">
             <div className="h-11 w-11 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center">
