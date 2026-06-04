@@ -33,11 +33,14 @@ export function AppSidebar() {
   const [companyName, setCompanyName] = useState<string>("EMERGENCE DRC");
   const canManageCabinets = roles.some((r) => CABINET_ROLES.has(r));
   
+  const hasStaff = roles.some((r) => STAFF_ROLES.has(r));
   const hasOpsAccess = roles.some((r) => OPS_ROLES.has(r));
   const hasField = roles.some((r) => ["admin", "manager", "rh", "assistant_direction"].includes(r));
   const hasExec = roles.some((r) => EXECUTIVE_ROLES.has(r));
   const isExecutiveOnly = hasExec && !hasField;
-  const isAgentOnly = !!user && !rolesLoading && !roles.some((r) => STAFF_ROLES.has(r));
+  // Par défaut, on considère l'utilisateur comme agent tant qu'on n'a pas la preuve d'un rôle staff.
+  // Évite que la sidebar montre brièvement tous les modules pendant le chargement des rôles.
+  const isAgentOnly = !!user && !hasStaff;
 
   useEffect(() => {
     (async () => {
