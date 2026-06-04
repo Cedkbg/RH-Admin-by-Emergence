@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Pin, CheckCheck } from "lucide-react";
+import { Bell, Pin, CheckCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -94,6 +94,23 @@ export function NotificationBell() {
       await supabase.from("notifications").update({ read_at: now }).in("id", ids);
       setNotifs((prev) => prev.map((n) => (n.read_at ? n : { ...n, read_at: now })));
     }
+  };
+
+  const deleteNotif = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const { error } = await supabase.from("notifications").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    setNotifs((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const clearAllNotifs = async () => {
+    if (!notifs.length) return;
+    if (!confirm("Supprimer toutes les notifications ?")) return;
+    const ids = notifs.map((n) => n.id);
+    const { error } = await supabase.from("notifications").delete().in("id", ids);
+    if (error) { toast.error(error.message); return; }
+    setNotifs([]);
+    toast.success("Notifications supprimées");
   };
 
   const handleOpenChange = (v: boolean) => {
