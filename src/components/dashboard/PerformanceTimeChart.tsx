@@ -34,6 +34,7 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
   const [mode, setMode] = useState<Mode>("month");
   const [att, setAtt] = useState<AttRow[]>([]);
   const [employee, setEmployee] = useState<Employee | null>(null);
+  const [totalActive, setTotalActive] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(0);
 
