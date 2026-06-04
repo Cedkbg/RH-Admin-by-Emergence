@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { HeartHandshake, Smile, Frown, Meh, ArrowLeft, Sunrise, Sunset, Zap, Activity, Sparkles } from "lucide-react";
+import { HeartHandshake, Smile, Frown, Meh, ArrowLeft, Sunrise, Sunset, Zap, Activity, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -152,6 +152,13 @@ const BienEtre = () => {
     toast.success(moment === "morning" ? "Bonne journée ! ☀️" : "Bonne soirée ! 🌙");
     reset();
     refresh();
+  };
+
+  const removeSurvey = async (id: string) => {
+    if (!confirm("Supprimer cette entrée ?")) return;
+    const { error } = await supabase.from("wellbeing_surveys").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Supprimée"); refresh();
   };
 
   const Scale = ({
@@ -345,7 +352,7 @@ const BienEtre = () => {
                     {i.highlight && <div className="truncate text-xs text-muted-foreground">{i.highlight}</div>}
                   </div>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex items-center gap-1">
                   {i.mood_score != null && (
                     <Badge variant={i.mood_score >= 4 ? "default" : i.mood_score <= 2 ? "destructive" : "outline"} className="text-[10px]">
                       😊 {i.mood_score}
@@ -353,6 +360,11 @@ const BienEtre = () => {
                   )}
                   {i.energy_score != null && <Badge variant="outline" className="text-[10px]">⚡ {i.energy_score}</Badge>}
                   {i.stress_score != null && <Badge variant="outline" className="text-[10px]">💢 {i.stress_score}</Badge>}
+                  {(isHrPrivileged || i.employee_id === myEmployeeId) && (
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeSurvey(i.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               </li>
             ))}

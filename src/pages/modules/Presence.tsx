@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ClipboardList, Plus, ArrowLeft, QrCode, MapPinned, ShieldCheck } from "lucide-react";
+import { CalendarDays, ClipboardList, Plus, ArrowLeft, QrCode, MapPinned, ShieldCheck, Trash2, Eraser } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -90,6 +90,28 @@ const Presence = () => {
     refresh();
   };
 
+  const deleteAttendance = async (id: string) => {
+    if (!confirm("Supprimer ce pointage ?")) return;
+    const { error } = await supabase.from("attendance").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Pointage supprimé"); refresh();
+  };
+
+  const purgeOldAttendance = async () => {
+    if (!confirm("Supprimer tous les pointages de plus de 90 jours ?")) return;
+    const cutoff = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    const { error } = await supabase.from("attendance").delete().lt("date", cutoff);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Anciens pointages supprimés"); refresh();
+  };
+
+  const deleteLeave = async (id: string) => {
+    if (!confirm("Supprimer cette demande de congé ?")) return;
+    const { error } = await supabase.from("leave_requests").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Demande supprimée"); refresh();
+  };
+
   return (
     <div className="mx-auto max-w-[1400px] space-y-6 animate-fade-in">
       <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
@@ -124,18 +146,26 @@ const Presence = () => {
         </TabsList>
 
         <TabsContent value="attendance" className="mt-4">
-          <div className="mb-3 flex justify-between">
+          <div className="mb-3 flex justify-between gap-2 flex-wrap">
             <Badge variant="secondary">{attendance.length} pointage(s)</Badge>
-            {isAdmin && <Button onClick={() => setOpenAtt(true)}><Plus className="mr-2 h-4 w-4" /> Pointage</Button>}
+            <div className="flex gap-2">
+              {isAdmin && attendance.length > 0 && (
+                <Button variant="outline" onClick={purgeOldAttendance}>
+                  <Eraser className="mr-2 h-4 w-4" /> Vider &gt; 90 jours
+                </Button>
+              )}
+              {isAdmin && <Button onClick={() => setOpenAtt(true)}><Plus className="mr-2 h-4 w-4" /> Pointage</Button>}
+            </div>
           </div>
           <section className="rounded-xl border bg-card shadow-sm overflow-hidden overflow-x-auto">
             <table className="w-full min-w-[900px]">
               <thead><tr className="border-b bg-secondary/40 text-left text-xs uppercase text-muted-foreground">
                 <th className="p-4">Date</th><th className="p-4">Agent</th><th className="p-4">Direction</th><th className="p-4">Département</th><th className="p-4">Entrée</th><th className="p-4">Sortie</th><th className="p-4">Statut</th>
+                {isAdmin && <th className="p-4 w-16" />}
               </tr></thead>
               <tbody>
                 {attendance.length === 0 ? (
-                  <tr><td colSpan={7} className="p-12 text-center text-muted-foreground">Aucun pointage.</td></tr>
+                  <tr><td colSpan={isAdmin ? 8 : 7} className="p-12 text-center text-muted-foreground">Aucun pointage.</td></tr>
                 ) : attendance.map((a) => {
                   const info = empInfo(a.employee_id);
                   return (
@@ -150,6 +180,13 @@ const Presence = () => {
                     <td className="p-4">{a.check_in || "—"}</td>
                     <td className="p-4">{a.check_out || "—"}</td>
                     <td className="p-4"><Badge variant={a.status === "present" ? "default" : "secondary"}>{a.status}</Badge></td>
+                    {isAdmin && (
+                      <td className="p-4 text-right">
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => deleteAttendance(a.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    )}
                   </tr>
                   );
                 })}
@@ -184,11 +221,16 @@ const Presence = () => {
                       </Badge>
                     </td>
                     {isAdmin && (
-                      <td className="p-4 space-x-1">
-                        {l.status === "pending" && <>
-                          <Button size="sm" variant="default" onClick={() => updateLeaveStatus(l.id, "approved")}>Approuver</Button>
-                          <Button size="sm" variant="outline" onClick={() => updateLeaveStatus(l.id, "rejected")}>Refuser</Button>
-                        </>}
+                      <td className="p-4">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {l.status === "pending" && <>
+                            <Button size="sm" variant="default" onClick={() => updateLeaveStatus(l.id, "approved")}>Approuver</Button>
+                            <Button size="sm" variant="outline" onClick={() => updateLeaveStatus(l.id, "rejected")}>Refuser</Button>
+                          </>}
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => deleteLeave(l.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </td>
                     )}
                   </tr>

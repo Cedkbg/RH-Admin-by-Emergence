@@ -1,0 +1,2 @@
+CREATE POLICY "admin delete audit" ON public.audit_logs FOR DELETE TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+CREATE POLICY "Users delete own notifications" ON public.notifications FOR DELETE TO authenticated USING (auth.uid() = user_id);
