@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Calendar, User, Trash2, Pencil, Loader2, MessageSquare, Send } from "lucide-react";
+import { Plus, Calendar, User, Trash2, Pencil, Loader2, MessageSquare, Send, MessagesSquare, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
