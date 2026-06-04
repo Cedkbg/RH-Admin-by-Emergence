@@ -161,10 +161,11 @@ const Presence = () => {
             <table className="w-full min-w-[900px]">
               <thead><tr className="border-b bg-secondary/40 text-left text-xs uppercase text-muted-foreground">
                 <th className="p-4">Date</th><th className="p-4">Agent</th><th className="p-4">Direction</th><th className="p-4">Département</th><th className="p-4">Entrée</th><th className="p-4">Sortie</th><th className="p-4">Statut</th>
+                {isAdmin && <th className="p-4 w-16" />}
               </tr></thead>
               <tbody>
                 {attendance.length === 0 ? (
-                  <tr><td colSpan={7} className="p-12 text-center text-muted-foreground">Aucun pointage.</td></tr>
+                  <tr><td colSpan={isAdmin ? 8 : 7} className="p-12 text-center text-muted-foreground">Aucun pointage.</td></tr>
                 ) : attendance.map((a) => {
                   const info = empInfo(a.employee_id);
                   return (
@@ -179,6 +180,13 @@ const Presence = () => {
                     <td className="p-4">{a.check_in || "—"}</td>
                     <td className="p-4">{a.check_out || "—"}</td>
                     <td className="p-4"><Badge variant={a.status === "present" ? "default" : "secondary"}>{a.status}</Badge></td>
+                    {isAdmin && (
+                      <td className="p-4 text-right">
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => deleteAttendance(a.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    )}
                   </tr>
                   );
                 })}
@@ -213,11 +221,16 @@ const Presence = () => {
                       </Badge>
                     </td>
                     {isAdmin && (
-                      <td className="p-4 space-x-1">
-                        {l.status === "pending" && <>
-                          <Button size="sm" variant="default" onClick={() => updateLeaveStatus(l.id, "approved")}>Approuver</Button>
-                          <Button size="sm" variant="outline" onClick={() => updateLeaveStatus(l.id, "rejected")}>Refuser</Button>
-                        </>}
+                      <td className="p-4">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {l.status === "pending" && <>
+                            <Button size="sm" variant="default" onClick={() => updateLeaveStatus(l.id, "approved")}>Approuver</Button>
+                            <Button size="sm" variant="outline" onClick={() => updateLeaveStatus(l.id, "rejected")}>Refuser</Button>
+                          </>}
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => deleteLeave(l.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </td>
                     )}
                   </tr>
