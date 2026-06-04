@@ -35,7 +35,7 @@ export function AppLayout() {
   );
   const title = current?.label ?? "EMERGENCE DRC";
 
-  if (isIosWebKit()) {
+  if (isMobileDevice()) {
     const hasStaff = roles.some((r) => STAFF_ROLES.has(r));
     const hasOps = roles.some((r) => OPS_ROLES.has(r));
     const hasField = roles.some((r) => ["admin", "manager", "rh", "assistant_direction"].includes(r));
