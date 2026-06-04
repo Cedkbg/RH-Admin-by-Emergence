@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import "./lib/iosSupabaseLockFix";
+import "./lib/safeRealtime";
 import { ThemeProvider } from "./components/theme-provider.tsx";
 import App from "./App.tsx";
 import "./index.css";
