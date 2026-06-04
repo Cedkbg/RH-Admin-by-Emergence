@@ -124,6 +124,44 @@ const Taches = () => {
     return () => { supabase.removeChannel(ch); };
   }, [editing?.id]);
 
+  // Chat d'équipe global (module)
+  useEffect(() => {
+    supabase.from("task_chat_messages").select("*").order("created_at", { ascending: true }).limit(200)
+      .then(({ data }) => setChatMessages((data as ChatMessage[]) || []));
+    const ch = supabase
+      .channel("task-chat-global")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "task_chat_messages" }, (payload) => {
+        const msg = payload.new as ChatMessage;
+        setChatMessages((cur) => [...cur, msg]);
+        setChatUnread((u) => (msg.author_id === user?.id ? u : u + 1));
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "task_chat_messages" }, (payload) => {
+        setChatMessages((cur) => cur.filter((m) => m.id !== (payload.old as ChatMessage).id));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user?.id]);
+
+  useEffect(() => { if (chatOpen) setChatUnread(0); }, [chatOpen, chatMessages.length]);
+
+  const handleSendChat = async () => {
+    if (!chatInput.trim() || !user) return;
+    setChatSending(true);
+    const me = employees.find((e) => e.id === myEmployeeId);
+    const authorName = me ? `${me.first_name} ${me.last_name}` : (user.email || "Moi");
+    const { error } = await supabase.from("task_chat_messages").insert({
+      author_id: user.id, author_name: authorName, content: chatInput.trim(),
+    });
+    setChatSending(false);
+    if (error) { toast.error("Envoi impossible", { description: error.message }); return; }
+    setChatInput("");
+  };
+
+  const handleDeleteChat = async (id: string) => {
+    const { error } = await supabase.from("task_chat_messages").delete().eq("id", id);
+    if (error) toast.error(error.message);
+  };
+
   const visibleTasks = useMemo(() => {
     let arr = tasks;
     if (viewMode === "mine" && myEmployeeId) arr = arr.filter((t) => t.assignee_id === myEmployeeId);
