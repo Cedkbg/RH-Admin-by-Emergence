@@ -146,9 +146,16 @@ const Presence = () => {
         </TabsList>
 
         <TabsContent value="attendance" className="mt-4">
-          <div className="mb-3 flex justify-between">
+          <div className="mb-3 flex justify-between gap-2 flex-wrap">
             <Badge variant="secondary">{attendance.length} pointage(s)</Badge>
-            {isAdmin && <Button onClick={() => setOpenAtt(true)}><Plus className="mr-2 h-4 w-4" /> Pointage</Button>}
+            <div className="flex gap-2">
+              {isAdmin && attendance.length > 0 && (
+                <Button variant="outline" onClick={purgeOldAttendance}>
+                  <Eraser className="mr-2 h-4 w-4" /> Vider &gt; 90 jours
+                </Button>
+              )}
+              {isAdmin && <Button onClick={() => setOpenAtt(true)}><Plus className="mr-2 h-4 w-4" /> Pointage</Button>}
+            </div>
           </div>
           <section className="rounded-xl border bg-card shadow-sm overflow-hidden overflow-x-auto">
             <table className="w-full min-w-[900px]">
