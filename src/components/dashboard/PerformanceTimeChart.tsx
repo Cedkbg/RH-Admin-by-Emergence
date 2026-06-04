@@ -107,8 +107,8 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
         presence = expected > 0 ? Math.round((present / expected) * 100) : 0;
       } else {
         const totalPresences = inRange.filter((a) => a.status === "present" || a.status === "mission" || a.status === "deplacement").length;
-        const distinct = new Set(att.map((a) => a.employee_id)).size || 1;
-        presence = expected > 0 ? Math.round((totalPresences / (expected * distinct)) * 100) : 0;
+        const headcount = totalActive || new Set(att.map((a) => a.employee_id)).size || 1;
+        presence = expected > 0 ? Math.min(100, Math.round((totalPresences / (expected * headcount)) * 100)) : 0;
       }
       const hours = +inRange.reduce((s, a) => s + hoursBetween(a.check_in, a.check_out), 0).toFixed(1);
       return { label: b.label, Présence: presence, Heures: hours };
