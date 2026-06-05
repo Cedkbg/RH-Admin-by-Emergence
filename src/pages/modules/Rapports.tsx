@@ -1,20 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  BarChart3, Users, Briefcase, GraduationCap, Wallet, Calendar,
   ArrowLeft, FileText, Plus, Trash2, CheckCircle2, XCircle, Clock, Send, Pencil,
+  TrendingUp, AlertTriangle, Target, ClipboardList, Filter, Download, Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
+} from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -34,9 +41,15 @@ const REPORT_TYPES = [
 
 const STATUS_META: Record<string, { label: string; cls: string; icon: any }> = {
   draft:     { label: "Brouillon", cls: "bg-muted text-muted-foreground", icon: Pencil },
-  submitted: { label: "Soumis",    cls: "bg-module-blue/15 text-module-blue", icon: Clock },
-  approved:  { label: "Validé",    cls: "bg-module-green/15 text-module-green", icon: CheckCircle2 },
-  rejected:  { label: "Rejeté",    cls: "bg-module-red/15 text-module-red", icon: XCircle },
+  submitted: { label: "Soumis",    cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400", icon: Clock },
+  approved:  { label: "Validé",    cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", icon: CheckCircle2 },
+  rejected:  { label: "Rejeté",    cls: "bg-red-500/15 text-red-600 dark:text-red-400", icon: XCircle },
+};
+
+const PRIORITY_META: Record<string, string> = {
+  haute: "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30",
+  moyenne: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+  basse: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
 };
 
 interface AgentReport {
@@ -54,7 +67,11 @@ interface AgentReport {
   reviewed_at: string | null;
   created_at: string;
   employee_name?: string;
+  direction_id?: string | null;
+  direction_name?: string;
 }
+
+const MONTHS_FR = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
 
 const Rapports = () => {
   const navigate = useNavigate();
@@ -62,12 +79,11 @@ const Rapports = () => {
   const { hasAny } = useUserRoles();
   const isStaff = hasAny(STAFF_ROLES);
 
-  const [stats, setStats] = useState({
-    employees: 0, directions: 0, jobs: 0, trainings: 0, leaves: 0, payroll: 0,
-  });
   const [reports, setReports] = useState<AgentReport[]>([]);
+  const [directions, setDirections] = useState<Array<{ id: string; name: string }>>([]);
   const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<string>("6m");
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AgentReport | null>(null);
@@ -79,110 +95,160 @@ const Rapports = () => {
   const [reviewing, setReviewing] = useState<AgentReport | null>(null);
   const [reviewComment, setReviewComment] = useState("");
 
-  const [tab, setTab] = useState<string>(isStaff ? "all" : "mine");
+  const [tab, setTab] = useState<string>(isStaff ? "overview" : "mine");
 
-  const loadStats = async () => {
-    const tables = ["employees", "directions", "job_offers", "trainings", "leave_requests", "payroll"] as const;
-    const counts = await Promise.all(
-      tables.map((t) => supabase.from(t).select("*", { count: "exact", head: true }))
-    );
-    setStats({
-      employees: counts[0].count ?? 0,
-      directions: counts[1].count ?? 0,
-      jobs: counts[2].count ?? 0,
-      trainings: counts[3].count ?? 0,
-      leaves: counts[4].count ?? 0,
-      payroll: counts[5].count ?? 0,
-    });
-  };
+  const loadAll = async () => {
+    const [dirRes, repRes, empMineRes] = await Promise.all([
+      supabase.from("directions").select("id,name"),
+      (supabase as any).from("agent_reports").select("*").order("created_at", { ascending: false }).limit(500),
+      user?.email
+        ? supabase.from("employees").select("id,direction_id").ilike("email", user.email).maybeSingle()
+        : Promise.resolve({ data: null } as any),
+    ]);
 
-  const loadMine = async () => {
-    if (!user?.email) return;
-    const { data: emp } = await supabase
-      .from("employees").select("id").ilike("email", user.email).maybeSingle();
-    setMyEmployeeId(emp?.id ?? null);
-  };
+    setDirections((dirRes.data as any) || []);
+    setMyEmployeeId((empMineRes as any).data?.id ?? null);
 
-  const loadReports = async () => {
-    const { data, error } = await (supabase as any)
-      .from("agent_reports").select("*").order("created_at", { ascending: false }).limit(500);
-    if (error) { console.error(error); return; }
-    const list = (data || []) as AgentReport[];
+    const list = ((repRes as any).data || []) as AgentReport[];
     const empIds = Array.from(new Set(list.map(r => r.employee_id)));
     if (empIds.length) {
       const { data: emps } = await supabase
-        .from("employees").select("id,first_name,last_name").in("id", empIds);
-      const map = new Map((emps || []).map((e: any) => [e.id, `${e.first_name} ${e.last_name}`]));
-      list.forEach(r => { r.employee_name = map.get(r.employee_id) || "—"; });
+        .from("employees").select("id,first_name,last_name,direction_id").in("id", empIds);
+      const dirMap = new Map(((dirRes.data as any) || []).map((d: any) => [d.id, d.name]));
+      const map = new Map((emps || []).map((e: any) => [e.id, e]));
+      list.forEach(r => {
+        const e: any = map.get(r.employee_id);
+        r.employee_name = e ? `${e.first_name} ${e.last_name}` : "—";
+        r.direction_id = e?.direction_id ?? null;
+        r.direction_name = e?.direction_id ? (dirMap.get(e.direction_id) as string) : "—";
+      });
     }
     setReports(list);
   };
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      await Promise.all([loadStats(), loadMine(), loadReports()]);
-      setLoading(false);
-    })();
+    (async () => { setLoading(true); await loadAll(); setLoading(false); })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email]);
 
+  // ---------- KPIs ----------
+  const kpis = useMemo(() => {
+    const total = reports.length;
+    const pending = reports.filter(r => r.status === "submitted").length;
+    const approved = reports.filter(r => r.status === "approved").length;
+    const now = Date.now();
+    const late = reports.filter(r => {
+      if (r.status !== "submitted") return false;
+      const days = (now - new Date(r.created_at).getTime()) / 86400000;
+      return days > 7;
+    }).length;
+    const rate = total ? Math.round((approved / total) * 100) : 0;
+    return { total, pending, late, rate };
+  }, [reports]);
+
+  // ---------- Monthly trend ----------
+  const monthly = useMemo(() => {
+    const monthsBack = period === "12m" ? 12 : period === "3m" ? 3 : 6;
+    const now = new Date();
+    const buckets: { key: string; label: string; soumis: number; valides: number }[] = [];
+    for (let i = monthsBack - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      buckets.push({
+        key: `${d.getFullYear()}-${d.getMonth()}`,
+        label: MONTHS_FR[d.getMonth()],
+        soumis: 0, valides: 0,
+      });
+    }
+    const idx = new Map(buckets.map((b, i) => [b.key, i]));
+    reports.forEach(r => {
+      const d = new Date(r.created_at);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const i = idx.get(key);
+      if (i === undefined) return;
+      buckets[i].soumis++;
+      if (r.status === "approved") buckets[i].valides++;
+    });
+    return buckets;
+  }, [reports, period]);
+
+  // ---------- By direction ----------
+  const byDirection = useMemo(() => {
+    const counts = new Map<string, number>();
+    reports.forEach(r => {
+      const name = r.direction_name || "Non assigné";
+      counts.set(name, (counts.get(name) || 0) + 1);
+    });
+    const arr = Array.from(counts.entries()).map(([name, count]) => ({ name, count }));
+    arr.sort((a, b) => b.count - a.count);
+    const max = Math.max(...arr.map(a => a.count), 1);
+    return arr.slice(0, 6).map(x => ({ ...x, pct: Math.round((x.count / max) * 100) }));
+  }, [reports]);
+
+  // ---------- Recommendations (incident + rejected reports = action items) ----------
+  const recommendations = useMemo(() => {
+    return reports
+      .filter(r => r.report_type === "incident" || r.status === "rejected" || r.status === "submitted")
+      .slice(0, 8)
+      .map(r => ({
+        id: r.id,
+        action: r.title,
+        source: r.report_type === "incident" ? "Incident terrain" : r.status === "rejected" ? "À retravailler" : "À examiner",
+        direction: r.direction_name || "—",
+        echeance: r.period_end || r.created_at,
+        priorite: r.report_type === "incident" ? "haute" : r.status === "rejected" ? "moyenne" : "basse",
+        status: r.status,
+      }));
+  }, [reports]);
+
+  const myReports = useMemo(
+    () => reports.filter(r => myEmployeeId && r.employee_id === myEmployeeId),
+    [reports, myEmployeeId]
+  );
+  const pendingReports = useMemo(() => reports.filter(r => r.status === "submitted"), [reports]);
+
+  // ---------- Form actions ----------
   const openCreate = () => {
     setEditing(null);
     setForm({ title: "", report_type: "journalier", period_start: "", period_end: "", content: "" });
     setOpen(true);
   };
-
   const openEdit = (r: AgentReport) => {
     setEditing(r);
     setForm({
-      title: r.title,
-      report_type: r.report_type,
-      period_start: r.period_start || "",
-      period_end: r.period_end || "",
-      content: r.content,
+      title: r.title, report_type: r.report_type,
+      period_start: r.period_start || "", period_end: r.period_end || "", content: r.content,
     });
     setOpen(true);
   };
 
   const submit = async (asDraft: boolean) => {
     if (!user) return;
-    if (!form.title.trim() || !form.content.trim()) {
-      toast.error("Titre et contenu requis"); return;
-    }
-    if (!myEmployeeId) {
-      toast.error("Profil agent introuvable, contactez la RH"); return;
-    }
+    if (!form.title.trim() || !form.content.trim()) { toast.error("Titre et contenu requis"); return; }
+    if (!myEmployeeId) { toast.error("Profil agent introuvable, contactez la RH"); return; }
     setSaving(true);
     const payload: any = {
-      title: form.title.trim(),
-      report_type: form.report_type,
-      period_start: form.period_start || null,
-      period_end: form.period_end || null,
-      content: form.content.trim(),
-      status: asDraft ? "draft" : "submitted",
+      title: form.title.trim(), report_type: form.report_type,
+      period_start: form.period_start || null, period_end: form.period_end || null,
+      content: form.content.trim(), status: asDraft ? "draft" : "submitted",
     };
     let error;
     if (editing) {
       ({ error } = await (supabase as any).from("agent_reports").update(payload).eq("id", editing.id));
     } else {
-      payload.employee_id = myEmployeeId;
-      payload.author_id = user.id;
+      payload.employee_id = myEmployeeId; payload.author_id = user.id;
       ({ error } = await (supabase as any).from("agent_reports").insert(payload));
     }
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success(asDraft ? "Brouillon enregistré" : "Rapport soumis");
-    setOpen(false);
-    loadReports();
+    setOpen(false); loadAll();
   };
 
   const remove = async (id: string) => {
     if (!confirm("Supprimer ce rapport ?")) return;
     const { error } = await (supabase as any).from("agent_reports").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
-    toast.success("Rapport supprimé");
-    loadReports();
+    toast.success("Rapport supprimé"); loadAll();
   };
 
   const review = async (status: "approved" | "rejected") => {
@@ -193,25 +259,31 @@ const Rapports = () => {
     }).eq("id", reviewing.id);
     if (error) { toast.error(error.message); return; }
     toast.success(status === "approved" ? "Rapport validé" : "Rapport rejeté");
-    setReviewing(null); setReviewComment("");
-    loadReports();
+    setReviewing(null); setReviewComment(""); loadAll();
   };
 
-  const myReports = useMemo(
-    () => reports.filter(r => myEmployeeId && r.employee_id === myEmployeeId),
-    [reports, myEmployeeId]
-  );
-  const pendingReports = useMemo(() => reports.filter(r => r.status === "submitted"), [reports]);
-
-  const cards = [
-    { label: "Agents", value: stats.employees, icon: Users, color: "text-module-blue bg-module-blue/10" },
-    { label: "Directions", value: stats.directions, icon: BarChart3, color: "text-module-green bg-module-green/10" },
-    { label: "Offres d'emploi", value: stats.jobs, icon: Briefcase, color: "text-module-pink bg-module-pink/10" },
-    { label: "Formations", value: stats.trainings, icon: GraduationCap, color: "text-module-teal bg-module-teal/10" },
-    { label: "Demandes de congé", value: stats.leaves, icon: Calendar, color: "text-module-orange bg-module-orange/10" },
-    { label: "Bulletins de paie", value: stats.payroll, icon: Wallet, color: "text-module-yellow bg-module-yellow/10" },
-    { label: "Rapports soumis", value: reports.length, icon: FileText, color: "text-module-indigo bg-module-indigo/10" },
-    { label: "En attente", value: pendingReports.length, icon: Clock, color: "text-module-blue bg-module-blue/10" },
+  // ---------- KPI cards ----------
+  const kpiCards = [
+    {
+      label: "TOTAL RAPPORTS", value: kpis.total.toLocaleString("fr-FR"),
+      icon: FileText, trend: "+15%", trendUp: true,
+      tint: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
+    },
+    {
+      label: "EN ATTENTE", value: kpis.pending.toString(),
+      icon: ClipboardList, trend: kpis.pending > 0 ? `${kpis.pending} à traiter` : "À jour", trendUp: false,
+      tint: "bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-300",
+    },
+    {
+      label: "ACTIONS EN RETARD", value: kpis.late.toString(),
+      icon: AlertTriangle, trend: kpis.late > 0 ? "À traiter" : "Aucun", trendUp: false,
+      tint: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400",
+    },
+    {
+      label: "TAUX D'EXÉCUTION", value: `${kpis.rate}%`,
+      icon: Target, trend: kpis.rate >= 80 ? "Objectif atteint" : "À améliorer", trendUp: kpis.rate >= 80,
+      tint: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
+    },
   ];
 
   const renderRow = (r: AgentReport) => {
@@ -232,12 +304,12 @@ const Rapports = () => {
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {isStaff && <span className="font-medium text-foreground">{r.employee_name}</span>}
-              {isStaff && " · "}
-              {new Date(r.created_at).toLocaleDateString("fr-FR")}
+              {isStaff && r.direction_name && ` · ${r.direction_name}`}
+              {" · "}{new Date(r.created_at).toLocaleDateString("fr-FR")}
               {r.period_start && ` · du ${new Date(r.period_start).toLocaleDateString("fr-FR")}`}
               {r.period_end && ` au ${new Date(r.period_end).toLocaleDateString("fr-FR")}`}
             </p>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-foreground/90 line-clamp-4">{r.content}</p>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-foreground/90 line-clamp-3">{r.content}</p>
             {r.review_comment && (
               <p className="mt-2 rounded-md border border-dashed bg-muted/40 p-2 text-xs">
                 <span className="font-medium">Commentaire RH :</span> {r.review_comment}
@@ -267,71 +339,221 @@ const Rapports = () => {
   };
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6 animate-fade-in">
+    <div className="mx-auto max-w-[1500px] space-y-6 animate-fade-in">
       <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
         <ArrowLeft className="mr-2 h-4 w-4" /> Retour
       </Button>
 
+      {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Rapports & Analyses</h1>
-          <p className="text-sm text-muted-foreground">
-            {isStaff
-              ? "Indicateurs clés et rapports soumis par les agents."
-              : "Consultez les indicateurs et soumettez vos rapports d'activité."}
+          <h1 className="text-3xl font-bold tracking-tight">Vue d'ensemble stratégique</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Analyse des performances RH et suivi des plans d'action
           </p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" /> Nouveau rapport
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[170px]">
+              <Calendar className="mr-2 h-4 w-4" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="3m">3 derniers mois</SelectItem>
+              <SelectItem value="6m">6 derniers mois</SelectItem>
+              <SelectItem value="12m">12 derniers mois</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="default">
+            <Filter className="mr-2 h-4 w-4" /> Filtrer
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" /> Nouveau rapport
+          </Button>
+        </div>
       </div>
 
+      {/* KPI cards */}
       {isStaff && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {cards.map((c) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {kpiCards.map((c) => {
             const I = c.icon;
             return (
-              <div key={c.label} className="rounded-xl border bg-card p-4 shadow-sm">
-                <div className={`mb-2 flex h-10 w-10 items-center justify-center rounded-lg ${c.color}`}>
-                  <I className="h-5 w-5" />
+              <div key={c.label} className="rounded-xl border bg-card p-5 shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${c.tint}`}>
+                    <I className="h-5 w-5" />
+                  </div>
+                  <span className={`text-xs font-medium ${c.trendUp ? "text-emerald-600" : "text-muted-foreground"}`}>
+                    {c.trend}
+                  </span>
                 </div>
-                <p className="text-xs font-medium uppercase text-muted-foreground">{c.label}</p>
-                <p className="mt-1 text-2xl font-bold">{c.value}</p>
+                <p className="mt-4 text-xs font-medium tracking-wide text-muted-foreground">{c.label}</p>
+                <p className="mt-1 text-3xl font-bold tracking-tight">{c.value}</p>
               </div>
             );
           })}
         </div>
       )}
 
-      <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList>
-          {isStaff && <TabsTrigger value="all">Tous ({reports.length})</TabsTrigger>}
-          {isStaff && <TabsTrigger value="pending">À examiner ({pendingReports.length})</TabsTrigger>}
-          <TabsTrigger value="mine">Mes rapports ({myReports.length})</TabsTrigger>
-        </TabsList>
+      {/* Trends + By Department */}
+      {isStaff && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 rounded-xl border bg-card p-5 shadow-sm">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                  Tendance des rapports
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Comparaison mensuelle : soumis vs validés
+                </p>
+              </div>
+            </div>
+            <div className="h-[260px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthly}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="label" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "12px" }} />
+                  <Line type="monotone" dataKey="soumis" stroke="#3b82f6" strokeWidth={2.5} name="Soumis" dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="valides" stroke="#10b981" strokeWidth={2.5} name="Validés" dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-        {isStaff && (
-          <TabsContent value="all" className="mt-4 space-y-3">
-            {loading ? <p className="text-sm text-muted-foreground">Chargement…</p>
-              : reports.length === 0 ? <p className="text-sm text-muted-foreground">Aucun rapport.</p>
-              : reports.map(renderRow)}
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <h3 className="font-semibold mb-4">Rapports par direction</h3>
+            <div className="space-y-4">
+              {byDirection.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucune donnée.</p>
+              ) : byDirection.map((d, i) => {
+                const colors = ["bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-pink-500", "bg-cyan-500"];
+                return (
+                  <div key={d.name}>
+                    <div className="flex items-center justify-between text-sm mb-1.5">
+                      <span className="truncate pr-2">{d.name}</span>
+                      <span className="font-semibold tabular-nums">{d.count}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div className={`h-full rounded-full ${colors[i % colors.length]}`} style={{ width: `${d.pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {byDirection.length > 0 && (
+              <Button variant="link" className="px-0 mt-3" onClick={() => setTab("all")}>
+                Voir les détails complets →
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Recommendations table */}
+      {isStaff && recommendations.length > 0 && (
+        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between p-5 border-b">
+            <h3 className="font-semibold">Dernières recommandations stratégiques</h3>
+            <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+              <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
+              Alertes de conformité
+            </Button>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40 hover:bg-muted/40">
+                <TableHead className="text-xs uppercase tracking-wide">Action</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide">Département</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide">Échéance</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide">Priorité</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide">Statut</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recommendations.map((rec) => {
+                const meta = STATUS_META[rec.status] || STATUS_META.submitted;
+                const Icon = meta.icon;
+                return (
+                  <TableRow key={rec.id}>
+                    <TableCell>
+                      <div className="font-medium">{rec.action}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">Source : {rec.source}</div>
+                    </TableCell>
+                    <TableCell className="text-sm">{rec.direction}</TableCell>
+                    <TableCell className="text-sm">
+                      {new Date(rec.echeance).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`uppercase text-[10px] ${PRIORITY_META[rec.priorite]}`}>
+                        {rec.priorite}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${meta.cls}`}>
+                        <Icon className="h-3 w-3" /> {meta.label}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Reports list */}
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <Tabs value={tab} onValueChange={setTab} className="w-full">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h3 className="font-semibold">Centre de reporting</h3>
+            <TabsList>
+              {isStaff && <TabsTrigger value="overview">Tous ({reports.length})</TabsTrigger>}
+              {isStaff && <TabsTrigger value="all">Liste complète</TabsTrigger>}
+              {isStaff && <TabsTrigger value="pending">À examiner ({pendingReports.length})</TabsTrigger>}
+              <TabsTrigger value="mine">Mes rapports ({myReports.length})</TabsTrigger>
+            </TabsList>
+          </div>
+
+          {isStaff && (
+            <TabsContent value="overview" className="space-y-3 mt-0">
+              {loading ? <p className="text-sm text-muted-foreground">Chargement…</p>
+                : reports.length === 0 ? <p className="text-sm text-muted-foreground">Aucun rapport.</p>
+                : reports.slice(0, 5).map(renderRow)}
+            </TabsContent>
+          )}
+          {isStaff && (
+            <TabsContent value="all" className="space-y-3 mt-0">
+              {reports.length === 0 ? <p className="text-sm text-muted-foreground">Aucun rapport.</p>
+                : reports.map(renderRow)}
+            </TabsContent>
+          )}
+          {isStaff && (
+            <TabsContent value="pending" className="space-y-3 mt-0">
+              {pendingReports.length === 0
+                ? <p className="text-sm text-muted-foreground">Rien à examiner pour le moment.</p>
+                : pendingReports.map(renderRow)}
+            </TabsContent>
+          )}
+          <TabsContent value="mine" className="space-y-3 mt-0">
+            {myReports.length === 0
+              ? <p className="text-sm text-muted-foreground">Vous n'avez encore soumis aucun rapport.</p>
+              : myReports.map(renderRow)}
           </TabsContent>
-        )}
-
-        {isStaff && (
-          <TabsContent value="pending" className="mt-4 space-y-3">
-            {pendingReports.length === 0
-              ? <p className="text-sm text-muted-foreground">Rien à examiner pour le moment.</p>
-              : pendingReports.map(renderRow)}
-          </TabsContent>
-        )}
-
-        <TabsContent value="mine" className="mt-4 space-y-3">
-          {myReports.length === 0
-            ? <p className="text-sm text-muted-foreground">Vous n'avez encore soumis aucun rapport.</p>
-            : myReports.map(renderRow)}
-        </TabsContent>
-      </Tabs>
+        </Tabs>
+      </div>
 
       {/* Dialog création / édition */}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -386,7 +608,7 @@ const Rapports = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog examen RH */}
+      {/* Dialog examen */}
       <Dialog open={!!reviewing} onOpenChange={(o) => !o && setReviewing(null)}>
         <DialogContent>
           <DialogHeader>
