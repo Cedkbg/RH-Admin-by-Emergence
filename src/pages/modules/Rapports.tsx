@@ -603,7 +603,7 @@ const Rapports = () => {
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <h3 className="font-semibold">Centre de reporting</h3>
             <TabsList>
-              {isStaff && <TabsTrigger value="overview">Tous ({reports.length})</TabsTrigger>}
+              {isStaff && <TabsTrigger value="overview">Tous ({visibleReports.length})</TabsTrigger>}
               {isStaff && <TabsTrigger value="all">Liste complète</TabsTrigger>}
               {isStaff && <TabsTrigger value="pending">À examiner ({pendingReports.length})</TabsTrigger>}
               <TabsTrigger value="mine">Mes rapports ({myReports.length})</TabsTrigger>
