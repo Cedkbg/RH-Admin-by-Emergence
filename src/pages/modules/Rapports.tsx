@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, FileText, Plus, Trash2, CheckCircle2, XCircle, Clock, Send, Pencil,
   TrendingUp, AlertTriangle, Target, ClipboardList, Filter, Download, Calendar,
+  Sparkles, Lock, Globe, ShieldCheck, UploadCloud, Info, ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
