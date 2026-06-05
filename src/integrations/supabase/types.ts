@@ -52,13 +52,19 @@ export type Database = {
       }
       agent_reports: {
         Row: {
+          attachments: Json
           author_id: string
+          category: string | null
+          confidentiality: string
           content: string
           created_at: string
+          department_id: string | null
           employee_id: string
+          executive_summary: string | null
           id: string
           period_end: string | null
           period_start: string | null
+          reference: string | null
           report_type: string
           review_comment: string | null
           reviewed_at: string | null
@@ -68,13 +74,19 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attachments?: Json
           author_id: string
+          category?: string | null
+          confidentiality?: string
           content: string
           created_at?: string
+          department_id?: string | null
           employee_id: string
+          executive_summary?: string | null
           id?: string
           period_end?: string | null
           period_start?: string | null
+          reference?: string | null
           report_type?: string
           review_comment?: string | null
           reviewed_at?: string | null
@@ -84,13 +96,19 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attachments?: Json
           author_id?: string
+          category?: string | null
+          confidentiality?: string
           content?: string
           created_at?: string
+          department_id?: string | null
           employee_id?: string
+          executive_summary?: string | null
           id?: string
           period_end?: string | null
           period_start?: string | null
+          reference?: string | null
           report_type?: string
           review_comment?: string | null
           reviewed_at?: string | null
@@ -100,6 +118,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "agent_reports_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "agent_reports_employee_id_fkey"
             columns: ["employee_id"]
