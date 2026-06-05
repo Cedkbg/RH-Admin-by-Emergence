@@ -752,7 +752,7 @@ const Rapports = () => {
                       rows={7}
                       value={form.executive_summary}
                       onChange={(e) => setForm({ ...form, executive_summary: e.target.value })}
-                      placeholder="Commencez à rédiger ou laissez l'IA synthétiser vos données…"
+                      placeholder="Rédigez le résumé exécutif de votre rapport…"
                     />
                   </section>
                 </>
