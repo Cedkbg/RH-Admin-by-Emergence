@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "All authenticated can read perf comments" ON public.performance_review_comments;
