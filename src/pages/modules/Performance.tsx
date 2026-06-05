@@ -95,6 +95,7 @@ const Performance = () => {
 
   return (
     <div className="space-y-4">
+      <NineBoxMatrix />
       {isAdmin && (
         <>
           <AgentSalarySummary selectedAgentId={selectedAgentId} onSelectAgent={setSelectedAgentId} />
