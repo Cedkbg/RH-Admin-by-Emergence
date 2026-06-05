@@ -40,6 +40,25 @@ const REPORT_TYPES = [
   { value: "autre", label: "Autre" },
 ];
 
+const CATEGORIES = [
+  { value: "rh",         label: "RH" },
+  { value: "audit",      label: "Audit" },
+  { value: "financier",  label: "Financier" },
+  { value: "compliance", label: "Conformité" },
+];
+
+const CONFIDENTIALITY = [
+  { value: "public",       label: "Public",       desc: "Visible par toute l'organisation",      icon: Globe },
+  { value: "confidentiel", label: "Confidentiel", desc: "Réservé aux managers et RH",            icon: Lock },
+  { value: "secret",       label: "Hautement sécurisé", desc: "Comité de direction uniquement", icon: ShieldCheck },
+];
+
+const STEPS = [
+  { key: "redaction",  label: "Rédaction",  icon: Pencil },
+  { key: "revision",   label: "Révision",   icon: ClipboardCheck },
+  { key: "validation", label: "Validation", icon: CheckCircle2 },
+];
+
 const STATUS_META: Record<string, { label: string; cls: string; icon: any }> = {
   draft:     { label: "Brouillon", cls: "bg-muted text-muted-foreground", icon: Pencil },
   submitted: { label: "Soumis",    cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400", icon: Clock },
