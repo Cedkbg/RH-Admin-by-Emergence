@@ -17,7 +17,7 @@ const STAFF_ROLES = new Set(["admin", "dg", "dga", "manager", "rh", "secretaire"
 const RESTRICTED_PATHS = new Set([
   "/recrutement", "/taches", "/performance", "/formation", "/paie",
   "/presence", "/documents", "/juridique", "/communication", "/talents",
-  "/bien-etre", "/rapports", "/securite", "/secretariat", "/assistant",
+  "/bien-etre", "/securite", "/secretariat", "/assistant",
   "/manager", "/parametres",
 ]);
 // Modules terrain masqués au cabinet exécutif (DG/DGA/Secrétaire) — préserve l'autonomie des équipes
