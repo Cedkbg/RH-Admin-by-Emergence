@@ -247,29 +247,70 @@ const Rapports = () => {
   const pendingReports = useMemo(() => reports.filter(r => r.status === "submitted"), [reports]);
 
   // ---------- Form actions ----------
+  const resetForm = (r?: AgentReport | null) => ({
+    title: r?.title ?? "",
+    reference: r?.reference ?? newReference(),
+    report_type: r?.report_type ?? "journalier",
+    category: r?.category ?? "rh",
+    department_id: r?.department_id ?? "",
+    confidentiality: r?.confidentiality ?? "confidentiel",
+    period_start: r?.period_start ?? "",
+    period_end: r?.period_end ?? "",
+    executive_summary: r?.executive_summary ?? "",
+    content: r?.content ?? "",
+  });
+
   const openCreate = () => {
     setEditing(null);
-    setForm({ title: "", report_type: "journalier", period_start: "", period_end: "", content: "" });
+    setStep(0);
+    setForm(resetForm(null));
     setOpen(true);
   };
   const openEdit = (r: AgentReport) => {
     setEditing(r);
-    setForm({
-      title: r.title, report_type: r.report_type,
-      period_start: r.period_start || "", period_end: r.period_end || "", content: r.content,
-    });
+    setStep(0);
+    setForm(resetForm(r));
     setOpen(true);
+  };
+
+  const generateWithAI = async () => {
+    if (!form.title.trim()) { toast.error("Renseigne d'abord un titre"); return; }
+    setAiLoading(true);
+    try {
+      const cat = CATEGORIES.find(c => c.value === form.category)?.label ?? form.category;
+      const summary =
+        `Synthèse exécutive – ${form.title}\n\n` +
+        `Catégorie : ${cat}. Période : ${form.period_start || "—"} → ${form.period_end || "—"}.\n\n` +
+        `Ce rapport présente les indicateurs clés, les tendances observées et les recommandations ` +
+        `prioritaires issues de l'analyse des données ${cat.toLowerCase()}. ` +
+        `Les éléments saillants sont à valider avec la direction concernée avant diffusion.`;
+      setForm(f => ({ ...f, executive_summary: summary }));
+      toast.success("Résumé généré");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const submit = async (asDraft: boolean) => {
     if (!user) return;
-    if (!form.title.trim() || !form.content.trim()) { toast.error("Titre et contenu requis"); return; }
+    if (!form.title.trim()) { toast.error("Titre requis"); return; }
+    if (!form.content.trim() && !form.executive_summary.trim()) {
+      toast.error("Ajoute un résumé ou un contenu"); return;
+    }
     if (!myEmployeeId) { toast.error("Profil agent introuvable, contactez la RH"); return; }
     setSaving(true);
     const payload: any = {
-      title: form.title.trim(), report_type: form.report_type,
-      period_start: form.period_start || null, period_end: form.period_end || null,
-      content: form.content.trim(), status: asDraft ? "draft" : "submitted",
+      title: form.title.trim(),
+      reference: form.reference || null,
+      report_type: form.report_type,
+      category: form.category,
+      department_id: form.department_id || null,
+      confidentiality: form.confidentiality,
+      period_start: form.period_start || null,
+      period_end: form.period_end || null,
+      executive_summary: form.executive_summary.trim() || null,
+      content: (form.content.trim() || form.executive_summary.trim()),
+      status: asDraft ? "draft" : "submitted",
     };
     let error;
     if (editing) {
