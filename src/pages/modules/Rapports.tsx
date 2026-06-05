@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, FileText, Plus, Trash2, CheckCircle2, XCircle, Clock, Send, Pencil,
   TrendingUp, AlertTriangle, Target, ClipboardList, Filter, Download, Calendar,
-  Sparkles, Lock, Globe, ShieldCheck, UploadCloud, Info, ClipboardCheck,
+  Lock, Globe, ShieldCheck, UploadCloud, Info, ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,7 +130,6 @@ const Rapports = () => {
     content: "",
   });
   const [saving, setSaving] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
 
   const [reviewing, setReviewing] = useState<AgentReport | null>(null);
   const [reviewComment, setReviewComment] = useState("");
@@ -275,23 +274,6 @@ const Rapports = () => {
     setOpen(true);
   };
 
-  const generateWithAI = async () => {
-    if (!form.title.trim()) { toast.error("Renseigne d'abord un titre"); return; }
-    setAiLoading(true);
-    try {
-      const cat = CATEGORIES.find(c => c.value === form.category)?.label ?? form.category;
-      const summary =
-        `Synthèse exécutive – ${form.title}\n\n` +
-        `Catégorie : ${cat}. Période : ${form.period_start || "—"} → ${form.period_end || "—"}.\n\n` +
-        `Ce rapport présente les indicateurs clés, les tendances observées et les recommandations ` +
-        `prioritaires issues de l'analyse des données ${cat.toLowerCase()}. ` +
-        `Les éléments saillants sont à valider avec la direction concernée avant diffusion.`;
-      setForm(f => ({ ...f, executive_summary: summary }));
-      toast.success("Résumé généré");
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   const submit = async (asDraft: boolean) => {
     if (!user) return;
@@ -763,20 +745,14 @@ const Rapports = () => {
                   </section>
 
                   <section className="rounded-xl border bg-card p-5">
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                      <h3 className="flex items-center gap-2 font-semibold">
-                        <Sparkles className="h-4 w-4 text-blue-600" /> Résumé Exécutif
-                      </h3>
-                      <Button size="sm" onClick={generateWithAI} disabled={aiLoading}>
-                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                        {aiLoading ? "Génération…" : "Générer par IA"}
-                      </Button>
-                    </div>
+                    <h3 className="flex items-center gap-2 font-semibold mb-4">
+                      <ClipboardCheck className="h-4 w-4 text-blue-600" /> Résumé Exécutif
+                    </h3>
                     <Textarea
                       rows={7}
                       value={form.executive_summary}
                       onChange={(e) => setForm({ ...form, executive_summary: e.target.value })}
-                      placeholder="Commencez à rédiger ou laissez l'IA synthétiser vos données…"
+                      placeholder="Rédigez le résumé exécutif de votre rapport…"
                     />
                   </section>
                 </>
