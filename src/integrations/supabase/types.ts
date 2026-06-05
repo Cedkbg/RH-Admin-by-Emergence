@@ -50,6 +50,72 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_reports: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          employee_id: string
+          id: string
+          period_end: string | null
+          period_start: string | null
+          report_type: string
+          review_comment: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          report_type?: string
+          review_comment?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          report_type?: string
+          review_comment?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_reports_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_reports_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcements: {
         Row: {
           author_id: string | null

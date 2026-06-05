@@ -19,11 +19,11 @@ const STAFF_ROLES = new Set(["admin", "dg", "dga", "manager", "rh", "secretaire"
 const OPS_ROLES = new Set(["admin", "dg", "dga", "manager", "rh", "assistant_direction"]);
 const FIELD_ONLY_PATHS = new Set(["/taches", "/presence", "/communication", "/bien-etre"]);
 const EXECUTIVE_ROLES = new Set(["dg", "dga", "secretaire"]);
-const AGENT_ALLOWED_PATHS = new Set(["/", "/presence", "/bien-etre", "/communication", "/taches"]);
+const AGENT_ALLOWED_PATHS = new Set(["/", "/presence", "/bien-etre", "/communication", "/taches", "/rapports"]);
 const RESTRICTED_PATHS = new Set([
   "/recrutement", "/taches", "/performance", "/formation", "/paie",
   "/presence", "/documents", "/juridique", "/communication", "/talents",
-  "/bien-etre", "/rapports", "/securite", "/secretariat", "/assistant",
+  "/bien-etre", "/securite", "/secretariat", "/assistant",
   "/manager", "/parametres",
 ]);
 
