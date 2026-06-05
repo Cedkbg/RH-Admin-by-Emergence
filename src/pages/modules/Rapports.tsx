@@ -154,6 +154,7 @@ const Rapports = () => {
 
     const list = ((repRes as any).data || []) as AgentReport[];
     const empIds = Array.from(new Set(list.map(r => r.employee_id)));
+    const depMap = new Map(((depRes.data as any) || []).map((d: any) => [d.id, d.name]));
     if (empIds.length) {
       const { data: emps } = await supabase
         .from("employees").select("id,first_name,last_name,direction_id").in("id", empIds);
@@ -164,6 +165,7 @@ const Rapports = () => {
         r.employee_name = e ? `${e.first_name} ${e.last_name}` : "—";
         r.direction_id = e?.direction_id ?? null;
         r.direction_name = e?.direction_id ? (dirMap.get(e.direction_id) as string) : "—";
+        r.department_name = r.department_id ? (depMap.get(r.department_id) as string) : "—";
       });
     }
     setReports(list);
