@@ -378,7 +378,7 @@ const Rapports = () => {
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {isStaff && <span className="font-medium text-foreground">{r.employee_name}</span>}
-              {isStaff && r.direction_name && ` · ${r.direction_name}`}
+              {isStaff && r.department_name && r.department_name !== "—" && ` · ${r.department_name}`}
               {" · "}{new Date(r.created_at).toLocaleDateString("fr-FR")}
               {r.period_start && ` · du ${new Date(r.period_start).toLocaleDateString("fr-FR")}`}
               {r.period_end && ` au ${new Date(r.period_end).toLocaleDateString("fr-FR")}`}
