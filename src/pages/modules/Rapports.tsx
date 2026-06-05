@@ -94,6 +94,7 @@ interface AgentReport {
   employee_name?: string;
   direction_id?: string | null;
   direction_name?: string;
+  department_name?: string;
 }
 
 const MONTHS_FR = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
