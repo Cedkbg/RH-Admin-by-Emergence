@@ -433,9 +433,18 @@ const Rapports = () => {
               <SelectItem value="12m">12 derniers mois</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="default">
-            <Filter className="mr-2 h-4 w-4" /> Filtrer
-          </Button>
+          <Select value={filterDept || "all"} onValueChange={(v) => setFilterDept(v === "all" ? "" : v)}>
+            <SelectTrigger className="w-[200px]">
+              <Filter className="mr-2 h-4 w-4 shrink-0" />
+              <SelectValue placeholder="Filtrer par département" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les départements</SelectItem>
+              {departments.map((d) => (
+                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" /> Nouveau rapport
           </Button>
