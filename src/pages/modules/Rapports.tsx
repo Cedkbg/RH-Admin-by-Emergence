@@ -138,8 +138,9 @@ const Rapports = () => {
   const [tab, setTab] = useState<string>(isStaff ? "overview" : "mine");
 
   const loadAll = async () => {
-    const [dirRes, repRes, empMineRes] = await Promise.all([
+    const [dirRes, depRes, repRes, empMineRes] = await Promise.all([
       supabase.from("directions").select("id,name"),
+      supabase.from("departments").select("id,name").order("name"),
       (supabase as any).from("agent_reports").select("*").order("created_at", { ascending: false }).limit(500),
       user?.email
         ? supabase.from("employees").select("id,direction_id").ilike("email", user.email).maybeSingle()
@@ -147,6 +148,7 @@ const Rapports = () => {
     ]);
 
     setDirections((dirRes.data as any) || []);
+    setDepartments((depRes.data as any) || []);
     setMyEmployeeId((empMineRes as any).data?.id ?? null);
 
     const list = ((repRes as any).data || []) as AgentReport[];
