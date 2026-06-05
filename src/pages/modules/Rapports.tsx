@@ -86,12 +86,20 @@ interface AgentReport {
   reviewed_by: string | null;
   reviewed_at: string | null;
   created_at: string;
+  reference?: string | null;
+  category?: string | null;
+  confidentiality?: string | null;
+  department_id?: string | null;
+  executive_summary?: string | null;
   employee_name?: string;
   direction_id?: string | null;
   direction_name?: string;
 }
 
 const MONTHS_FR = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+
+const newReference = () =>
+  `RPT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 900) + 100)}`;
 
 const Rapports = () => {
   const navigate = useNavigate();
@@ -101,16 +109,28 @@ const Rapports = () => {
 
   const [reports, setReports] = useState<AgentReport[]>([]);
   const [directions, setDirections] = useState<Array<{ id: string; name: string }>>([]);
+  const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
   const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<string>("6m");
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AgentReport | null>(null);
+  const [step, setStep] = useState<number>(0);
   const [form, setForm] = useState({
-    title: "", report_type: "journalier", period_start: "", period_end: "", content: "",
+    title: "",
+    reference: "",
+    report_type: "journalier",
+    category: "rh",
+    department_id: "",
+    confidentiality: "confidentiel",
+    period_start: "",
+    period_end: "",
+    executive_summary: "",
+    content: "",
   });
   const [saving, setSaving] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const [reviewing, setReviewing] = useState<AgentReport | null>(null);
   const [reviewComment, setReviewComment] = useState("");
