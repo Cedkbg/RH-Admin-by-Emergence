@@ -176,20 +176,25 @@ const Rapports = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email]);
 
+  const visibleReports = useMemo(
+    () => (filterDept ? reports.filter((r) => r.department_id === filterDept) : reports),
+    [reports, filterDept]
+  );
+
   // ---------- KPIs ----------
   const kpis = useMemo(() => {
-    const total = reports.length;
-    const pending = reports.filter(r => r.status === "submitted").length;
-    const approved = reports.filter(r => r.status === "approved").length;
+    const total = visibleReports.length;
+    const pending = visibleReports.filter(r => r.status === "submitted").length;
+    const approved = visibleReports.filter(r => r.status === "approved").length;
     const now = Date.now();
-    const late = reports.filter(r => {
+    const late = visibleReports.filter(r => {
       if (r.status !== "submitted") return false;
       const days = (now - new Date(r.created_at).getTime()) / 86400000;
       return days > 7;
     }).length;
     const rate = total ? Math.round((approved / total) * 100) : 0;
     return { total, pending, late, rate };
-  }, [reports]);
+  }, [visibleReports]);
 
   // ---------- Monthly trend ----------
   const monthly = useMemo(() => {
@@ -205,7 +210,7 @@ const Rapports = () => {
       });
     }
     const idx = new Map(buckets.map((b, i) => [b.key, i]));
-    reports.forEach(r => {
+    visibleReports.forEach(r => {
       const d = new Date(r.created_at);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       const i = idx.get(key);
@@ -214,42 +219,42 @@ const Rapports = () => {
       if (r.status === "approved") buckets[i].valides++;
     });
     return buckets;
-  }, [reports, period]);
+  }, [visibleReports, period]);
 
-  // ---------- By direction ----------
-  const byDirection = useMemo(() => {
+  // ---------- By department ----------
+  const byDepartment = useMemo(() => {
     const counts = new Map<string, number>();
-    reports.forEach(r => {
-      const name = r.direction_name || "Non assigné";
+    visibleReports.forEach(r => {
+      const name = r.department_name || "Non assigné";
       counts.set(name, (counts.get(name) || 0) + 1);
     });
     const arr = Array.from(counts.entries()).map(([name, count]) => ({ name, count }));
     arr.sort((a, b) => b.count - a.count);
     const max = Math.max(...arr.map(a => a.count), 1);
     return arr.slice(0, 6).map(x => ({ ...x, pct: Math.round((x.count / max) * 100) }));
-  }, [reports]);
+  }, [visibleReports]);
 
   // ---------- Recommendations (incident + rejected reports = action items) ----------
   const recommendations = useMemo(() => {
-    return reports
+    return visibleReports
       .filter(r => r.report_type === "incident" || r.status === "rejected" || r.status === "submitted")
       .slice(0, 8)
       .map(r => ({
         id: r.id,
         action: r.title,
         source: r.report_type === "incident" ? "Incident terrain" : r.status === "rejected" ? "À retravailler" : "À examiner",
-        direction: r.direction_name || "—",
+        direction: r.department_name || r.direction_name || "—",
         echeance: r.period_end || r.created_at,
         priorite: r.report_type === "incident" ? "haute" : r.status === "rejected" ? "moyenne" : "basse",
         status: r.status,
       }));
-  }, [reports]);
+  }, [visibleReports]);
 
   const myReports = useMemo(
-    () => reports.filter(r => myEmployeeId && r.employee_id === myEmployeeId),
-    [reports, myEmployeeId]
+    () => visibleReports.filter(r => myEmployeeId && r.employee_id === myEmployeeId),
+    [visibleReports, myEmployeeId]
   );
-  const pendingReports = useMemo(() => reports.filter(r => r.status === "submitted"), [reports]);
+  const pendingReports = useMemo(() => visibleReports.filter(r => r.status === "submitted"), [visibleReports]);
 
   // ---------- Form actions ----------
   const resetForm = (r?: AgentReport | null) => ({
