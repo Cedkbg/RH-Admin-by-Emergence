@@ -517,11 +517,11 @@ const Rapports = () => {
           </div>
 
           <div className="rounded-xl border bg-card p-5 shadow-sm">
-            <h3 className="font-semibold mb-4">Rapports par direction</h3>
+            <h3 className="font-semibold mb-4">Rapports par département</h3>
             <div className="space-y-4">
-              {byDirection.length === 0 ? (
+              {byDepartment.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Aucune donnée.</p>
-              ) : byDirection.map((d, i) => {
+              ) : byDepartment.map((d, i) => {
                 const colors = ["bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-pink-500", "bg-cyan-500"];
                 return (
                   <div key={d.name}>
@@ -536,7 +536,7 @@ const Rapports = () => {
                 );
               })}
             </div>
-            {byDirection.length > 0 && (
+            {byDepartment.length > 0 && (
               <Button variant="link" className="px-0 mt-3" onClick={() => setTab("all")}>
                 Voir les détails complets →
               </Button>
