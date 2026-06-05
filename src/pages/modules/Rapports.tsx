@@ -638,58 +638,270 @@ const Rapports = () => {
         </Tabs>
       </div>
 
-      {/* Dialog création / édition */}
+      {/* Dialog création / édition — Création de Rapport décisionnel */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Modifier le rapport" : "Nouveau rapport"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Label>Titre *</Label>
-                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="Ex : Rapport hebdomadaire — semaine 23" />
-              </div>
+        <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto p-0">
+          {/* Top header */}
+          <div className="border-b px-6 pt-6 pb-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <Label>Type *</Label>
-                <Select value={form.report_type} onValueChange={(v) => setForm({ ...form, report_type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {REPORT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Reporting Center · {editing ? "Édition" : "Nouveau Rapport Stratégique"}
+                </p>
+                <DialogTitle className="text-2xl mt-1">
+                  {editing ? "Modifier le Rapport" : "Création de Rapport"}
+                </DialogTitle>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label>Du</Label>
-                  <Input type="date" value={form.period_start}
-                    onChange={(e) => setForm({ ...form, period_start: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Au</Label>
-                  <Input type="date" value={form.period_end}
-                    onChange={(e) => setForm({ ...form, period_end: e.target.value })} />
-                </div>
-              </div>
-              <div className="sm:col-span-2">
-                <Label>Contenu *</Label>
-                <Textarea rows={8} value={form.content}
-                  onChange={(e) => setForm({ ...form, content: e.target.value })}
-                  placeholder="Activités réalisées, résultats, difficultés, prochaines étapes…" />
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => submit(true)} disabled={saving}>
+                  Brouillon
+                </Button>
+                <Button onClick={() => submit(false)} disabled={saving}>
+                  <Send className="mr-2 h-4 w-4" /> Soumettre
+                </Button>
               </div>
             </div>
+
+            {/* Stepper */}
+            <div className="mt-6 flex items-center gap-2">
+              {STEPS.map((s, i) => {
+                const Icon = s.icon;
+                const active = i === step;
+                const done = i < step;
+                return (
+                  <div key={s.key} className="flex items-center flex-1 last:flex-none">
+                    <button
+                      type="button"
+                      onClick={() => setStep(i)}
+                      className="flex flex-col items-center gap-1.5 shrink-0"
+                    >
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-colors ${
+                        active ? "border-primary bg-primary text-primary-foreground"
+                        : done ? "border-emerald-500 bg-emerald-500 text-white"
+                        : "border-muted bg-muted text-muted-foreground"
+                      }`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <span className={`text-xs font-medium ${active ? "text-foreground" : "text-muted-foreground"}`}>
+                        {s.label}
+                      </span>
+                    </button>
+                    {i < STEPS.length - 1 && (
+                      <div className={`h-0.5 flex-1 mx-2 ${i < step ? "bg-emerald-500" : "bg-muted"}`} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => submit(true)} disabled={saving}>
-              Enregistrer brouillon
-            </Button>
-            <Button onClick={() => submit(false)} disabled={saving}>
-              <Send className="mr-2 h-4 w-4" /> Soumettre
-            </Button>
-          </DialogFooter>
+
+          {/* Body */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 p-6">
+            {/* Left col – main form */}
+            <div className="lg:col-span-2 space-y-5">
+              {step === 0 && (
+                <>
+                  <section className="rounded-xl border bg-card p-5">
+                    <h3 className="flex items-center gap-2 font-semibold mb-4">
+                      <Info className="h-4 w-4 text-blue-600" /> Informations Générales
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Titre du rapport</Label>
+                        <Input
+                          className="mt-1.5"
+                          value={form.title}
+                          onChange={(e) => setForm({ ...form, title: e.target.value })}
+                          placeholder="ex: Analyse du Turnover Q2 2026"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Référence</Label>
+                          <Input
+                            className="mt-1.5"
+                            value={form.reference}
+                            onChange={(e) => setForm({ ...form, reference: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Département</Label>
+                          <Select
+                            value={form.department_id || "none"}
+                            onValueChange={(v) => setForm({ ...form, department_id: v === "none" ? "" : v })}
+                          >
+                            <SelectTrigger className="mt-1.5"><SelectValue placeholder="Sélectionner…" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">— Aucun —</SelectItem>
+                              {departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Type</Label>
+                          <Select value={form.report_type} onValueChange={(v) => setForm({ ...form, report_type: v })}>
+                            <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {REPORT_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Du</Label>
+                          <Input type="date" className="mt-1.5" value={form.period_start}
+                            onChange={(e) => setForm({ ...form, period_start: e.target.value })} />
+                        </div>
+                        <div>
+                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Au</Label>
+                          <Input type="date" className="mt-1.5" value={form.period_end}
+                            onChange={(e) => setForm({ ...form, period_end: e.target.value })} />
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="rounded-xl border bg-card p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                      <h3 className="flex items-center gap-2 font-semibold">
+                        <Sparkles className="h-4 w-4 text-blue-600" /> Résumé Exécutif
+                      </h3>
+                      <Button size="sm" onClick={generateWithAI} disabled={aiLoading}>
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                        {aiLoading ? "Génération…" : "Générer par IA"}
+                      </Button>
+                    </div>
+                    <Textarea
+                      rows={7}
+                      value={form.executive_summary}
+                      onChange={(e) => setForm({ ...form, executive_summary: e.target.value })}
+                      placeholder="Commencez à rédiger ou laissez l'IA synthétiser vos données…"
+                    />
+                  </section>
+                </>
+              )}
+
+              {step === 1 && (
+                <section className="rounded-xl border bg-card p-5">
+                  <h3 className="flex items-center gap-2 font-semibold mb-4">
+                    <ClipboardCheck className="h-4 w-4 text-blue-600" /> Contenu détaillé
+                  </h3>
+                  <Textarea
+                    rows={14}
+                    value={form.content}
+                    onChange={(e) => setForm({ ...form, content: e.target.value })}
+                    placeholder="Analyse détaillée, données, méthodologie, conclusions, recommandations…"
+                  />
+                </section>
+              )}
+
+              {step === 2 && (
+                <section className="rounded-xl border bg-card p-5 space-y-3">
+                  <h3 className="flex items-center gap-2 font-semibold mb-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Récapitulatif
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div><span className="text-muted-foreground">Titre :</span> <span className="font-medium">{form.title || "—"}</span></div>
+                    <div><span className="text-muted-foreground">Référence :</span> <span className="font-medium">{form.reference}</span></div>
+                    <div><span className="text-muted-foreground">Catégorie :</span> <span className="font-medium">{CATEGORIES.find(c => c.value === form.category)?.label}</span></div>
+                    <div><span className="text-muted-foreground">Confidentialité :</span> <span className="font-medium">{CONFIDENTIALITY.find(c => c.value === form.confidentiality)?.label}</span></div>
+                  </div>
+                  <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap max-h-48 overflow-auto">
+                    {form.executive_summary || form.content || "Aucun contenu rédigé."}
+                  </div>
+                </section>
+              )}
+
+              {/* Stepper nav */}
+              <div className="flex items-center justify-between">
+                <Button variant="outline" disabled={step === 0} onClick={() => setStep(s => Math.max(0, s - 1))}>
+                  Précédent
+                </Button>
+                {step < STEPS.length - 1 ? (
+                  <Button onClick={() => setStep(s => Math.min(STEPS.length - 1, s + 1))}>
+                    Suivant
+                  </Button>
+                ) : (
+                  <Button onClick={() => submit(false)} disabled={saving}>
+                    <Send className="mr-2 h-4 w-4" /> Soumettre
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Right col – settings */}
+            <aside className="space-y-5">
+              <section className="rounded-xl border bg-card p-5">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-3">Paramètres de diffusion</p>
+                <Label className="text-xs font-medium">Catégorie du rapport</Label>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {CATEGORIES.map(c => {
+                    const active = form.category === c.value;
+                    return (
+                      <button
+                        key={c.value}
+                        type="button"
+                        onClick={() => setForm({ ...form, category: c.value })}
+                        className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card hover:bg-muted/50"
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <Label className="mt-5 block text-xs font-medium">Niveau de confidentialité</Label>
+                <div className="mt-2 space-y-2">
+                  {CONFIDENTIALITY.map(c => {
+                    const Icon = c.icon;
+                    const active = form.confidentiality === c.value;
+                    return (
+                      <button
+                        key={c.value}
+                        type="button"
+                        onClick={() => setForm({ ...form, confidentiality: c.value })}
+                        className={`w-full flex items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
+                          active ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
+                        }`}
+                      >
+                        <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+                          active ? "border-primary" : "border-muted-foreground/40"
+                        }`}>
+                          {active && <div className="h-2 w-2 rounded-full bg-primary" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 text-sm font-medium">
+                            <Icon className="h-3.5 w-3.5" /> {c.label}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{c.desc}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="rounded-xl border bg-card p-5">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground mb-3">
+                  Pièces jointes & données
+                </p>
+                <label className="block cursor-pointer rounded-lg border-2 border-dashed border-border bg-muted/20 p-6 text-center hover:bg-muted/40 transition-colors">
+                  <UploadCloud className="mx-auto h-8 w-8 text-muted-foreground" />
+                  <p className="mt-2 text-sm font-medium">Glisser-déposer des fichiers</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">PDF, Excel, CSV (max 10 Mo)</p>
+                  <input type="file" multiple className="hidden" onChange={() => toast.info("Upload à venir")} />
+                </label>
+              </section>
+            </aside>
+          </div>
         </DialogContent>
       </Dialog>
+
 
       {/* Dialog examen */}
       <Dialog open={!!reviewing} onOpenChange={(o) => !o && setReviewing(null)}>
