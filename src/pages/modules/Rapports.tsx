@@ -114,6 +114,7 @@ const Rapports = () => {
   const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<string>("6m");
+  const [filterDept, setFilterDept] = useState<string>("");
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AgentReport | null>(null);
