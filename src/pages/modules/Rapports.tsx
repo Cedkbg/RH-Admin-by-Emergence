@@ -130,7 +130,6 @@ const Rapports = () => {
     content: "",
   });
   const [saving, setSaving] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
 
   const [reviewing, setReviewing] = useState<AgentReport | null>(null);
   const [reviewComment, setReviewComment] = useState("");
