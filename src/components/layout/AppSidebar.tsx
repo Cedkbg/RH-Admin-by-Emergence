@@ -24,7 +24,7 @@ const RESTRICTED_PATHS = new Set([
 const FIELD_ONLY_PATHS = new Set(["/taches", "/presence", "/communication", "/bien-etre"]);
 const EXECUTIVE_ROLES = new Set(["dg", "dga", "secretaire"]);
 // Pour un agent (employee) sans rôle staff : ne voir que son tableau de bord et la présence
-const AGENT_ALLOWED_PATHS = new Set(["/", "/presence", "/bien-etre", "/communication", "/taches"]);
+const AGENT_ALLOWED_PATHS = new Set(["/", "/presence", "/bien-etre", "/communication", "/taches", "/rapports"]);
 
 export function AppSidebar() {
   const location = useLocation();
