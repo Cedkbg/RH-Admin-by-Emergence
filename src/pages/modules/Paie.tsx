@@ -379,37 +379,19 @@ const PaieForm = ({
           Recalculer
         </Button>
       </div>
-      <div className="md:col-span-2 rounded-md border bg-secondary/20 p-2 text-[11px] text-muted-foreground">
-        Régime de travail : <strong>{STD_HOURS_PER_DAY} h/jour × {STD_DAYS_PER_WEEK} jours/semaine</strong> ({STD_MONTHLY_HOURS.toFixed(2)} h/mois théoriques).
-        Heures sup. au-delà de 8 h/jour ouvré ; jours sup. = jours travaillés samedi/dimanche.
-      </div>
-      <TextField label="Jours prestés (auto)" value={String(form.days_worked ?? 0)} onChange={() => {}} type="number" disabled hint="Depuis le pointage" />
-      <TextField label="Heures travaillées (auto)" value={String(form.hours_worked ?? 0)} onChange={() => {}} type="number" disabled hint="Depuis le pointage" />
-      <TextField label="Heures normales" value={String(form.regular_hours ?? Math.max(0, num(form.hours_worked) - num(form.overtime_hours)))} onChange={() => {}} type="number" disabled hint="Heures hors supplémentaires" />
-      <TextField label="Heures supplémentaires" value={String(form.overtime_hours ?? 0)} onChange={(v) => setForm({ ...form, overtime_hours: Number(v) })} type="number" hint={`Majorées à ${(OVERTIME_HOUR_RATE * 100).toFixed(0)}%`} />
-      <TextField label="Jours supplémentaires (WE)" value={String(form.overtime_days ?? 0)} onChange={(v) => setForm({ ...form, overtime_days: Number(v) })} type="number" hint={`Majorés à ${(OVERTIME_DAY_RATE * 100).toFixed(0)}%`} />
-      <div className="md:col-span-2 rounded-md border-l-4 border-l-primary bg-primary/5 p-3 text-xs space-y-1">
-        <p className="font-semibold text-primary">Mode de rémunération — quel taux choisir ?</p>
-        <p><strong>Taux horaire :</strong> à utiliser quand l'agent est payé à l'heure (consultant, stagiaire, prestataire). Le système calcule : <em>heures travaillées × taux horaire</em>.</p>
-        <p><strong>Taux journalier :</strong> à utiliser quand l'agent est payé à la journée (journalier, intérimaire, CDD court). Le système calcule : <em>jours prestés × taux journalier</em>.</p>
-        <p className="text-muted-foreground italic">Ne remplissez qu'un seul des deux taux selon le contrat. Le salaire de base se calcule automatiquement.</p>
-      </div>
+      <TextField label="Jours prestés (auto)" value={String(form.days_worked ?? 0)} onChange={() => {}} type="number" disabled />
+      <TextField label="Heures travaillées (auto)" value={String(form.hours_worked ?? 0)} onChange={() => {}} type="number" disabled />
+      <TextField label="Heures normales" value={String(form.regular_hours ?? Math.max(0, num(form.hours_worked) - num(form.overtime_hours)))} onChange={() => {}} type="number" disabled />
+      <TextField label="Heures supplémentaires" value={String(form.overtime_hours ?? 0)} onChange={(v) => setForm({ ...form, overtime_hours: Number(v) })} type="number" />
+      <TextField label="Jours supplémentaires (WE)" value={String(form.overtime_days ?? 0)} onChange={(v) => setForm({ ...form, overtime_days: Number(v) })} type="number" />
       <TextField
-        label="Taux horaire — consultant / prestation (USD/h)"
+        label="Taux horaire (USD/h)"
         value={String(form.hourly_rate ?? 0)}
         onChange={(v) => setForm({ ...form, hourly_rate: Number(v) })}
         type="number"
-        hint="Rémunération pour chaque heure travaillée"
       />
-      <TextField
-        label="Taux journalier — journalier / CDD (USD/j)"
-        value={String(form.daily_rate ?? 0)}
-        onChange={(v) => setForm({ ...form, daily_rate: Number(v) })}
-        type="number"
-        hint="Rémunération pour chaque jour travaillé"
-      />
-      <TextField label="Salaire de base mensuel (auto)" value={String(form.base_salary ?? 0)} onChange={() => {}} type="number" span={2} disabled hint="Calculé : heures × taux horaire OU jours × taux journalier" />
-      <TextField label="Assiette imposable (auto)" value={String(form.assiette_ipr ?? 0)} onChange={() => {}} type="number" span={2} disabled hint="Brut + primes + heures sup." />
+      <TextField label="Salaire de base mensuel (auto)" value={String(form.base_salary ?? 0)} onChange={() => {}} type="number" span={2} disabled />
+      <TextField label="Assiette imposable (auto)" value={String(form.assiette_ipr ?? 0)} onChange={() => {}} type="number" span={2} disabled />
 
       {/* === MULTI-PRIMES === */}
       <div className="md:col-span-2 mt-1 flex items-center justify-between">
@@ -453,12 +435,12 @@ const PaieForm = ({
       </div>
 
       {/* === RETENUES (auto) === */}
-      <div className="md:col-span-2 mt-1 text-xs font-semibold uppercase text-muted-foreground">Retenues (calcul auto sur base du brut)</div>
-      <TextField label="CNSS Ouvrier 5% (auto)" value={String(form.cnss ?? 0)} onChange={() => {}} type="number" disabled hint="5% du brut" />
-      <TextField label="CNSS Patronal 13% (auto)" value={String(form.cnss_patronal ?? 0)} onChange={() => {}} type="number" disabled hint="13% du brut" />
-      <TextField label="IPR (auto, barème RDC)" value={String(form.ipr ?? 0)} onChange={() => {}} type="number" disabled hint="Calculé sur l'assiette imposable" />
-      <TextField label="INPP 3% (auto)" value={String(form.inpp ?? 0)} onChange={() => {}} type="number" disabled hint="3% du brut" />
-      <TextField label="ONEM 0.2% (auto)" value={String(form.onem ?? 0)} onChange={() => {}} type="number" disabled hint="0.2% du brut" />
+      <div className="md:col-span-2 mt-1 text-xs font-semibold uppercase text-muted-foreground">Retenues</div>
+      <TextField label="CNSS Ouvrier 5%" value={String(form.cnss ?? 0)} onChange={() => {}} type="number" disabled />
+      <TextField label="CNSS Patronal 13%" value={String(form.cnss_patronal ?? 0)} onChange={() => {}} type="number" disabled />
+      <TextField label="IPR" value={String(form.ipr ?? 0)} onChange={() => {}} type="number" disabled />
+      <TextField label="INPP 3%" value={String(form.inpp ?? 0)} onChange={() => {}} type="number" disabled />
+      <TextField label="ONEM 0.2%" value={String(form.onem ?? 0)} onChange={() => {}} type="number" disabled />
       <TextField label="Avance / Acompte" value={String(form.advance ?? 0)} onChange={(v) => setForm({ ...form, advance: Number(v) })} type="number" />
       <TextField label="Autres retenues" value={String(form.other_deductions ?? 0)} onChange={(v) => setForm({ ...form, other_deductions: Number(v) })} type="number" span={2} />
 
@@ -468,7 +450,7 @@ const PaieForm = ({
       <TextField label="Communication" value={String(form.communication ?? 0)} onChange={(v) => setForm({ ...form, communication: Number(v) })} type="number" />
       <TextField label="Loyer" value={String(form.loyer ?? 0)} onChange={(v) => setForm({ ...form, loyer: Number(v) })} type="number" />
       <TextField label="Nombre d'enfants" value={String(form.children_count ?? 0)} onChange={(v) => setForm({ ...form, children_count: Number(v) })} type="number" />
-      <TextField label="Allocation familiale (auto)" value={String(form.allocation_familiale ?? 0)} onChange={() => {}} type="number" span={2} disabled hint={`${allocFamPerChild} USD × nombre d'enfants`} />
+      <TextField label="Allocation familiale" value={String(form.allocation_familiale ?? 0)} onChange={() => {}} type="number" span={2} disabled />
 
       {/* === RÉCAP === */}
       <div className="md:col-span-2 rounded-lg border-2 border-primary/40 bg-primary/5 p-3 text-sm space-y-1">
@@ -529,8 +511,7 @@ Contrat : ${esc(pay.contract_type || "—")}
 <table>
 <tr><td>Jours prestés</td><td class="r">${fmt(pay.days_worked)}</td></tr>
 <tr><td>Heures travaillées</td><td class="r">${fmt(pay.hours_worked)} h</td></tr>
-<tr><td>Taux horaire</td><td class="r">${fmt(pay.hourly_rate)} USD</td></tr>
-<tr><td>Taux journalier</td><td class="r">${fmt(pay.daily_rate)} USD</td></tr>
+      <tr><td>Taux horaire</td><td class="r">${fmt(pay.hourly_rate)} USD</td></tr>
 <tr class="tot"><td>Salaire brut</td><td class="r">${fmt(pay.base_salary)}</td></tr>
 <tr><td>Assiette imposable</td><td class="r">${fmt(pay.assiette_ipr)}</td></tr>
 </table>
