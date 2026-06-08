@@ -511,8 +511,7 @@ Contrat : ${esc(pay.contract_type || "—")}
 <table>
 <tr><td>Jours prestés</td><td class="r">${fmt(pay.days_worked)}</td></tr>
 <tr><td>Heures travaillées</td><td class="r">${fmt(pay.hours_worked)} h</td></tr>
-<tr><td>Taux horaire</td><td class="r">${fmt(pay.hourly_rate)} USD</td></tr>
-<tr><td>Taux journalier</td><td class="r">${fmt(pay.daily_rate)} USD</td></tr>
+      <tr><td>Taux horaire</td><td class="r">${fmt(pay.hourly_rate)} USD</td></tr>
 <tr class="tot"><td>Salaire brut</td><td class="r">${fmt(pay.base_salary)}</td></tr>
 <tr><td>Assiette imposable</td><td class="r">${fmt(pay.assiette_ipr)}</td></tr>
 </table>
