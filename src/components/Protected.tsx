@@ -46,7 +46,7 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
       }
       return <Navigate to="/agent/login" replace state={{ from: location }} />;
     }
-    if (adminOnly && rolesLoading) {
+    if (rolesLoading) {
       return (
         <div className="flex h-screen items-center justify-center text-muted-foreground">
           Vérification des accès…
@@ -58,7 +58,7 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
   }
 
   // Si loading auth ou onboarding en cours
-  if (loading || (session && onboardingLoading) || (!session && !companyChecked)) {
+  if (loading || (session && (onboardingLoading || rolesLoading)) || (!session && !companyChecked)) {
     return (
       <div className="flex h-screen items-center justify-center text-muted-foreground">
         Chargement...
