@@ -173,7 +173,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error) markInteractiveAuthSession(data.user?.id);
     if (error) setLoading(false);
     return { error: error?.message ?? null };
   };
@@ -188,11 +189,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
+    clearInteractiveAuthSession();
     const { error } = await supabase.auth.signOut();
     if (error) await supabase.auth.signOut({ scope: "local" }).catch(() => {});
-    setSession(null); setUser(null); setRoles([]); setRolesLoading(false);
-    setIsAdmin(false); setIsSecretary(false); setApprovalStatus(null);
-    setLoading(false);
+    clearAuthState();
   };
 
   return (
