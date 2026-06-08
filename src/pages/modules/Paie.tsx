@@ -388,9 +388,27 @@ const PaieForm = ({
       <TextField label="Heures normales" value={String(form.regular_hours ?? Math.max(0, num(form.hours_worked) - num(form.overtime_hours)))} onChange={() => {}} type="number" disabled hint="Heures hors supplémentaires" />
       <TextField label="Heures supplémentaires" value={String(form.overtime_hours ?? 0)} onChange={(v) => setForm({ ...form, overtime_hours: Number(v) })} type="number" hint={`Majorées à ${(OVERTIME_HOUR_RATE * 100).toFixed(0)}%`} />
       <TextField label="Jours supplémentaires (WE)" value={String(form.overtime_days ?? 0)} onChange={(v) => setForm({ ...form, overtime_days: Number(v) })} type="number" hint={`Majorés à ${(OVERTIME_DAY_RATE * 100).toFixed(0)}%`} />
-      <TextField label="Taux horaire (USD/h)" value={String(form.hourly_rate ?? 0)} onChange={(v) => setForm({ ...form, hourly_rate: Number(v) })} type="number" />
-      <TextField label="Taux journalier (USD/j)" value={String(form.daily_rate ?? 0)} onChange={(v) => setForm({ ...form, daily_rate: Number(v) })} type="number" />
-      <TextField label="Salaire de base mensuel (auto)" value={String(form.base_salary ?? 0)} onChange={() => {}} type="number" span={2} disabled hint="Calculé : heures × taux OU jours × taux journalier" />
+      <div className="md:col-span-2 rounded-md border-l-4 border-l-primary bg-primary/5 p-3 text-xs space-y-1">
+        <p className="font-semibold text-primary">Mode de rémunération — quel taux choisir ?</p>
+        <p><strong>Taux horaire :</strong> à utiliser quand l'agent est payé à l'heure (consultant, stagiaire, prestataire). Le système calcule : <em>heures travaillées × taux horaire</em>.</p>
+        <p><strong>Taux journalier :</strong> à utiliser quand l'agent est payé à la journée (journalier, intérimaire, CDD court). Le système calcule : <em>jours prestés × taux journalier</em>.</p>
+        <p className="text-muted-foreground italic">Ne remplissez qu'un seul des deux taux selon le contrat. Le salaire de base se calcule automatiquement.</p>
+      </div>
+      <TextField
+        label="Taux horaire — consultant / prestation (USD/h)"
+        value={String(form.hourly_rate ?? 0)}
+        onChange={(v) => setForm({ ...form, hourly_rate: Number(v) })}
+        type="number"
+        hint="Rémunération pour chaque heure travaillée"
+      />
+      <TextField
+        label="Taux journalier — journalier / CDD (USD/j)"
+        value={String(form.daily_rate ?? 0)}
+        onChange={(v) => setForm({ ...form, daily_rate: Number(v) })}
+        type="number"
+        hint="Rémunération pour chaque jour travaillé"
+      />
+      <TextField label="Salaire de base mensuel (auto)" value={String(form.base_salary ?? 0)} onChange={() => {}} type="number" span={2} disabled hint="Calculé : heures × taux horaire OU jours × taux journalier" />
       <TextField label="Assiette imposable (auto)" value={String(form.assiette_ipr ?? 0)} onChange={() => {}} type="number" span={2} disabled hint="Brut + primes + heures sup." />
 
       {/* === MULTI-PRIMES === */}
