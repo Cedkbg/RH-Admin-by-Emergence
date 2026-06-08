@@ -62,6 +62,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [approvalStatus, setApprovalStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(true);
+  const sessionRestoredRef = useRef(false);
 
   const refreshUserData = async (uid: string | undefined) => {
     if (!uid) {
@@ -137,12 +138,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const restoreSession = async () => {
       const result = await withTimeout(supabase.auth.getSession(), 2500);
       if (!mountedRef.current) return;
+      sessionRestoredRef.current = true;
       applySession(result?.data?.session ?? initial ?? null);
     };
     restoreSession();
 
     // Listener : ne JAMAIS await ici (deadlock Supabase)
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!sessionRestoredRef.current && !newSession && initial?.user?.id) return;
       applySession(newSession);
     });
 
