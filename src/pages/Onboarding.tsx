@@ -88,7 +88,7 @@ export default function Onboarding() {
       return;
     }
 
-    markInteractiveAuthAttempt();
+    markInteractiveAuthAttempt(admin.email.trim());
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: admin.email.trim(),
       password: admin.password,

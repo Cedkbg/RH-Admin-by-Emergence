@@ -6,6 +6,11 @@ type InteractiveAuthSession = {
   createdAt: number;
 };
 
+type InteractiveAuthAttempt = {
+  email: string | null;
+  createdAt: number;
+};
+
 const getStorage = () => {
   if (typeof window === "undefined") return null;
   return window.localStorage;
@@ -16,19 +21,24 @@ const getAttemptStorage = () => {
   return window.sessionStorage;
 };
 
-export const markInteractiveAuthAttempt = () => {
+export const markInteractiveAuthAttempt = (email?: string | null) => {
   try {
-    getAttemptStorage()?.setItem(INTERACTIVE_AUTH_ATTEMPT_KEY, String(Date.now()));
+    getAttemptStorage()?.setItem(
+      INTERACTIVE_AUTH_ATTEMPT_KEY,
+      JSON.stringify({ email: email?.trim().toLowerCase() || null, createdAt: Date.now() } satisfies InteractiveAuthAttempt),
+    );
   } catch {
     // noop
   }
 };
 
-export const hasRecentInteractiveAuthAttempt = () => {
+export const hasRecentInteractiveAuthAttempt = (email?: string | null) => {
   try {
     const raw = getAttemptStorage()?.getItem(INTERACTIVE_AUTH_ATTEMPT_KEY);
     if (!raw) return false;
-    return Date.now() - Number(raw) < 15_000;
+    const parsed = JSON.parse(raw) as Partial<InteractiveAuthAttempt>;
+    const sameEmail = !parsed.email || parsed.email === email?.trim().toLowerCase();
+    return sameEmail && Date.now() - Number(parsed.createdAt) < 15_000;
   } catch {
     return false;
   }

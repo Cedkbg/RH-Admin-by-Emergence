@@ -9,7 +9,7 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
   const { session, loading, rolesLoading, isAdmin } = useAuth();
   const { needsOnboarding, loading: onboardingLoading } = useOnboarding();
   const location = useLocation();
-  const untrustedAdminSession = !!session?.user?.id && isAdmin && !hasInteractiveAuthSession(session.user.id) && !hasRecentInteractiveAuthAttempt();
+  const untrustedAdminSession = !!session?.user?.id && isAdmin && !hasInteractiveAuthSession(session.user.id) && !hasRecentInteractiveAuthAttempt(session.user.email);
   const [companyChecked, setCompanyChecked] = useState(false);
   const [companyConfigured, setCompanyConfigured] = useState(true);
   const [forceReady, setForceReady] = useState(false);

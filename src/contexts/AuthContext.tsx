@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   };
 
-  const refreshUserData = async (uid: string | undefined) => {
+  const refreshUserData = async (uid: string | undefined, email?: string | null) => {
     if (!uid) {
       if (!mountedRef.current) return;
       clearAuthState();
@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.warn("Lecture des rôles trop lente, nouvel essai…");
         keepLoadingForRetry = true;
         window.setTimeout(() => {
-          if (mountedRef.current) refreshUserData(uid);
+          if (mountedRef.current) refreshUserData(uid, email);
         }, 1200);
         return;
       }
@@ -105,7 +105,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (roleSet.size === 0) roleSet.add("employee");
       const nextRoles = Array.from(roleSet);
       const isResetPasswordFlow = typeof window !== "undefined" && window.location.pathname === "/reset-password";
-      if (roleSet.has("admin") && !isResetPasswordFlow && !hasInteractiveAuthSession(uid) && !hasRecentInteractiveAuthAttempt()) {
+      if (roleSet.has("admin") && !isResetPasswordFlow && !hasInteractiveAuthSession(uid) && !hasRecentInteractiveAuthAttempt(email)) {
         clearInteractiveAuthSession();
         await supabase.auth.signOut({ scope: "local" }).catch(() => {});
         if (!mountedRef.current) return;
@@ -123,7 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setApprovalStatus((current) => current ?? "pending");
         keepLoadingForRetry = true;
         window.setTimeout(() => {
-          if (mountedRef.current) refreshUserData(uid);
+          if (mountedRef.current) refreshUserData(uid, email);
         }, 1500);
       }
     } finally {
@@ -141,7 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       if (nextSession?.user?.id) {
         setRolesLoading(true);
-        window.setTimeout(() => refreshUserData(nextSession.user.id), 0);
+        window.setTimeout(() => refreshUserData(nextSession.user.id, nextSession.user.email), 0);
       } else {
         setRoles([]); setRolesLoading(false); setIsAdmin(false);
         setIsSecretary(false); setApprovalStatus(null);
@@ -170,11 +170,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const refreshApproval = async () => { await refreshUserData(user?.id); };
+  const refreshApproval = async () => { await refreshUserData(user?.id, user?.email); };
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
-    markInteractiveAuthAttempt();
+    markInteractiveAuthAttempt(email);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (!error) markInteractiveAuthSession(data.user?.id);
     if (error) setLoading(false);
