@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { readPendingAuthTokens, clearPendingAuthTokens } from "@/lib/preBootAuthScrub";
+import { markInteractiveAuthSession } from "@/lib/interactiveAuthSession";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -116,6 +117,7 @@ export default function ResetPassword() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        markInteractiveAuthSession(user.id);
         await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
       }
     } catch (e) {
