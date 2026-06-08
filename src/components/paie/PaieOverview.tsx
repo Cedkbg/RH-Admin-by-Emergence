@@ -57,12 +57,14 @@ export function PaieOverview() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: cur }, { data: prev }] = await Promise.all([
+    const [{ data: cur }, { data: prev }, { data: emps }] = await Promise.all([
       supabase.from("payroll").select("net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,updated_at").eq("period", period),
       supabase.from("payroll").select("net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,updated_at").eq("period", prevPeriod),
+      supabase.from("employees").select("id,first_name,last_name,matricule,position,contract_type,base_salary,hourly_rate").order("last_name"),
     ]);
     setRows((cur as Row[]) || []);
     setPrevRows((prev as Row[]) || []);
+    setBrutAgents((emps as BrutAgent[]) || []);
     setLoading(false);
   };
 
