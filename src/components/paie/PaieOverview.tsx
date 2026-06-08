@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Play, CheckCircle2, Download, ShieldCheck, TrendingUp, AlertTriangle } from "lucide-react";
+import { CalendarDays, Play, CheckCircle2, Download, ShieldCheck, TrendingUp, AlertTriangle, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 const fmtUSD = (n: number) =>
