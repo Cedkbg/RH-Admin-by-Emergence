@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AgentSalarySummary } from "@/components/dashboard/AgentSalarySummary";
 import { PerformanceTimeChart } from "@/components/dashboard/PerformanceTimeChart";
-import { NineBoxMatrix } from "@/components/performance/NineBoxMatrix";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
