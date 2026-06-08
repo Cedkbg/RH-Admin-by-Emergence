@@ -3,11 +3,13 @@ import { useOnboarding } from "@/hooks/useOnboarding";
 import { Navigate, useLocation } from "react-router-dom";
 import { ReactNode, useEffect, useState } from "react";
 import { getSetupStatus } from "@/lib/setupStatus";
+import { hasInteractiveAuthSession } from "@/lib/interactiveAuthSession";
 
 export const Protected = ({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) => {
   const { session, loading, rolesLoading, isAdmin } = useAuth();
   const { needsOnboarding, loading: onboardingLoading } = useOnboarding();
   const location = useLocation();
+  const untrustedAdminSession = !!session?.user?.id && isAdmin && !hasInteractiveAuthSession(session.user.id);
   const [companyChecked, setCompanyChecked] = useState(false);
   const [companyConfigured, setCompanyConfigured] = useState(true);
   const [forceReady, setForceReady] = useState(false);
@@ -46,7 +48,7 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
       }
       return <Navigate to="/agent/login" replace state={{ from: location }} />;
     }
-    if (adminOnly && rolesLoading) {
+    if (rolesLoading) {
       return (
         <div className="flex h-screen items-center justify-center text-muted-foreground">
           Vérification des accès…
@@ -54,11 +56,12 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
       );
     }
     if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
+    if (untrustedAdminSession) return <Navigate to="/agent/login" replace />;
     return <>{children}</>;
   }
 
   // Si loading auth ou onboarding en cours
-  if (loading || (session && onboardingLoading) || (!session && !companyChecked)) {
+  if (loading || (session && (onboardingLoading || rolesLoading)) || (!session && !companyChecked)) {
     return (
       <div className="flex h-screen items-center justify-center text-muted-foreground">
         Chargement...
@@ -76,6 +79,8 @@ export const Protected = ({ children, adminOnly = false }: { children: ReactNode
   if (needsOnboarding && location.pathname !== "/onboarding") {
     return <Navigate to="/onboarding" replace />;
   }
+
+  if (untrustedAdminSession) return <Navigate to="/agent/login" replace />;
 
   if (adminOnly) {
     if (rolesLoading) {

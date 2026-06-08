@@ -7,6 +7,12 @@ import { Loader2, UserCog, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getSetupStatus } from "@/lib/setupStatus";
+import { markInteractiveAuthSession } from "@/lib/interactiveAuthSession";
+
+type CompleteOnboardingResponse = {
+  ok?: boolean;
+  error?: string;
+};
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -81,13 +87,14 @@ export default function Onboarding() {
       },
     });
 
-    if (error || (data as any)?.error) {
+    const response = data as CompleteOnboardingResponse | null;
+    if (error || response?.error) {
       setSaving(false);
-      toast.error((data as any)?.error || error?.message || "Création échouée");
+      toast.error(response?.error || error?.message || "Création échouée");
       return;
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: admin.email.trim(),
       password: admin.password,
     });
@@ -100,6 +107,7 @@ export default function Onboarding() {
       navigate("/auth", { replace: true });
       return;
     }
+    markInteractiveAuthSession(signInData.user?.id);
     toast.success("Compte administrateur créé — bienvenue !");
     navigate("/", { replace: true });
   };
