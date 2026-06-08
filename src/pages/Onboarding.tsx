@@ -9,6 +9,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { getSetupStatus } from "@/lib/setupStatus";
 import { markInteractiveAuthSession } from "@/lib/interactiveAuthSession";
 
+type CompleteOnboardingResponse = {
+  ok?: boolean;
+  error?: string;
+};
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
@@ -82,9 +87,10 @@ export default function Onboarding() {
       },
     });
 
-    if (error || (data as any)?.error) {
+    const response = data as CompleteOnboardingResponse | null;
+    if (error || response?.error) {
       setSaving(false);
-      toast.error((data as any)?.error || error?.message || "Création échouée");
+      toast.error(response?.error || error?.message || "Création échouée");
       return;
     }
 
