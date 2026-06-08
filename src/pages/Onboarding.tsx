@@ -7,7 +7,7 @@ import { Loader2, UserCog, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getSetupStatus } from "@/lib/setupStatus";
-import { markInteractiveAuthAttempt, markInteractiveAuthSession } from "@/lib/interactiveAuthSession";
+import { markInteractiveAuthSession } from "@/lib/interactiveAuthSession";
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -88,7 +88,6 @@ export default function Onboarding() {
       return;
     }
 
-    markInteractiveAuthAttempt(admin.email.trim());
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: admin.email.trim(),
       password: admin.password,

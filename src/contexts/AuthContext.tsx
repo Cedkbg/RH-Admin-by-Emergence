@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { clearInteractiveAuthSession, hasInteractiveAuthSession, hasRecentInteractiveAuthAttempt, markInteractiveAuthAttempt, markInteractiveAuthSession } from "@/lib/interactiveAuthSession";
+import { clearInteractiveAuthSession, hasInteractiveAuthSession, markInteractiveAuthSession } from "@/lib/interactiveAuthSession";
 import type { Session, User } from "@supabase/supabase-js";
 
 interface AuthContextValue {
@@ -105,7 +105,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (roleSet.size === 0) roleSet.add("employee");
       const nextRoles = Array.from(roleSet);
       const isResetPasswordFlow = typeof window !== "undefined" && window.location.pathname === "/reset-password";
-      if (roleSet.has("admin") && !isResetPasswordFlow && !hasInteractiveAuthSession(uid) && !hasRecentInteractiveAuthAttempt(email)) {
+      if (roleSet.has("admin") && !isResetPasswordFlow && !hasInteractiveAuthSession(uid)) {
+        await sleep(1000);
+      }
+      if (roleSet.has("admin") && !isResetPasswordFlow && !hasInteractiveAuthSession(uid)) {
         clearInteractiveAuthSession();
         await supabase.auth.signOut({ scope: "local" }).catch(() => {});
         if (!mountedRef.current) return;
@@ -174,7 +177,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
-    markInteractiveAuthAttempt(email);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (!error) markInteractiveAuthSession(data.user?.id);
     if (error) setLoading(false);
