@@ -323,52 +323,77 @@ const BienEtre = () => {
         ))}
       </section>
 
-      {/* Historique */}
+      {/* Historique groupé par agent + jour (Matin / Soir côte à côte) */}
       <section className="rounded-xl border bg-card p-5 shadow-sm">
         <h2 className="mb-3 font-semibold">{isHrPrivileged ? "Historique des agents" : "Mon historique"}</h2>
         {mine.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Aucune entrée pour l'instant.</p>
         ) : (
-          <ul className="space-y-2 text-sm">
-            {mine.slice(0, 15).map((i) => (
-              <li key={i.id} className="flex items-center justify-between gap-2 border-b py-2 last:border-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  {i.moment === "morning" ? (
-                    <Sunrise className="h-4 w-4 text-amber-500 shrink-0" />
-                  ) : i.moment === "evening" ? (
-                    <Sunset className="h-4 w-4 text-orange-500 shrink-0" />
-                  ) : (
-                    <Meh className="h-4 w-4 text-muted-foreground shrink-0" />
-                  )}
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium truncate">
-                        {i.employees ? `${i.employees.first_name} ${i.employees.last_name}` : "—"}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(i.submitted_at).toLocaleDateString("fr-FR")}
-                      </span>
-                    </div>
-                    {i.highlight && <div className="truncate text-xs text-muted-foreground">{i.highlight}</div>}
+          (() => {
+            const groups = new Map<string, { name: string; date: string; morning?: Survey; evening?: Survey }>();
+            for (const i of mine) {
+              const name = i.employees ? `${i.employees.first_name} ${i.employees.last_name}` : "—";
+              const key = `${i.employee_id ?? "x"}__${i.submitted_at}`;
+              const g = groups.get(key) ?? { name, date: i.submitted_at };
+              if (i.moment === "evening") g.evening = i;
+              else g.morning = i;
+              groups.set(key, g);
+            }
+            const rows = Array.from(groups.values())
+              .sort((a, b) => (a.date < b.date ? 1 : -1))
+              .slice(0, 20);
+
+            const Slot = ({ s, label, Icon, color }: { s?: Survey; label: string; Icon: typeof Sunrise; color: string }) => (
+              <div className={cn("rounded-lg border p-2.5", s ? "bg-background" : "bg-muted/30 border-dashed")}>
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Icon className={cn("h-3.5 w-3.5", color)} />
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
                   </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  {i.mood_score != null && (
-                    <Badge variant={i.mood_score >= 4 ? "default" : i.mood_score <= 2 ? "destructive" : "outline"} className="text-[10px]">
-                      😊 {i.mood_score}
-                    </Badge>
-                  )}
-                  {i.energy_score != null && <Badge variant="outline" className="text-[10px]">⚡ {i.energy_score}</Badge>}
-                  {i.stress_score != null && <Badge variant="outline" className="text-[10px]">💢 {i.stress_score}</Badge>}
-                  {(isHrPrivileged || i.employee_id === myEmployeeId) && (
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeSurvey(i.id)}>
+                  {s && (isHrPrivileged || s.employee_id === myEmployeeId) && (
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeSurvey(s.id)}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   )}
                 </div>
-              </li>
-            ))}
-          </ul>
+                {s ? (
+                  <>
+                    <div className="flex flex-wrap gap-1 mb-1">
+                      {s.mood_score != null && (
+                        <Badge variant={s.mood_score >= 4 ? "default" : s.mood_score <= 2 ? "destructive" : "outline"} className="text-[10px]">
+                          😊 {s.mood_score}
+                        </Badge>
+                      )}
+                      {s.energy_score != null && <Badge variant="outline" className="text-[10px]">⚡ {s.energy_score}</Badge>}
+                      {s.stress_score != null && <Badge variant="outline" className="text-[10px]">💢 {s.stress_score}</Badge>}
+                    </div>
+                    {s.highlight && <div className="text-xs text-muted-foreground line-clamp-2">{s.highlight}</div>}
+                  </>
+                ) : (
+                  <div className="text-[11px] italic text-muted-foreground">En attente…</div>
+                )}
+              </div>
+            );
+
+            return (
+              <ul className="space-y-3">
+                {rows.map((g, idx) => (
+                  <li key={idx} className="rounded-xl border bg-card/50 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold">{g.name}</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {new Date(g.date).toLocaleDateString("fr-FR")}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Slot s={g.morning} label="Matin" Icon={Sunrise} color="text-amber-500" />
+                      <Slot s={g.evening} label="Soir" Icon={Sunset} color="text-orange-500" />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            );
+          })()
         )}
       </section>
     </div>
