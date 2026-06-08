@@ -435,12 +435,12 @@ const PaieForm = ({
       </div>
 
       {/* === RETENUES (auto) === */}
-      <div className="md:col-span-2 mt-1 text-xs font-semibold uppercase text-muted-foreground">Retenues (calcul auto sur base du brut)</div>
-      <TextField label="CNSS Ouvrier 5% (auto)" value={String(form.cnss ?? 0)} onChange={() => {}} type="number" disabled hint="5% du brut" />
-      <TextField label="CNSS Patronal 13% (auto)" value={String(form.cnss_patronal ?? 0)} onChange={() => {}} type="number" disabled hint="13% du brut" />
-      <TextField label="IPR (auto, barème RDC)" value={String(form.ipr ?? 0)} onChange={() => {}} type="number" disabled hint="Calculé sur l'assiette imposable" />
-      <TextField label="INPP 3% (auto)" value={String(form.inpp ?? 0)} onChange={() => {}} type="number" disabled hint="3% du brut" />
-      <TextField label="ONEM 0.2% (auto)" value={String(form.onem ?? 0)} onChange={() => {}} type="number" disabled hint="0.2% du brut" />
+      <div className="md:col-span-2 mt-1 text-xs font-semibold uppercase text-muted-foreground">Retenues</div>
+      <TextField label="CNSS Ouvrier 5%" value={String(form.cnss ?? 0)} onChange={() => {}} type="number" disabled />
+      <TextField label="CNSS Patronal 13%" value={String(form.cnss_patronal ?? 0)} onChange={() => {}} type="number" disabled />
+      <TextField label="IPR" value={String(form.ipr ?? 0)} onChange={() => {}} type="number" disabled />
+      <TextField label="INPP 3%" value={String(form.inpp ?? 0)} onChange={() => {}} type="number" disabled />
+      <TextField label="ONEM 0.2%" value={String(form.onem ?? 0)} onChange={() => {}} type="number" disabled />
       <TextField label="Avance / Acompte" value={String(form.advance ?? 0)} onChange={(v) => setForm({ ...form, advance: Number(v) })} type="number" />
       <TextField label="Autres retenues" value={String(form.other_deductions ?? 0)} onChange={(v) => setForm({ ...form, other_deductions: Number(v) })} type="number" span={2} />
 
