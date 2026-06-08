@@ -37,6 +37,10 @@ const readStoredSession = (): Session | null => {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
+    const candidate = parsed?.access_token && parsed?.user ? parsed : parsed?.currentSession;
+    const expiresAt = Number(candidate?.expires_at ?? 0);
+    if (!candidate?.access_token || !candidate?.user) return null;
+    if (expiresAt && expiresAt * 1000 < Date.now() + 30_000) return null;
     // Format Supabase v2 : { access_token, refresh_token, expires_at, user, ... }
     if (parsed?.access_token && parsed?.user) return parsed as Session;
     // Format wrapper { currentSession: {...} }
@@ -56,7 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSecretary, setIsSecretary] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const mountedRef = useRef(true);
 
   const refreshUserData = async (uid: string | undefined) => {
@@ -114,24 +118,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     mountedRef.current = true;
 
-    // Charger les rôles si on a une session initiale (depuis localStorage)
-    if (initial?.user?.id) {
-      setTimeout(() => refreshUserData(initial.user.id), 0);
-    }
-
-    // Listener : ne JAMAIS await ici (deadlock Supabase)
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const applySession = (nextSession: Session | null) => {
       if (!mountedRef.current) return;
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
       setLoading(false);
-      if (newSession?.user?.id) {
+      if (nextSession?.user?.id) {
         setRolesLoading(true);
-        setTimeout(() => refreshUserData(newSession.user.id), 0);
+        window.setTimeout(() => refreshUserData(nextSession.user.id), 0);
       } else {
         setRoles([]); setRolesLoading(false); setIsAdmin(false);
         setIsSecretary(false); setApprovalStatus(null);
       }
+    };
+
+    // Valider la session au démarrage avant de rendre l'accueil.
+    // Timeout court: si le navigateur bloque la restauration, on garde la session cache valide.
+    const restoreSession = async () => {
+      const result = await withTimeout(supabase.auth.getSession(), 2500);
+      if (!mountedRef.current) return;
+      applySession(result?.data?.session ?? initial ?? null);
+    };
+    restoreSession();
+
+    // Listener : ne JAMAIS await ici (deadlock Supabase)
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      applySession(newSession);
     });
 
     return () => {
