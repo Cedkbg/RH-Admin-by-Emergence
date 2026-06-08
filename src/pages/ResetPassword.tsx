@@ -31,23 +31,49 @@ export default function ResetPassword() {
     let alive = true;
 
     const init = async () => {
-      // 1) Flow PKCE : ?code=xxx → exchange
-      const url = new URL(window.location.href);
-      const code = url.searchParams.get("code");
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+      // Les jetons sont stockés par preBootAuthScrub AVANT que Supabase
+      // ait pu les consommer depuis l'URL. C'est la source autorisée.
+      const pending = readPendingAuthTokens();
+
+      if (pending?.kind === "code") {
+        const { error } = await supabase.auth.exchangeCodeForSession(pending.code);
+        clearPendingAuthTokens();
         if (!alive) return;
         if (error) {
           setErrorMsg("Lien invalide ou expiré. Demandez un nouveau lien à votre RH.");
           return;
         }
-        // Nettoie l'URL
-        window.history.replaceState({}, "", window.location.pathname);
         setReady(true);
         return;
       }
 
-      // 2) Flow hash : #access_token=...&refresh_token=...
+      if (pending?.kind === "hash") {
+        const { error } = await supabase.auth.setSession({
+          access_token: pending.access_token,
+          refresh_token: pending.refresh_token,
+        });
+        clearPendingAuthTokens();
+        if (!alive) return;
+        if (error) {
+          setErrorMsg("Lien invalide ou expiré. Demandez un nouveau lien à votre RH.");
+          return;
+        }
+        setReady(true);
+        return;
+      }
+
+      // Compat : si un hash/code a survécu au scrub, on l'accepte aussi.
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!alive) return;
+        if (!error) {
+          window.history.replaceState({}, "", window.location.pathname);
+          setReady(true);
+          return;
+        }
+      }
       const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
       const params = new URLSearchParams(hash);
       const access_token = params.get("access_token");
@@ -55,16 +81,14 @@ export default function ResetPassword() {
       if (access_token && refresh_token) {
         const { error } = await supabase.auth.setSession({ access_token, refresh_token });
         if (!alive) return;
-        if (error) {
-          setErrorMsg("Lien invalide ou expiré. Demandez un nouveau lien à votre RH.");
+        if (!error) {
+          window.history.replaceState({}, "", window.location.pathname);
+          setReady(true);
           return;
         }
-        window.history.replaceState({}, "", window.location.pathname);
-        setReady(true);
-        return;
       }
 
-      // 3) Sinon, peut-être déjà connecté (cas du clic récent)
+      // Pas de lien : autoriser si déjà connecté, sinon inviter à redemander.
       const { data } = await supabase.auth.getSession();
       if (!alive) return;
       if (data.session) setReady(true);
