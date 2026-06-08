@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { clearInteractiveAuthSession, hasInteractiveAuthSession, markInteractiveAuthSession } from "@/lib/interactiveAuthSession";
 import type { Session, User } from "@supabase/supabase-js";
 
 interface AuthContextValue {
@@ -64,11 +65,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const mountedRef = useRef(true);
   const sessionRestoredRef = useRef(false);
 
+  const clearAuthState = () => {
+    setSession(null); setUser(null); setRoles([]); setRolesLoading(false);
+    setIsAdmin(false); setIsSecretary(false); setApprovalStatus(null);
+    setLoading(false);
+  };
+
   const refreshUserData = async (uid: string | undefined) => {
     if (!uid) {
       if (!mountedRef.current) return;
-      setRoles([]); setRolesLoading(false); setIsAdmin(false);
-      setIsSecretary(false); setApprovalStatus(null);
+      clearAuthState();
       return;
     }
     setRolesLoading(true);
@@ -97,7 +103,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           .filter((role): role is string => Boolean(role))
       );
       if (roleSet.size === 0) roleSet.add("employee");
-      setRoles(Array.from(roleSet));
+      const nextRoles = Array.from(roleSet);
+      if (roleSet.has("admin") && !hasInteractiveAuthSession(uid)) {
+        clearInteractiveAuthSession();
+        await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+        if (!mountedRef.current) return;
+        clearAuthState();
+        return;
+      }
+      setRoles(nextRoles);
       setIsAdmin(roleSet.has("admin"));
       setIsSecretary(roleSet.has("secretaire") || roleSet.has("admin"));
       setApprovalStatus((profileData?.approval_status as "pending" | "approved" | "rejected" | null) ?? "pending");
