@@ -104,7 +104,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       );
       if (roleSet.size === 0) roleSet.add("employee");
       const nextRoles = Array.from(roleSet);
-      if (roleSet.has("admin") && !hasInteractiveAuthSession(uid) && !hasRecentInteractiveAuthAttempt()) {
+      const isResetPasswordFlow = typeof window !== "undefined" && window.location.pathname === "/reset-password";
+      if (roleSet.has("admin") && !isResetPasswordFlow && !hasInteractiveAuthSession(uid) && !hasRecentInteractiveAuthAttempt()) {
         clearInteractiveAuthSession();
         await supabase.auth.signOut({ scope: "local" }).catch(() => {});
         if (!mountedRef.current) return;
