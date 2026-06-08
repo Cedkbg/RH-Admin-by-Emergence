@@ -29,10 +29,22 @@ interface Row {
   updated_at?: string;
 }
 
+interface BrutAgent {
+  id: string;
+  first_name: string;
+  last_name: string;
+  matricule: string | null;
+  position: string | null;
+  contract_type: string | null;
+  base_salary: number | null;
+  hourly_rate: number | null;
+}
+
 export function PaieOverview() {
   const [period, setPeriod] = useState(periodKey());
   const [rows, setRows] = useState<Row[]>([]);
   const [prevRows, setPrevRows] = useState<Row[]>([]);
+  const [brutAgents, setBrutAgents] = useState<BrutAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
