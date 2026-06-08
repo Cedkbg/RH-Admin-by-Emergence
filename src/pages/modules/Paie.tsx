@@ -450,7 +450,7 @@ const PaieForm = ({
       <TextField label="Communication" value={String(form.communication ?? 0)} onChange={(v) => setForm({ ...form, communication: Number(v) })} type="number" />
       <TextField label="Loyer" value={String(form.loyer ?? 0)} onChange={(v) => setForm({ ...form, loyer: Number(v) })} type="number" />
       <TextField label="Nombre d'enfants" value={String(form.children_count ?? 0)} onChange={(v) => setForm({ ...form, children_count: Number(v) })} type="number" />
-      <TextField label="Allocation familiale (auto)" value={String(form.allocation_familiale ?? 0)} onChange={() => {}} type="number" span={2} disabled hint={`${allocFamPerChild} USD × nombre d'enfants`} />
+      <TextField label="Allocation familiale" value={String(form.allocation_familiale ?? 0)} onChange={() => {}} type="number" span={2} disabled />
 
       {/* === RÉCAP === */}
       <div className="md:col-span-2 rounded-lg border-2 border-primary/40 bg-primary/5 p-3 text-sm space-y-1">
