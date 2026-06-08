@@ -263,7 +263,127 @@ export function PaieOverview() {
           />
         </div>
       </Card>
+
+      {/* Masse salariale brute par agent */}
+      <BrutSalaireCard agents={brutAgents} />
     </div>
+  );
+}
+
+function brutOf(a: BrutAgent): number {
+  const base = Number(a.base_salary || 0);
+  if (base > 0) return base;
+  const hr = Number(a.hourly_rate || 0);
+  // estimation mensuelle standard : 8h × 20j = 160h
+  return hr > 0 ? +(hr * 160).toFixed(2) : 0;
+}
+
+function BrutSalaireCard({ agents }: { agents: BrutAgent[] }) {
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = agents.map((a) => ({ ...a, _brut: brutOf(a) }));
+    if (!q) return list;
+    return list.filter((a) =>
+      (`${a.first_name} ${a.last_name} ${a.matricule || ""} ${a.position || ""}`).toLowerCase().includes(q)
+    );
+  }, [agents, query]);
+  const total = filtered.reduce((s, a) => s + a._brut, 0);
+  const withSalary = filtered.filter((a) => a._brut > 0).length;
+
+  const exportCsv = () => {
+    const headers = ["Matricule", "Nom", "Prénom", "Poste", "Contrat", "Salaire brut (USD)"];
+    const lines = filtered.map((a) =>
+      [a.matricule || "", a.last_name, a.first_name, a.position || "", a.contract_type || "", a._brut].join(",")
+    );
+    const csv = [headers.join(","), ...lines, ["", "", "", "", "TOTAL", total].join(",")].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `masse-salariale-brute.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Masse salariale brute exportée");
+  };
+
+  return (
+    <Card className="p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <Wallet className="h-5 w-5 text-primary" />
+          <div>
+            <h3 className="font-semibold">Masse salariale brute</h3>
+            <p className="text-xs text-muted-foreground">
+              Salaire brut de référence par agent (sans retenues ni avantages).
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Rechercher un agent…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="px-3 py-1.5 text-sm rounded-md border bg-background"
+          />
+          <Button variant="outline" size="sm" className="gap-2" onClick={exportCsv}>
+            <Download className="h-4 w-4" /> Exporter
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total brut à payer</p>
+          <p className="text-2xl font-bold text-primary mt-1">{fmtUSD(total)}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Agents avec salaire</p>
+          <p className="text-2xl font-bold mt-1">{withSalary} <span className="text-base font-normal text-muted-foreground">/ {filtered.length}</span></p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Moyenne brute</p>
+          <p className="text-2xl font-bold mt-1">{fmtUSD(withSalary > 0 ? total / withSalary : 0)}</p>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+            <tr>
+              <th className="text-left px-3 py-2">Matricule</th>
+              <th className="text-left px-3 py-2">Agent</th>
+              <th className="text-left px-3 py-2">Poste</th>
+              <th className="text-left px-3 py-2">Contrat</th>
+              <th className="text-right px-3 py-2">Salaire brut</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">Aucun agent.</td></tr>
+            )}
+            {filtered.map((a) => (
+              <tr key={a.id} className="border-t hover:bg-muted/30">
+                <td className="px-3 py-2 font-mono text-xs">{a.matricule || "—"}</td>
+                <td className="px-3 py-2 font-medium">{a.last_name} {a.first_name}</td>
+                <td className="px-3 py-2 text-muted-foreground">{a.position || "—"}</td>
+                <td className="px-3 py-2"><Badge variant="outline" className="text-[10px]">{a.contract_type || "—"}</Badge></td>
+                <td className="px-3 py-2 text-right font-semibold">
+                  {a._brut > 0 ? fmtUSD(a._brut) : <span className="text-amber-600 text-xs">Non défini</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          {filtered.length > 0 && (
+            <tfoot>
+              <tr className="border-t bg-muted/40 font-bold">
+                <td colSpan={4} className="px-3 py-2 text-right">TOTAL MASSE BRUTE</td>
+                <td className="px-3 py-2 text-right text-primary">{fmtUSD(total)}</td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+    </Card>
   );
 }
 
