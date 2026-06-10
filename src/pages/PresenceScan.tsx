@@ -336,4 +336,12 @@ const PresenceScan = () => {
   );
 };
 
-export default PresenceScan;
+import { WellbeingGate } from "@/components/presence/WellbeingGate";
+
+const PresenceScanWithGate = () => (
+  <WellbeingGate>
+    <PresenceScan />
+  </WellbeingGate>
+);
+
+export default PresenceScanWithGate;
