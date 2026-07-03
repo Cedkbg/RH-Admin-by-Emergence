@@ -657,8 +657,10 @@ const Paie = () => {
         <PaieForm form={form as any} setForm={setForm as any} employees={employees} directions={directions} departments={departments} />
       )}
     />
+      <PaieOverview />
     </div>
   );
+
 };
 
 
