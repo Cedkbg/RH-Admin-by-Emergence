@@ -1669,6 +1669,7 @@ export type Database = {
       }
       is_hr_privileged: { Args: { _user_id: string }; Returns: boolean }
       is_secretary_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      principal_admin_id: { Args: never; Returns: string }
     }
     Enums: {
       app_role:

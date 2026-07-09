@@ -54,14 +54,18 @@ export function RolesManager() {
   const [search, setSearch] = useState("");
   const [addingFor, setAddingFor] = useState<string | null>(null);
   const [newRole, setNewRole] = useState<AppRole>("employee");
+  const [principalAdminId, setPrincipalAdminId] = useState<string | null>(null);
 
   const refresh = async () => {
     setLoading(true);
-    const [{ data: profs }, { data: roles }] = await Promise.all([
+    const [{ data: profs }, { data: roles }, { data: principalAdmin }] = await Promise.all([
       supabase.from("profiles").select("id, full_name, email, approval_status").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id, role"),
+      supabase.from("app_settings").select("value").eq("key", "principal_admin_id").maybeSingle(),
     ]);
     setProfiles((profs as Profile[]) || []);
+    const principalValue = principalAdmin?.value;
+    setPrincipalAdminId(typeof principalValue === "string" ? principalValue : null);
     const map: Record<string, AppRole[]> = {};
     (roles || []).forEach((r: any) => {
       (map[r.user_id] ||= []).push(r.role);
@@ -89,6 +93,10 @@ export function RolesManager() {
   };
 
   const removeRole = async (userId: string, role: AppRole) => {
+    if (principalAdminId === userId && role === "admin") {
+      toast.error("Le rôle Admin du compte principal est protégé.");
+      return;
+    }
     if (userId === user?.id && role === "admin") {
       if (!confirm("⚠️ Vous êtes sur le point de retirer votre propre rôle admin. Continuer ?")) return;
     } else if (!confirm(`Retirer le rôle ${ROLE_LABEL[role]} ?`)) return;
@@ -137,6 +145,7 @@ export function RolesManager() {
                 <tr><td colSpan={4} className="p-12 text-center text-muted-foreground">Aucun utilisateur.</td></tr>
               ) : filtered.map((p) => {
                 const roles = rolesByUser[p.id] || [];
+                const isPrincipalAdmin = principalAdminId === p.id;
                 const available = ALL_ROLES.filter((r) => !roles.includes(r));
                 const isAdding = addingFor === p.id;
                 return (
@@ -161,18 +170,25 @@ export function RolesManager() {
                       <div className="flex flex-wrap gap-1.5">
                         {roles.length === 0 ? (
                           <span className="text-xs text-muted-foreground italic">Aucun rôle</span>
-                        ) : roles.map((r) => (
-                          <Badge
-                            key={r}
-                            variant="outline"
-                            className={`${ROLE_COLORS[r]} group cursor-pointer pr-1`}
-                            onClick={() => removeRole(p.id, r)}
-                            title="Cliquer pour retirer"
-                          >
-                            {ROLE_LABEL[r]}
-                            <ShieldOff className="ml-1 h-3 w-3 opacity-60 group-hover:opacity-100" />
-                          </Badge>
-                        ))}
+                        ) : roles.map((r) => {
+                          const protectedRole = isPrincipalAdmin && r === "admin";
+                          return (
+                            <Badge
+                              key={r}
+                              variant="outline"
+                              className={`${ROLE_COLORS[r]} ${protectedRole ? "pr-2" : "group cursor-pointer pr-1"}`}
+                              onClick={protectedRole ? undefined : () => removeRole(p.id, r)}
+                              title={protectedRole ? "Rôle administrateur principal protégé" : "Cliquer pour retirer"}
+                            >
+                              {ROLE_LABEL[r]}
+                              {protectedRole ? (
+                                <ShieldCheck className="ml-1 h-3 w-3 opacity-70" />
+                              ) : (
+                                <ShieldOff className="ml-1 h-3 w-3 opacity-60 group-hover:opacity-100" />
+                              )}
+                            </Badge>
+                          );
+                        })}
                       </div>
                     </td>
                     <td className="p-4">

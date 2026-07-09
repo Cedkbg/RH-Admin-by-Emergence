@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.prevent_last_admin_role_removal() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.prevent_last_admin_profile_rejection() FROM PUBLIC, anon, authenticated;

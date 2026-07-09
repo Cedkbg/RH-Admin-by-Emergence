@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { clearInteractiveAuthSession, hasInteractiveAuthSession, markInteractiveAuthSession } from "@/lib/interactiveAuthSession";
+import { clearInteractiveAuthSession, markInteractiveAuthSession } from "@/lib/interactiveAuthSession";
 import type { Session, User } from "@supabase/supabase-js";
 
 interface AuthContextValue {
@@ -96,7 +96,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }, 1200);
         return;
       }
-      const [{ data: roleRows }, { data: profileData }] = result;
+      const [{ data: roleRows, error: rolesError }, { data: profileData }] = result;
+      if (rolesError) {
+        console.error("Erreur lecture rôles:", rolesError);
+        keepLoadingForRetry = true;
+        window.setTimeout(() => {
+          if (mountedRef.current) refreshUserData(uid, email);
+        }, 1500);
+        return;
+      }
       const roleSet = new Set<string>(
         (roleRows || [])
           .map((r: { role: string | null }) => r.role)
@@ -104,17 +112,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       );
       if (roleSet.size === 0) roleSet.add("employee");
       const nextRoles = Array.from(roleSet);
-      const isResetPasswordFlow = typeof window !== "undefined" && window.location.pathname === "/reset-password";
-      if (roleSet.has("admin") && !isResetPasswordFlow && !hasInteractiveAuthSession(uid)) {
-        await sleep(1000);
-      }
-      if (roleSet.has("admin") && !isResetPasswordFlow && !hasInteractiveAuthSession(uid)) {
-        clearInteractiveAuthSession();
-        await supabase.auth.signOut({ scope: "local" }).catch(() => {});
-        if (!mountedRef.current) return;
-        clearAuthState();
-        return;
-      }
       setRoles(nextRoles);
       setIsAdmin(roleSet.has("admin"));
       setIsSecretary(roleSet.has("secretaire") || roleSet.has("admin"));
