@@ -563,6 +563,15 @@ const Paie = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [directions, setDirections] = useState<Map<string, Direction>>(new Map());
   const [departments, setDepartments] = useState<Map<string, Department>>(new Map());
+  const [statsPeriod, setStatsPeriod] = useState<string>(currentPeriod());
+
+  const statsPeriodLabel = useMemo(() => {
+    const [y, m] = statsPeriod.split("-").map(Number);
+    if (!y || !m) return statsPeriod;
+    return new Date(y, m - 1, 1)
+      .toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+      .replace(/^./, (c) => c.toUpperCase());
+  }, [statsPeriod]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -600,7 +609,30 @@ const Paie = () => {
 
   return (
     <div className="space-y-6">
-      {isAdmin && <LiveStats variant="paie" />}
+      {isAdmin && (
+        <div className="rounded-lg border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Période des statistiques</p>
+            <p className="text-lg font-bold">{statsPeriodLabel}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="stats-period" className="text-xs text-muted-foreground">Choisir un mois</Label>
+            <Input
+              id="stats-period"
+              type="month"
+              value={statsPeriod}
+              onChange={(e) => setStatsPeriod(e.target.value || currentPeriod())}
+              className="h-9 w-[170px]"
+            />
+            {statsPeriod !== currentPeriod() && (
+              <Button variant="outline" size="sm" onClick={() => setStatsPeriod(currentPeriod())}>
+                Mois en cours
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+      {isAdmin && <LiveStats variant="paie" period={statsPeriod} />}
       <CrudPage<Pay>
 
 
