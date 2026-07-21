@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 type Variant = "presence" | "paie" | "global";
-interface Props { variant: Variant; }
+interface Props { variant: Variant; period?: string; }
 
 const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(Math.round(n));
 const fmtCDF = (n: number) =>
@@ -22,14 +22,14 @@ interface Pulse { key: string; ts: number; }
  * Tableau de bord statistiques pro avec mise à jour temps réel (Supabase Realtime).
  * Trois variantes : présence (jour), paie (période courante), global (consolidé).
  */
-export function LiveStats({ variant }: Props) {
+export function LiveStats({ variant, period: periodProp }: Props) {
   const [pulse, setPulse] = useState<Pulse | null>(null);
   const [data, setData] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   const today = new Date().toISOString().slice(0, 10);
-  const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+  const period = periodProp || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
 
   const reload = async () => {
     try {
@@ -117,7 +117,7 @@ export function LiveStats({ variant }: Props) {
     const interval = setInterval(reload, 60_000); // filet de sécurité
     return () => { supabase.removeChannel(ch); clearInterval(interval); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [variant]);
+  }, [variant, period]);
 
   const pulsing = pulse && Date.now() - pulse.ts < 2000;
 
