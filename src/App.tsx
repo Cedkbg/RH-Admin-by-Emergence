@@ -47,6 +47,7 @@ const PresenceScan = lazy(() => import("./pages/PresenceScan"));
 const PresenceLocations = lazy(() => import("./pages/PresenceLocations"));
 const Install = lazy(() => import("./pages/Install"));
 const MesConges = lazy(() => import("./pages/MesConges"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -116,6 +117,7 @@ const App = () => (
                 <Route path="/agent/login" element={<AgentAuth />} />
                 <Route path="/login" element={<AgentAuth />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/presence/kiosk/:locationId" element={<PresenceKiosk />} />
                 <Route element={<Protected><AppLayout /></Protected>}>
