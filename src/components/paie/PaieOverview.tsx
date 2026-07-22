@@ -186,6 +186,56 @@ export function PaieOverview() {
 
   return (
     <div className="space-y-4">
+      {/* 1 · Synthèse masse salariale (temps réel) */}
+      <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-primary" />
+            <div>
+              <h3 className="font-semibold">Synthèse masse salariale — {periodLabel(period)}</h3>
+              <p className="text-xs text-muted-foreground">Ce que l'entreprise doit à ses employés · mis à jour en temps réel</p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            Temps réel
+          </span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <SynthCard
+            label="Masse brute contractuelle"
+            value={fmtUSD(bruteContractuelle)}
+            hint={`${brutAgents.length} contrat(s) · référence fiches employés`}
+            tone="slate"
+          />
+          <SynthCard
+            label="Masse nette à payer"
+            value={fmtUSD(totals.net)}
+            hint={`${totals.employees} agent(s) · basé sur prestations & présence`}
+            tone="primary"
+          />
+          <SynthCard
+            label="Avantages globaux"
+            value={fmtUSD(totals.avantages)}
+            hint="Transport · communication · logement · primes · allocations"
+            tone="emerald"
+          />
+          <SynthCard
+            label="Retenues globales"
+            value={fmtUSD(totals.retenues)}
+            hint={`+ ${fmtUSD(totals.chargesPatronales)} charges patronales (CNSS)`}
+            tone="rose"
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span>💡 <strong>Brute contractuelle</strong> : somme des salaires prévus dans tous les contrats.</span>
+          <span><strong>Nette à payer</strong> : calculée à partir des prestations et présences validées pour la période.</span>
+        </div>
+      </Card>
+
       {/* 2 · Indicateurs de conformité */}
       <Card className="p-5">
         <div className="flex items-center justify-between mb-4">
