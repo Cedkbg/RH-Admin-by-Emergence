@@ -83,7 +83,7 @@ export function PaieOverview() {
     const now = new Date();
     const cutoff = new Date(now.getFullYear(), now.getMonth() - 23, 1).toISOString().slice(0, 7);
     const [{ data: cur }, { data: prev }, { data: emps }, { data: hist }] = await Promise.all([
-      supabase.from("payroll").select("id,net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,updated_at,period,base_salary,bonus,deductions").eq("period", period),
+      supabase.from("payroll").select("id,net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,updated_at,period,base_salary,bonus,deductions,total_avantages,transport,communication,loyer,allocation_familiale,other_deductions").eq("period", period),
       supabase.from("payroll").select("net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,updated_at,period").eq("period", prevPeriod),
       supabase.from("employees").select("id,first_name,last_name,matricule,position,contract_type,base_salary,hourly_rate").order("last_name"),
       supabase.from("payroll").select("period,net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,base_salary").gte("period", cutoff),
