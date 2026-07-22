@@ -633,6 +633,7 @@ const Paie = () => {
         </div>
       )}
       {isAdmin && <LiveStats variant="paie" period={statsPeriod} />}
+      <PaieOverview />
       <CrudPage<Pay>
 
 
@@ -689,7 +690,6 @@ const Paie = () => {
         <PaieForm form={form as any} setForm={setForm as any} employees={employees} directions={directions} departments={departments} />
       )}
     />
-      <PaieOverview />
     </div>
   );
 
