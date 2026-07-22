@@ -41,6 +41,12 @@ interface Row {
   base_salary?: number;
   bonus?: number;
   deductions?: number;
+  total_avantages?: number;
+  transport?: number;
+  communication?: number;
+  loyer?: number;
+  allocation_familiale?: number;
+  other_deductions?: number;
   updated_at?: string;
 }
 
