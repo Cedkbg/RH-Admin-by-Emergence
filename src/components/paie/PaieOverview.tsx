@@ -748,3 +748,4 @@ function SynthCard({ label, value, hint, tone }: { label: string; value: string;
       {hint && <p className="text-[10px] text-muted-foreground mt-1.5 leading-snug">{hint}</p>}
     </div>
   );
+}
