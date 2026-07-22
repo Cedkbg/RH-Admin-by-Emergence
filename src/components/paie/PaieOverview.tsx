@@ -726,3 +726,25 @@ function ConformityCard({ label, value, footer }: { label: string; value: string
     </div>
   );
 }
+
+const SYNTH_TONES: Record<string, string> = {
+  slate: "border-l-slate-500 bg-slate-500/5",
+  primary: "border-l-primary bg-primary/10",
+  emerald: "border-l-emerald-500 bg-emerald-500/5",
+  rose: "border-l-rose-500 bg-rose-500/5",
+};
+const SYNTH_TEXT: Record<string, string> = {
+  slate: "text-slate-700 dark:text-slate-300",
+  primary: "text-primary",
+  emerald: "text-emerald-700 dark:text-emerald-400",
+  rose: "text-rose-700 dark:text-rose-400",
+};
+
+function SynthCard({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone: keyof typeof SYNTH_TONES }) {
+  return (
+    <div className={`rounded-lg border border-l-4 bg-card p-4 shadow-sm transition-all hover:shadow-md ${SYNTH_TONES[tone]}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`text-2xl font-bold mt-1 ${SYNTH_TEXT[tone]}`}>{value}</p>
+      {hint && <p className="text-[10px] text-muted-foreground mt-1.5 leading-snug">{hint}</p>}
+    </div>
+  );
