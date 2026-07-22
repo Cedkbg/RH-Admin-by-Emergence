@@ -109,8 +109,16 @@ export function PaieOverview() {
   const totals = useMemo(() => {
     const sum = (k: keyof Row) => rows.reduce((s, r) => s + Number((r as any)[k] || 0), 0);
     const sumPrev = (k: keyof Row) => prevRows.reduce((s, r) => s + Number((r as any)[k] || 0), 0);
+    const avantages = sum("total_avantages") ||
+      (sum("transport") + sum("communication") + sum("loyer") + sum("allocation_familiale") + sum("bonus"));
+    const retenues = sum("deductions") ||
+      (sum("ipr") + sum("inpp") + sum("cnss") + sum("onem") + sum("other_deductions"));
     return {
       net: sum("net_pay"),
+      brut: sum("base_salary"),
+      avantages,
+      retenues,
+      chargesPatronales: sum("cnss_patronal"),
       cnss: sum("cnss") + sum("cnss_patronal"),
       ipr: sum("ipr"),
       inpp: sum("inpp"),
@@ -123,6 +131,11 @@ export function PaieOverview() {
       lastUpdate: rows.map((r) => r.updated_at).filter(Boolean).sort().pop(),
     };
   }, [rows, prevRows]);
+
+  const bruteContractuelle = useMemo(
+    () => brutAgents.reduce((s, a) => s + brutOf(a), 0),
+    [brutAgents]
+  );
 
   const cnssDelta = totals.cnssPrev > 0 ? ((totals.cnss - totals.cnssPrev) / totals.cnssPrev) * 100 : 0;
 
