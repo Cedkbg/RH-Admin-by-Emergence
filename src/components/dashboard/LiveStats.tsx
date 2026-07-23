@@ -50,14 +50,20 @@ export function LiveStats({ variant, period: periodProp }: Props) {
         const tauxPresence = totalActifs > 0 ? Math.round(((present + enMission) / totalActifs) * 100) : 0;
         setData({ totalActifs, present, absents, retards, enMission, inOffice, tauxPresence, pendingLeaves: leaves.count ?? 0 });
       } else if (variant === "paie") {
-        const [pay, emp, empAll] = await Promise.all([
+        // Bornes de la période sélectionnée (YYYY-MM)
+        const [yy, mm] = period.split("-").map(Number);
+        const start = `${period}-01`;
+        const endDate = new Date(yy, mm, 0); // dernier jour du mois
+        const end = endDate.toISOString().slice(0, 10);
+
+        const [pay, emp, empAll, att] = await Promise.all([
           supabase.from("payroll").select("net_pay,base_salary,total_avantages,deductions,cnss_patronal,status,period,employee_id"),
           supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
           supabase.from("employees").select("id,base_salary,hourly_rate,contract_type").eq("status", "active"),
+          supabase.from("attendance").select("employee_id,date,check_in,check_out,status").gte("date", start).lte("date", end),
         ]);
         const all = pay.data || [];
         const current = all.filter((p: any) => p.period === period);
-        const totalNet = current.reduce((s: number, p: any) => s + Number(p.net_pay || 0), 0);
         const totalBrut = current.reduce((s: number, p: any) => s + Number(p.base_salary || 0), 0);
         const totalAvantages = current.reduce((s: number, p: any) => s + Number(p.total_avantages || 0), 0);
         const totalRetenues = current.reduce((s: number, p: any) => s + Number(p.deductions || 0), 0);
@@ -70,18 +76,52 @@ export function LiveStats({ variant, period: periodProp }: Props) {
           return s + (hr > 0 ? hr * 160 : 0);
         }, 0);
         const contrats = (empAll.data || []).length;
+
+        // Calcul automatique de la masse nette à payer basé sur la présence réelle
+        const empMap = new Map<string, any>((empAll.data || []).map((e: any) => [e.id, e]));
+        const hoursByEmp = new Map<string, { hours: number; days: number }>();
+        (att.data || []).forEach((r: any) => {
+          if (!r.employee_id) return;
+          if (r.status && !["present", "mission", "deplacement"].includes(r.status)) return;
+          let h = 0;
+          if (r.check_in && r.check_out) {
+            const [h1, m1] = String(r.check_in).split(":").map(Number);
+            const [h2, m2] = String(r.check_out).split(":").map(Number);
+            h = Math.max(0, (h2 + m2 / 60) - (h1 + m1 / 60));
+          } else if (r.check_in) {
+            h = 8; // journée présumée si non pointée en sortie
+          }
+          const cur = hoursByEmp.get(r.employee_id) || { hours: 0, days: 0 };
+          cur.hours += h;
+          cur.days += 1;
+          hoursByEmp.set(r.employee_id, cur);
+        });
+        let netProjected = 0;
+        hoursByEmp.forEach((v, empId) => {
+          const e = empMap.get(empId);
+          if (!e) return;
+          const hr = Number(e.hourly_rate || 0);
+          const base = Number(e.base_salary || 0);
+          if (hr > 0) netProjected += v.hours * hr;
+          else if (base > 0) netProjected += (base / 22) * v.days; // pro-rata journalier
+        });
+        // Priorité aux bulletins validés/payés si disponibles pour la période
+        const payrollNet = current.reduce((s: number, p: any) => s + Number(p.net_pay || 0), 0);
+        const totalNet = payrollNet > 0 ? payrollNet : Math.max(0, netProjected + totalAvantages - totalRetenues);
+
         const paid = current.filter((p: any) => p.status === "paye").length;
         const pending = current.filter((p: any) => p.status === "en_attente" || p.status === "draft").length;
         const validated = current.filter((p: any) => p.status === "valide").length;
-        const avgNet = current.length > 0 ? totalNet / current.length : 0;
+        const avgNet = current.length > 0 ? totalNet / current.length : (hoursByEmp.size > 0 ? totalNet / hoursByEmp.size : 0);
         const couverture = (emp.count ?? 0) > 0 ? Math.round((current.length / (emp.count ?? 1)) * 100) : 0;
         // Évolution vs mois précédent
-        const d = new Date(); d.setMonth(d.getMonth() - 1);
+        const d = new Date(yy, mm - 2, 1);
         const prevPeriod = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         const prev = all.filter((p: any) => p.period === prevPeriod);
         const totalPrev = prev.reduce((s: number, p: any) => s + Number(p.net_pay || 0), 0);
         const evolution = totalPrev > 0 ? Math.round(((totalNet - totalPrev) / totalPrev) * 100) : 0;
-        setData({ totalNet, totalBrut, totalAvantages, totalRetenues, chargesPatronales, bruteContractuelle, contrats, paid, pending, validated, avgNet, couverture, evolution, period, bulletins: current.length });
+        setData({ totalNet, totalBrut, totalAvantages, totalRetenues, chargesPatronales, bruteContractuelle, contrats, paid, pending, validated, avgNet, couverture, evolution, period, bulletins: current.length, agentsPointes: hoursByEmp.size });
+
       } else {
         const [emp, empActive, att, leaves, jobs, cand, train, pay] = await Promise.all([
           supabase.from("employees").select("id", { count: "exact", head: true }),
@@ -112,7 +152,7 @@ export function LiveStats({ variant, period: periodProp }: Props) {
     reload();
     const tables =
       variant === "presence" ? ["attendance", "leave_requests", "employees"]
-      : variant === "paie" ? ["payroll", "employees"]
+      : variant === "paie" ? ["payroll", "employees", "attendance"]
       : ["employees", "attendance", "leave_requests", "payroll", "job_offers", "candidates", "trainings"];
 
     const ch = supabase.channel(`live-stats-${variant}`);
@@ -181,7 +221,7 @@ export function LiveStats({ variant, period: periodProp }: Props) {
             </div>
             <p className="text-[10px] uppercase tracking-wider opacity-80 mt-3">Masse nette à payer · {data.period}</p>
             <p className="text-2xl font-bold mt-1">{fmtCDF(data.totalNet ?? 0)}</p>
-            <p className="text-[11px] opacity-80 mt-1">{data.bulletins ?? 0} bulletin(s) · prestations & présence</p>
+            <p className="text-[11px] opacity-80 mt-1">{data.bulletins ?? 0} bulletin(s) · {data.agentsPointes ?? 0} agent(s) pointé(s)</p>
           </Card>
           <Kpi icon={Building2} label="Brute contractuelle" value={fmtCDF(data.bruteContractuelle ?? 0)} hint={`${data.contrats ?? 0} contrat(s)`} color="from-indigo-600 to-indigo-800" tone="indigo" big />
           <Kpi icon={DollarSign} label="Brut cumulé (période)" value={fmtCDF(data.totalBrut ?? 0)} color="from-slate-700 to-slate-900" tone="slate" big />
