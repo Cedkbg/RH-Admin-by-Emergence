@@ -50,9 +50,10 @@ export function LiveStats({ variant, period: periodProp }: Props) {
         const tauxPresence = totalActifs > 0 ? Math.round(((present + enMission) / totalActifs) * 100) : 0;
         setData({ totalActifs, present, absents, retards, enMission, inOffice, tauxPresence, pendingLeaves: leaves.count ?? 0 });
       } else if (variant === "paie") {
-        const [pay, emp] = await Promise.all([
+        const [pay, emp, empAll] = await Promise.all([
           supabase.from("payroll").select("net_pay,base_salary,total_avantages,deductions,cnss_patronal,status,period,employee_id"),
           supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
+          supabase.from("employees").select("id,base_salary,hourly_rate,contract_type").eq("status", "active"),
         ]);
         const all = pay.data || [];
         const current = all.filter((p: any) => p.period === period);
@@ -61,6 +62,14 @@ export function LiveStats({ variant, period: periodProp }: Props) {
         const totalAvantages = current.reduce((s: number, p: any) => s + Number(p.total_avantages || 0), 0);
         const totalRetenues = current.reduce((s: number, p: any) => s + Number(p.deductions || 0), 0);
         const chargesPatronales = current.reduce((s: number, p: any) => s + Number(p.cnss_patronal || 0), 0);
+        // Masse brute contractuelle (référence fiches employés, indépendante des bulletins)
+        const bruteContractuelle = (empAll.data || []).reduce((s: number, a: any) => {
+          const base = Number(a.base_salary || 0);
+          if (base > 0) return s + base;
+          const hr = Number(a.hourly_rate || 0);
+          return s + (hr > 0 ? hr * 160 : 0);
+        }, 0);
+        const contrats = (empAll.data || []).length;
         const paid = current.filter((p: any) => p.status === "paye").length;
         const pending = current.filter((p: any) => p.status === "en_attente" || p.status === "draft").length;
         const validated = current.filter((p: any) => p.status === "valide").length;
@@ -72,7 +81,7 @@ export function LiveStats({ variant, period: periodProp }: Props) {
         const prev = all.filter((p: any) => p.period === prevPeriod);
         const totalPrev = prev.reduce((s: number, p: any) => s + Number(p.net_pay || 0), 0);
         const evolution = totalPrev > 0 ? Math.round(((totalNet - totalPrev) / totalPrev) * 100) : 0;
-        setData({ totalNet, totalBrut, totalAvantages, totalRetenues, chargesPatronales, paid, pending, validated, avgNet, couverture, evolution, period, bulletins: current.length });
+        setData({ totalNet, totalBrut, totalAvantages, totalRetenues, chargesPatronales, bruteContractuelle, contrats, paid, pending, validated, avgNet, couverture, evolution, period, bulletins: current.length });
       } else {
         const [emp, empActive, att, leaves, jobs, cand, train, pay] = await Promise.all([
           supabase.from("employees").select("id", { count: "exact", head: true }),
@@ -159,7 +168,7 @@ export function LiveStats({ variant, period: periodProp }: Props) {
     return (
       <div>
         {header}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
           <Card className="p-4 bg-gradient-to-br from-emerald-600 to-emerald-700 text-white border-0 shadow-md">
             <div className="flex items-center justify-between">
               <Wallet className="h-5 w-5 opacity-90" />
@@ -170,13 +179,14 @@ export function LiveStats({ variant, period: periodProp }: Props) {
                 </Badge>
               )}
             </div>
-            <p className="text-[10px] uppercase tracking-wider opacity-80 mt-3">Masse salariale nette · {data.period}</p>
+            <p className="text-[10px] uppercase tracking-wider opacity-80 mt-3">Masse nette à payer · {data.period}</p>
             <p className="text-2xl font-bold mt-1">{fmtCDF(data.totalNet ?? 0)}</p>
-            <p className="text-[11px] opacity-80 mt-1">{data.bulletins ?? 0} bulletin(s)</p>
+            <p className="text-[11px] opacity-80 mt-1">{data.bulletins ?? 0} bulletin(s) · prestations & présence</p>
           </Card>
-          <Kpi icon={DollarSign} label="Brut cumulé" value={fmtCDF(data.totalBrut ?? 0)} color="from-slate-700 to-slate-900" tone="slate" big />
-          <Kpi icon={TrendingUp} label="Avantages" value={fmtCDF(data.totalAvantages ?? 0)} color="from-blue-500 to-blue-600" tone="blue" big />
-          <Kpi icon={TrendingDown} label="Retenues" value={fmtCDF(data.totalRetenues ?? 0)} hint={`+ ${fmtCDF(data.chargesPatronales ?? 0)} patronal`} color="from-rose-500 to-rose-600" tone="rose" big />
+          <Kpi icon={Building2} label="Brute contractuelle" value={fmtCDF(data.bruteContractuelle ?? 0)} hint={`${data.contrats ?? 0} contrat(s)`} color="from-indigo-600 to-indigo-800" tone="indigo" big />
+          <Kpi icon={DollarSign} label="Brut cumulé (période)" value={fmtCDF(data.totalBrut ?? 0)} color="from-slate-700 to-slate-900" tone="slate" big />
+          <Kpi icon={TrendingUp} label="Avantages globaux" value={fmtCDF(data.totalAvantages ?? 0)} hint="Transport · prime · logement" color="from-blue-500 to-blue-600" tone="blue" big />
+          <Kpi icon={TrendingDown} label="Retenues globales" value={fmtCDF(data.totalRetenues ?? 0)} hint={`+ ${fmtCDF(data.chargesPatronales ?? 0)} patronal`} color="from-rose-500 to-rose-600" tone="rose" big />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           <Mini label="Net moyen" value={fmtCDF(data.avgNet ?? 0)} />
