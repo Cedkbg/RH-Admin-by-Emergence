@@ -152,7 +152,7 @@ export function LiveStats({ variant, period: periodProp }: Props) {
     reload();
     const tables =
       variant === "presence" ? ["attendance", "leave_requests", "employees"]
-      : variant === "paie" ? ["payroll", "employees"]
+      : variant === "paie" ? ["payroll", "employees", "attendance"]
       : ["employees", "attendance", "leave_requests", "payroll", "job_offers", "candidates", "trainings"];
 
     const ch = supabase.channel(`live-stats-${variant}`);
