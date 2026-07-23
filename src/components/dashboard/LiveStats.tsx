@@ -221,7 +221,7 @@ export function LiveStats({ variant, period: periodProp }: Props) {
             </div>
             <p className="text-[10px] uppercase tracking-wider opacity-80 mt-3">Masse nette à payer · {data.period}</p>
             <p className="text-2xl font-bold mt-1">{fmtCDF(data.totalNet ?? 0)}</p>
-            <p className="text-[11px] opacity-80 mt-1">{data.bulletins ?? 0} bulletin(s) · prestations & présence</p>
+            <p className="text-[11px] opacity-80 mt-1">{data.bulletins ?? 0} bulletin(s) · {data.agentsPointes ?? 0} agent(s) pointé(s)</p>
           </Card>
           <Kpi icon={Building2} label="Brute contractuelle" value={fmtCDF(data.bruteContractuelle ?? 0)} hint={`${data.contrats ?? 0} contrat(s)`} color="from-indigo-600 to-indigo-800" tone="indigo" big />
           <Kpi icon={DollarSign} label="Brut cumulé (période)" value={fmtCDF(data.totalBrut ?? 0)} color="from-slate-700 to-slate-900" tone="slate" big />
