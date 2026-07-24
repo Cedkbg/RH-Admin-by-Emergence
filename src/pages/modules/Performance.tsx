@@ -101,6 +101,7 @@ const Performance = () => {
         <>
           <AgentSalarySummary selectedAgentId={selectedAgentId} onSelectAgent={setSelectedAgentId} />
           <PerformanceTimeChart selectedAgentId={selectedAgentId} />
+          <AgentSalaryDetail selectedAgentId={selectedAgentId} />
         </>
       )}
       <CrudPage<Review>
