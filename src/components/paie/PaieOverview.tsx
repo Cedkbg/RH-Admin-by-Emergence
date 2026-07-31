@@ -41,6 +41,12 @@ interface Row {
   base_salary?: number;
   bonus?: number;
   deductions?: number;
+  total_avantages?: number;
+  transport?: number;
+  communication?: number;
+  loyer?: number;
+  allocation_familiale?: number;
+  other_deductions?: number;
   updated_at?: string;
 }
 
@@ -77,7 +83,7 @@ export function PaieOverview() {
     const now = new Date();
     const cutoff = new Date(now.getFullYear(), now.getMonth() - 23, 1).toISOString().slice(0, 7);
     const [{ data: cur }, { data: prev }, { data: emps }, { data: hist }] = await Promise.all([
-      supabase.from("payroll").select("id,net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,updated_at,period,base_salary,bonus,deductions").eq("period", period),
+      supabase.from("payroll").select("id,net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,updated_at,period,base_salary,bonus,deductions,total_avantages,transport,communication,loyer,allocation_familiale,other_deductions").eq("period", period),
       supabase.from("payroll").select("net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,updated_at,period").eq("period", prevPeriod),
       supabase.from("employees").select("id,first_name,last_name,matricule,position,contract_type,base_salary,hourly_rate").order("last_name"),
       supabase.from("payroll").select("period,net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,base_salary").gte("period", cutoff),
@@ -103,8 +109,16 @@ export function PaieOverview() {
   const totals = useMemo(() => {
     const sum = (k: keyof Row) => rows.reduce((s, r) => s + Number((r as any)[k] || 0), 0);
     const sumPrev = (k: keyof Row) => prevRows.reduce((s, r) => s + Number((r as any)[k] || 0), 0);
+    const avantages = sum("total_avantages") ||
+      (sum("transport") + sum("communication") + sum("loyer") + sum("allocation_familiale") + sum("bonus"));
+    const retenues = sum("deductions") ||
+      (sum("ipr") + sum("inpp") + sum("cnss") + sum("onem") + sum("other_deductions"));
     return {
       net: sum("net_pay"),
+      brut: sum("base_salary"),
+      avantages,
+      retenues,
+      chargesPatronales: sum("cnss_patronal"),
       cnss: sum("cnss") + sum("cnss_patronal"),
       ipr: sum("ipr"),
       inpp: sum("inpp"),
@@ -117,6 +131,11 @@ export function PaieOverview() {
       lastUpdate: rows.map((r) => r.updated_at).filter(Boolean).sort().pop(),
     };
   }, [rows, prevRows]);
+
+  const bruteContractuelle = useMemo(
+    () => brutAgents.reduce((s, a) => s + brutOf(a), 0),
+    [brutAgents]
+  );
 
   const cnssDelta = totals.cnssPrev > 0 ? ((totals.cnss - totals.cnssPrev) / totals.cnssPrev) * 100 : 0;
 
@@ -167,7 +186,7 @@ export function PaieOverview() {
 
   return (
     <div className="space-y-4">
-      {/* 2 · Indicateurs de conformité */}
+      {/* Indicateurs de conformité */}
       <Card className="p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -651,6 +670,29 @@ function ConformityCard({ label, value, footer }: { label: string; value: string
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className="text-xl font-bold mt-1">{value}</p>
       <p className="text-[11px] mt-2">{footer}</p>
+    </div>
+  );
+}
+
+const SYNTH_TONES: Record<string, string> = {
+  slate: "border-l-slate-500 bg-slate-500/5",
+  primary: "border-l-primary bg-primary/10",
+  emerald: "border-l-emerald-500 bg-emerald-500/5",
+  rose: "border-l-rose-500 bg-rose-500/5",
+};
+const SYNTH_TEXT: Record<string, string> = {
+  slate: "text-slate-700 dark:text-slate-300",
+  primary: "text-primary",
+  emerald: "text-emerald-700 dark:text-emerald-400",
+  rose: "text-rose-700 dark:text-rose-400",
+};
+
+function SynthCard({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone: keyof typeof SYNTH_TONES }) {
+  return (
+    <div className={`rounded-lg border border-l-4 bg-card p-4 shadow-sm transition-all hover:shadow-md ${SYNTH_TONES[tone]}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`text-2xl font-bold mt-1 ${SYNTH_TEXT[tone]}`}>{value}</p>
+      {hint && <p className="text-[10px] text-muted-foreground mt-1.5 leading-snug">{hint}</p>}
     </div>
   );
 }
