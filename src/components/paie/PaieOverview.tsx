@@ -201,10 +201,7 @@ export function PaieOverview() {
         </div>
       </Card>
 
-      {/* 3 · Masse salariale brute (avec filtre + détail agent) */}
-      <BrutSalaireCard agents={brutAgents} history={historyRows} />
-
-      {/* 4 · Période actuelle + historique */}
+      {/* 3 · Période actuelle + historique */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 p-6 relative overflow-hidden">
           <div className="flex items-center gap-2 text-xs text-primary font-semibold uppercase tracking-wider mb-3">

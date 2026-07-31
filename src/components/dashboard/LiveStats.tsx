@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,41 @@ const fmtCDF = (n: number) =>
 
 interface Pulse { key: string; ts: number; }
 
+// === Constantes pour projection ===
+const STD_HOURS_PER_DAY = 8;
+const IPR_BRACKETS = [
+  { upTo: 162, rate: 0.03 },
+  { upTo: 1800, rate: 0.15 },
+  { upTo: 3600, rate: 0.30 },
+  { upTo: Infinity, rate: 0.40 },
+];
+const computeIPR = (assiette: number) => {
+  let remaining = Math.max(0, assiette);
+  let prev = 0;
+  let tax = 0;
+  for (const b of IPR_BRACKETS) {
+    if (remaining <= 0) break;
+    const slice = Math.min(remaining, b.upTo - prev);
+    if (slice > 0) { tax += slice * b.rate; remaining -= slice; }
+    prev = b.upTo;
+  }
+  return +tax.toFixed(2);
+};
+const num = (v: any) => Number(v || 0);
+const hoursBetween = (ci: string | null, co: string | null) => {
+  if (!ci || !co) return 0;
+  const [h1, m1] = ci.split(":").map(Number);
+  const [h2, m2] = co.split(":").map(Number);
+  return Math.max(0, ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60);
+};
+const workableDaysIn = (year: number, month: number) => {
+  let n = 0;
+  for (let d = new Date(year, month - 1, 1); d.getMonth() === month - 1; d.setDate(d.getDate() + 1)) {
+    if (d.getDay() !== 0 && d.getDay() !== 6) n++;
+  }
+  return n;
+};
+
 /**
  * Tableau de bord statistiques pro avec mise à jour temps réel (Supabase Realtime).
  * Trois variantes : présence (jour), paie (période courante), global (consolidé).
@@ -27,9 +62,13 @@ export function LiveStats({ variant }: Props) {
   const [data, setData] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [paiePeriod, setPaiePeriod] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
 
   const today = new Date().toISOString().slice(0, 10);
-  const period = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+  const period = paiePeriod;
 
   const reload = async () => {
     try {
@@ -50,29 +89,80 @@ export function LiveStats({ variant }: Props) {
         const tauxPresence = totalActifs > 0 ? Math.round(((present + enMission) / totalActifs) * 100) : 0;
         setData({ totalActifs, present, absents, retards, enMission, inOffice, tauxPresence, pendingLeaves: leaves.count ?? 0 });
       } else if (variant === "paie") {
-        const [pay, emp] = await Promise.all([
+        const [pay, emp, empsFull, att] = await Promise.all([
           supabase.from("payroll").select("net_pay,base_salary,total_avantages,deductions,cnss_patronal,status,period,employee_id"),
           supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
+          supabase.from("employees").select("id,first_name,last_name,matricule,hourly_rate,base_salary,contract_type").eq("status", "active"),
+          supabase.from("attendance").select("employee_id,date,check_in,check_out,status"),
         ]);
         const all = pay.data || [];
         const current = all.filter((p: any) => p.period === period);
-        const totalNet = current.reduce((s: number, p: any) => s + Number(p.net_pay || 0), 0);
-        const totalBrut = current.reduce((s: number, p: any) => s + Number(p.base_salary || 0), 0);
-        const totalAvantages = current.reduce((s: number, p: any) => s + Number(p.total_avantages || 0), 0);
-        const totalRetenues = current.reduce((s: number, p: any) => s + Number(p.deductions || 0), 0);
+        const totalNetPayroll = current.reduce((s: number, p: any) => s + Number(p.net_pay || 0), 0);
+        const totalBrutPayroll = current.reduce((s: number, p: any) => s + Number(p.base_salary || 0), 0);
+        const totalAvantagesPayroll = current.reduce((s: number, p: any) => s + Number(p.total_avantages || 0), 0);
+        const totalRetenuesPayroll = current.reduce((s: number, p: any) => s + Number(p.deductions || 0), 0);
         const chargesPatronales = current.reduce((s: number, p: any) => s + Number(p.cnss_patronal || 0), 0);
         const paid = current.filter((p: any) => p.status === "paye").length;
         const pending = current.filter((p: any) => p.status === "en_attente" || p.status === "draft").length;
         const validated = current.filter((p: any) => p.status === "valide").length;
-        const avgNet = current.length > 0 ? totalNet / current.length : 0;
+        const avgNetPayroll = current.length > 0 ? totalNetPayroll / current.length : 0;
         const couverture = (emp.count ?? 0) > 0 ? Math.round((current.length / (emp.count ?? 1)) * 100) : 0;
         // Évolution vs mois précédent
         const d = new Date(); d.setMonth(d.getMonth() - 1);
         const prevPeriod = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         const prev = all.filter((p: any) => p.period === prevPeriod);
         const totalPrev = prev.reduce((s: number, p: any) => s + Number(p.net_pay || 0), 0);
-        const evolution = totalPrev > 0 ? Math.round(((totalNet - totalPrev) / totalPrev) * 100) : 0;
-        setData({ totalNet, totalBrut, totalAvantages, totalRetenues, chargesPatronales, paid, pending, validated, avgNet, couverture, evolution, period, bulletins: current.length });
+        const evolution = totalPrev > 0 ? Math.round(((totalNetPayroll - totalPrev) / totalPrev) * 100) : 0;
+
+        // === PROJECTION depuis présence si payroll non trouvé ===
+        const [y, m] = period.split("-").map(Number);
+        const monthStart = `${period}-01`;
+        const monthEnd = new Date(y, m, 0).toISOString().slice(0, 10);
+        const workableDays = workableDaysIn(y, m);
+        const perEmp = new Map<string, { days: number; hours: number }>();
+        (att.data || []).filter((a: any) => a.date >= monthStart && a.date <= monthEnd).forEach((a: any) => {
+          if (a.status !== "present" && a.status !== "mission" && a.status !== "deplacement") return;
+          const rec = perEmp.get(a.employee_id) || { days: 0, hours: 0 };
+          rec.days++;
+          if (a.check_in && a.check_out) rec.hours += hoursBetween(a.check_in, a.check_out);
+          perEmp.set(a.employee_id, rec);
+        });
+
+        let projNet = 0, projBrut = 0, projAvantages = 0, projRetenues = 0, projAgents = 0;
+        const emps = (empsFull.data || []) as any[];
+        emps.forEach((e: any) => {
+          const p = perEmp.get(e.id);
+          if (!p || p.days === 0) return;
+          const rate = num(e.hourly_rate) || (num(e.base_salary) / 160);
+          const daily = rate * STD_HOURS_PER_DAY;
+          const brut = +(p.days * daily).toFixed(2);
+          const heuresSupPay = 0;
+          const avantages = 0;
+          const assiette = brut;
+          const cnss = +(brut * 0.05).toFixed(2);
+          const ipr = computeIPR(assiette);
+          const inpp = +(brut * 0.03).toFixed(2);
+          const onem = +(brut * 0.002).toFixed(2);
+          const retenues = +(cnss + ipr + inpp + onem).toFixed(2);
+          const net = +(brut + avantages - retenues).toFixed(2);
+          projNet += net;
+          projBrut += brut;
+          projAvantages += avantages;
+          projRetenues += retenues;
+          projAgents++;
+        });
+        setData({
+          // Payroll existant
+          totalNet: totalNetPayroll, totalBrut: totalBrutPayroll,
+          totalAvantages: totalAvantagesPayroll, totalRetenues: totalRetenuesPayroll,
+          chargesPatronales, paid, pending, validated,
+          avgNet: avgNetPayroll, couverture, evolution,
+          period, bulletins: current.length,
+          // Projection
+          projNet, projBrut, projAvantages, projRetenues, projAgents,
+          projWorkableDays: workableDays,
+          hasProjection: current.length === 0 && projAgents > 0,
+        });
       } else {
         const [emp, empActive, att, leaves, jobs, cand, train, pay] = await Promise.all([
           supabase.from("employees").select("id", { count: "exact", head: true }),
@@ -103,7 +193,7 @@ export function LiveStats({ variant }: Props) {
     reload();
     const tables =
       variant === "presence" ? ["attendance", "leave_requests", "employees"]
-      : variant === "paie" ? ["payroll", "employees"]
+      : variant === "paie" ? ["payroll", "employees", "attendance"]
       : ["employees", "attendance", "leave_requests", "payroll", "job_offers", "candidates", "trainings"];
 
     const ch = supabase.channel(`live-stats-${variant}`);
@@ -117,7 +207,7 @@ export function LiveStats({ variant }: Props) {
     const interval = setInterval(reload, 60_000); // filet de sécurité
     return () => { supabase.removeChannel(ch); clearInterval(interval); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [variant]);
+  }, [variant, paiePeriod]);
 
   const pulsing = pulse && Date.now() - pulse.ts < 2000;
 
@@ -156,34 +246,77 @@ export function LiveStats({ variant }: Props) {
 
   if (variant === "paie") {
     const evo = Number(data.evolution || 0);
+    const totalNet = data.hasProjection ? (data.projNet || 0) : (data.totalNet || 0);
+    const totalBrut = data.hasProjection ? (data.projBrut || 0) : (data.totalBrut || 0);
+    const totalAvantages = data.hasProjection ? (data.projAvantages || 0) : (data.totalAvantages || 0);
+    const totalRetenues = data.hasProjection ? (data.projRetenues || 0) : (data.totalRetenues || 0);
+    const agentsCount = data.hasProjection ? (data.projAgents || 0) : (data.bulletins || 0);
+    const avgNet = data.hasProjection && agentsCount > 0 ? totalNet / agentsCount : (data.avgNet || 0);
+    const title = data.hasProjection ? "Projection Pré-Paie" : "Masse salariale nette";
+    // Calculer les détails des retenues projetées
+    const getDedDetail = () => {
+      if (!data.hasProjection) return null;
+      const net = data.projNet || 0;
+      const brut = data.projBrut || 0;
+      return {
+        cnss: +(brut * 0.05).toFixed(2),
+        ipr: computeIPR(brut),
+        inpp: +(brut * 0.03).toFixed(2),
+        onem: +(brut * 0.002).toFixed(2),
+      };
+    };
+    const ded = getDedDetail();
     return (
       <div>
         {header}
+        <div className="flex items-center gap-2 mb-3">
+          <input
+            type="month"
+            value={paiePeriod}
+            onChange={(e) => setPaiePeriod(e.target.value)}
+            className="h-8 text-sm rounded-md border bg-background px-2"
+          />
+          <Badge variant={data.hasProjection ? "secondary" : "default"} className="text-[10px]">
+            {data.hasProjection ? `Projection · ${data.projAgents} agent(s)` : `${data.bulletins ?? 0} bulletin(s)`}
+          </Badge>
+          {data.hasProjection && (
+            <Badge variant="outline" className="text-[10px]">
+              {data.projWorkableDays ?? 0} jours ouvrés
+            </Badge>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <Card className="p-4 bg-gradient-to-br from-emerald-600 to-emerald-700 text-white border-0 shadow-md">
             <div className="flex items-center justify-between">
               <Wallet className="h-5 w-5 opacity-90" />
-              {evo !== 0 && (
+              {evo !== 0 && !data.hasProjection && (
                 <Badge variant="secondary" className="bg-white/20 text-white border-0 text-[10px]">
                   {evo > 0 ? <TrendingUp className="h-3 w-3 mr-0.5" /> : <TrendingDown className="h-3 w-3 mr-0.5" />}
                   {evo > 0 ? "+" : ""}{evo}%
                 </Badge>
               )}
             </div>
-            <p className="text-[10px] uppercase tracking-wider opacity-80 mt-3">Masse salariale nette · {data.period}</p>
-            <p className="text-2xl font-bold mt-1">{fmtCDF(data.totalNet ?? 0)}</p>
-            <p className="text-[11px] opacity-80 mt-1">{data.bulletins ?? 0} bulletin(s)</p>
+            <p className="text-[10px] uppercase tracking-wider opacity-80 mt-3">{title} · {data.period}</p>
+            <p className="text-2xl font-bold mt-1">{fmtCDF(totalNet)}</p>
+            <p className="text-[11px] opacity-80 mt-1">{agentsCount} agent(s)</p>
           </Card>
-          <Kpi icon={DollarSign} label="Brut cumulé" value={fmtCDF(data.totalBrut ?? 0)} color="from-slate-700 to-slate-900" tone="slate" big />
-          <Kpi icon={TrendingUp} label="Avantages" value={fmtCDF(data.totalAvantages ?? 0)} color="from-blue-500 to-blue-600" tone="blue" big />
-          <Kpi icon={TrendingDown} label="Retenues" value={fmtCDF(data.totalRetenues ?? 0)} hint={`+ ${fmtCDF(data.chargesPatronales ?? 0)} patronal`} color="from-rose-500 to-rose-600" tone="rose" big />
+          <Kpi icon={DollarSign} label="Brut cumulé" value={fmtCDF(totalBrut)} color="from-slate-700 to-slate-900" tone="slate" big />
+          <Kpi icon={TrendingUp} label="Avantages" value={fmtCDF(totalAvantages)} color="from-blue-500 to-blue-600" tone="blue" big />
+          <Kpi icon={TrendingDown} label="Retenues" value={fmtCDF(totalRetenues)} hint={ded ? `Détail: CNSS ${fmtCDF(ded.cnss)} · IPR ${fmtCDF(ded.ipr)} · INPP ${fmtCDF(ded.inpp)} · ONEM ${fmtCDF(ded.onem)}` : `+ ${fmtCDF(data.chargesPatronales ?? 0)} patronal`} color="from-rose-500 to-rose-600" tone="rose" big />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          <Mini label="Net moyen" value={fmtCDF(data.avgNet ?? 0)} />
-          <Mini label="Payés" value={data.paid ?? 0} tone="emerald" />
-          <Mini label="Validés" value={data.validated ?? 0} tone="blue" />
-          <Mini label="En attente" value={data.pending ?? 0} tone="amber" />
-          <Mini label="Couverture" value={`${data.couverture ?? 0}%`} hint="bulletins/actifs" />
+          <Mini label="Net moyen" value={fmtCDF(avgNet)} />
+          {!data.hasProjection && <Mini label="Payés" value={data.paid ?? 0} tone="emerald" />}
+          {!data.hasProjection && <Mini label="Validés" value={data.validated ?? 0} tone="blue" />}
+          {!data.hasProjection && <Mini label="En attente" value={data.pending ?? 0} tone="amber" />}
+          {!data.hasProjection && <Mini label="Couverture" value={`${data.couverture ?? 0}%`} hint="bulletins/actifs" />}
+          {data.hasProjection && (
+            <>
+              <Mini label="Agents avec présence" value={String(data.projAgents ?? 0)} tone="emerald" />
+              <Mini label="Jours ouvrés" value={String(data.projWorkableDays ?? 0)} tone="blue" />
+              {ded && <Mini label="Total retenues légales" value={fmtCDF(ded.cnss + ded.ipr + ded.inpp + ded.onem)} tone="amber" />}
+            </>
+          )}
         </div>
       </div>
     );

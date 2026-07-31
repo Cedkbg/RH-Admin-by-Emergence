@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { HeartHandshake, Smile, Frown, Meh, ArrowLeft, Sunrise, Sunset, Zap, Activity, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, HeartHandshake, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
+import { WellbeingSurveyForm } from "@/components/wellbeing/WellbeingSurveyForm";
+import { WellbeingStats } from "@/components/wellbeing/WellbeingStats";
+import { AgentWellbeingBlock } from "@/components/wellbeing/AgentWellbeingBlock";
+import { AgentWellbeingHistory } from "@/components/wellbeing/AgentWellbeingHistory";
 
 interface EmployeeShort {
   first_name: string;
@@ -30,10 +32,26 @@ interface Survey {
   employees?: EmployeeShort | null;
 }
 
-const moodIcons = [Frown, Frown, Meh, Smile, Smile];
-const moodLabels = ["Très bas", "Bas", "Neutre", "Bien", "Excellent"];
-
-type Moment = "morning" | "evening";
+interface AgentBlock {
+  agentId: string;
+  firstName: string;
+  lastName: string;
+  matricule: string | null;
+  direction: string;
+  department: string;
+  position: string | null;
+  avgMood: number | null;
+  avgEnergy: number | null;
+  avgStress: number | null;
+  lastMood: number | null;
+  lastEnergy: number | null;
+  lastStress: number | null;
+  lastHighlight: string | null;
+  lastDate: string | null;
+  totalEntries: number;
+  morningDone: boolean;
+  eveningDone: boolean;
+}
 
 const BienEtre = () => {
   const navigate = useNavigate();
@@ -43,40 +61,45 @@ const BienEtre = () => {
   const [fullName, setFullName] = useState<string>("");
   const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);
   const [items, setItems] = useState<Survey[]>([]);
-  const [moment, setMoment] = useState<Moment>(() => (new Date().getHours() < 14 ? "morning" : "evening"));
-  const [mood, setMood] = useState<number | null>(null);
-  const [energy, setEnergy] = useState<number | null>(null);
-  const [stress, setStress] = useState<number | null>(null);
-  const [highlight, setHighlight] = useState("");
-  const [comments, setComments] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [employees, setEmployees] = useState<{ id: string; first_name: string; last_name: string; matricule: string | null; direction_id: string | null; department_id: string | null; position: string | null }[]>([]);
+  const [directions, setDirections] = useState<Map<string, string>>(new Map());
+  const [departments, setDepartments] = useState<Map<string, string>>(new Map());
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 
-  const refresh = async () => {
-    try {
-      let { data, error } = await supabase
-        .from("wellbeing_surveys")
-        .select("*, employees(first_name, last_name)")
-        .order("submitted_at", { ascending: false })
-        .limit(60);
-      if (error) {
-        // Fallback if the embed fails (RLS / relationship issue)
-        const res = await supabase
-          .from("wellbeing_surveys")
-          .select("*")
-          .order("submitted_at", { ascending: false })
-          .limit(60);
-        data = res.data as unknown as typeof data;
-      }
-      setItems((data as unknown as Survey[]) || []);
-    } catch (e) {
-      console.error("BienEtre refresh failed", e);
-      setItems([]);
-    }
-  };
+  const triggerRefresh = () => setRefreshKey((k) => k + 1);
+
+// Load all data
   useEffect(() => {
-    refresh();
-  }, []);
+    const load = async () => {
+      try {
+        const [surveysRes, empsRes, dirsRes, depsRes] = await Promise.all([
+          supabase
+            .from("wellbeing_surveys")
+            .select("*, employees(first_name, last_name)")
+            .order("submitted_at", { ascending: false })
+            .limit(200),
+          supabase.from("employees").select("id,first_name,last_name,matricule,direction_id,department_id,position"),
+          supabase.from("directions").select("id,name"),
+          supabase.from("departments").select("id,name"),
+        ]);
+        setItems((surveysRes.data as unknown as Survey[]) || []);
+        setEmployees((empsRes.data as any[]) || []);
+        const dm = new Map<string, string>();
+        ((dirsRes.data as any[]) || []).forEach((d: any) => dm.set(d.id, d.name));
+        setDirections(dm);
+        const pm = new Map<string, string>();
+        ((depsRes.data as any[]) || []).forEach((d: any) => pm.set(d.id, d.name));
+        setDepartments(pm);
+      } catch (e) {
+        console.error("BienEtre refresh failed", e);
+      }
+    };
+    load();
+  }, [refreshKey]);
 
+  // Load profile full name
   useEffect(() => {
     if (!user?.id) return;
     supabase
@@ -89,6 +112,7 @@ const BienEtre = () => {
       });
   }, [user?.id]);
 
+  // Find employee ID from email
   useEffect(() => {
     if (!user?.email) return;
     supabase
@@ -102,16 +126,20 @@ const BienEtre = () => {
   }, [user?.email]);
 
   const today = new Date().toISOString().slice(0, 10);
+
   const mine = useMemo(() => items.filter((i) => i.employee_id), [items]);
+
   const personalItems = useMemo(() => {
-    if (!isHrPrivileged) return mine; // agents: RLS already restricts to own rows
+    if (!isHrPrivileged) return mine;
     if (!myEmployeeId) return [];
     return items.filter((i) => i.employee_id === myEmployeeId);
   }, [mine, items, isHrPrivileged, myEmployeeId]);
+
   const todayMine = useMemo(
     () => personalItems.filter((i) => i.submitted_at === today),
     [personalItems, today],
   );
+
   const doneMorning = todayMine.some((i) => i.moment === "morning");
   const doneEvening = todayMine.some((i) => i.moment === "evening");
 
@@ -121,283 +149,179 @@ const BienEtre = () => {
     return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
   };
 
-  const reset = () => {
-    setMood(null);
-    setEnergy(null);
-    setStress(null);
-    setHighlight("");
-    setComments("");
-  };
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!mood) {
-      toast.error("Choisissez votre humeur");
-      return;
-    }
-    setSubmitting(true);
-    const { error } = await supabase.from("wellbeing_surveys").insert({
-      mood_score: mood,
-      energy_score: energy,
-      stress_score: stress,
-      highlight: highlight || null,
-      comments: comments || null,
-      moment,
-    });
-    setSubmitting(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success(moment === "morning" ? "Bonne journée ! ☀️" : "Bonne soirée ! 🌙");
-    reset();
-    refresh();
-  };
+  const avgMood = avgFor("mood_score");
+  const avgEnergy = avgFor("energy_score");
+  const avgStress = avgFor("stress_score");
 
   const removeSurvey = async (id: string) => {
     if (!confirm("Supprimer cette entrée ?")) return;
     const { error } = await supabase.from("wellbeing_surveys").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Supprimée"); refresh();
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Supprimée");
+    triggerRefresh();
   };
 
-  const Scale = ({
-    value,
-    onChange,
-    color = "primary",
-  }: {
-    value: number | null;
-    onChange: (n: number) => void;
-    color?: string;
-  }) => (
-    <div className="flex gap-1.5">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          onClick={() => onChange(n)}
-          className={cn(
-            "flex-1 rounded-md border-2 py-2 text-sm font-semibold transition",
-            value === n
-              ? `border-${color} bg-${color}/10 text-${color}`
-              : "border-border hover:border-primary/40 text-muted-foreground",
-          )}
-        >
-          {n}
-        </button>
-      ))}
-    </div>
-  );
+  // Build agent blocks
+  const todayStr = today;
+
+  const agentBlocks = useMemo(() => {
+    const surveyByAgent = new Map<string, Survey[]>();
+    items.forEach((s) => {
+      const eid = s.employee_id || "orphan";
+      if (!surveyByAgent.has(eid)) surveyByAgent.set(eid, []);
+      surveyByAgent.get(eid)!.push(s);
+    });
+
+    return employees
+      .map((emp) => {
+        const empSurveys = surveyByAgent.get(emp.id) || [];
+        if (empSurveys.length === 0) return null;
+
+        const moodVals = empSurveys.map((s) => s.mood_score).filter((v): v is number => v != null);
+        const energyVals = empSurveys.map((s) => s.energy_score).filter((v): v is number => v != null);
+        const stressVals = empSurveys.map((s) => s.stress_score).filter((v): v is number => v != null);
+        const avg = (arr: number[]) =>
+          arr.length > 0 ? +(arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : null;
+
+        const last = empSurveys[0] || null;
+        const todayEntries = empSurveys.filter((s) => s.submitted_at === todayStr);
+
+        return {
+          agentId: emp.id,
+          firstName: emp.first_name,
+          lastName: emp.last_name,
+          matricule: emp.matricule,
+          direction: emp.direction_id ? directions.get(emp.direction_id) || "—" : "—",
+          department: emp.department_id ? departments.get(emp.department_id) || "—" : "—",
+          position: emp.position,
+          avgMood: avg(moodVals),
+          avgEnergy: avg(energyVals),
+          avgStress: avg(stressVals),
+          lastMood: last?.mood_score ?? null,
+          lastEnergy: last?.energy_score ?? null,
+          lastStress: last?.stress_score ?? null,
+          lastHighlight: last?.highlight ?? null,
+          lastDate: last?.submitted_at ?? null,
+          totalEntries: empSurveys.length,
+          morningDone: todayEntries.some((s) => s.moment === "morning"),
+          eveningDone: todayEntries.some((s) => s.moment === "evening"),
+        } as AgentBlock;
+      })
+      .filter((block): block is AgentBlock => block !== null)
+      .filter((block) => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+          block.lastName.toLowerCase().includes(q) ||
+          block.firstName.toLowerCase().includes(q) ||
+          (block.matricule || "").toLowerCase().includes(q) ||
+          block.direction.toLowerCase().includes(q)
+        );
+      });
+  }, [employees, items, directions, searchQuery, todayStr]);
+
+  const selectedAgent = selectedAgentId
+    ? employees.find((e) => e.id === selectedAgentId)
+    : null;
+
+  const selectedAgentData = selectedAgent
+    ? agentBlocks.find((b) => b.agentId === selectedAgentId)
+    : null;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 animate-fade-in pb-8">
+    <div className="mx-auto max-w-[1400px] space-y-6 animate-fade-in pb-8">
       <Button variant="ghost" onClick={() => navigate(-1)} className="w-fit -ml-2">
         <ArrowLeft className="mr-2 h-4 w-4" /> Retour
       </Button>
 
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Mon journal de bien-être</h1>
-        <p className="text-sm text-muted-foreground">
-          Marquez votre humeur le matin et le soir. Vos réponses restent confidentielles.
-        </p>
-      </div>
-
-      {/* Statut du jour */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className={cn("rounded-xl border p-3 text-sm flex items-center gap-2", doneMorning ? "bg-primary/5 border-primary/30" : "bg-card")}>
-          <Sunrise className="h-4 w-4 text-amber-500" />
-          <span className="flex-1">Check-in matin</span>
-          <Badge variant={doneMorning ? "default" : "outline"}>{doneMorning ? "Fait" : "À faire"}</Badge>
-        </div>
-        <div className={cn("rounded-xl border p-3 text-sm flex items-center gap-2", doneEvening ? "bg-primary/5 border-primary/30" : "bg-card")}>
-          <Sunset className="h-4 w-4 text-orange-500" />
-          <span className="flex-1">Check-out soir</span>
-          <Badge variant={doneEvening ? "default" : "outline"}>{doneEvening ? "Fait" : "À faire"}</Badge>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Bien-être & QVT</h1>
+          <p className="text-sm text-muted-foreground">
+            Journal de bien-être — humeur, énergie, stress. Marquez votre ressenti matin et soir.
+          </p>
         </div>
       </div>
 
-      {/* Formulaire */}
-      <section className="rounded-xl border bg-card p-5 shadow-sm">
-        <div className="grid w-full grid-cols-2 gap-1 rounded-md bg-muted p-1">
-          <button
-            type="button"
-            onClick={() => !doneMorning && setMoment("morning")}
-            disabled={doneMorning}
-            className={cn(
-              "flex items-center justify-center rounded px-3 py-1.5 text-sm font-medium transition",
-              moment === "morning" ? "bg-background shadow-sm" : "text-muted-foreground",
-              doneMorning && "opacity-50 cursor-not-allowed",
-            )}
-          >
-            <Sunrise className="mr-2 h-4 w-4" /> Matin
-          </button>
-          <button
-            type="button"
-            onClick={() => !doneEvening && setMoment("evening")}
-            disabled={doneEvening}
-            className={cn(
-              "flex items-center justify-center rounded px-3 py-1.5 text-sm font-medium transition",
-              moment === "evening" ? "bg-background shadow-sm" : "text-muted-foreground",
-              doneEvening && "opacity-50 cursor-not-allowed",
-            )}
-          >
-            <Sunset className="mr-2 h-4 w-4" /> Soir
-          </button>
-        </div>
-
-        <div className="mt-5">
-          <form onSubmit={submit} className="space-y-5">
-            {fullName && (
-              <p className="text-sm font-medium text-muted-foreground">
-                {moment === "morning" ? "Bonjour" : "Bonsoir"}, <span className="text-foreground font-semibold">{fullName}</span>
-              </p>
-            )}
-            <div>
-              <Label className="mb-2 flex items-center gap-2"><HeartHandshake className="h-4 w-4" /> Humeur</Label>
-              <div className="flex justify-between gap-2">
-                {[1, 2, 3, 4, 5].map((n) => {
-                  const Icon = moodIcons[n - 1];
-                  return (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setMood(n)}
-                      className={cn(
-                        "flex flex-1 flex-col items-center gap-1 rounded-lg border-2 p-2 transition",
-                        mood === n ? "border-primary bg-primary/10" : "border-border hover:border-primary/50",
-                      )}
-                    >
-                      <Icon className={cn("h-6 w-6", mood === n ? "text-primary" : "text-muted-foreground")} />
-                      <span className="text-[10px] font-medium">{moodLabels[n - 1]}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <Label className="mb-2 flex items-center gap-2"><Zap className="h-4 w-4 text-yellow-500" /> Énergie</Label>
-              <Scale value={energy} onChange={setEnergy} />
-            </div>
-
-            <div>
-              <Label className="mb-2 flex items-center gap-2"><Activity className="h-4 w-4 text-red-500" /> Niveau de stress</Label>
-              <Scale value={stress} onChange={setStress} />
-            </div>
-
-            <div>
-              <Label className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-violet-500" /> {moment === "morning" ? "Objectif du jour" : "Point fort de la journée"}</Label>
-              <Input
-                value={highlight}
-                onChange={(e) => setHighlight(e.target.value)}
-                placeholder={moment === "morning" ? "Ex : Finir le rapport mensuel" : "Ex : Réunion réussie avec l'équipe"}
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label>Commentaire (optionnel)</Label>
-              <Textarea value={comments} onChange={(e) => setComments(e.target.value)} rows={2} className="mt-1" />
-            </div>
-
-            <Button type="submit" disabled={submitting || !mood} className="w-full">
-              {moment === "morning" ? "Démarrer ma journée" : "Clôturer ma journée"}
-            </Button>
-          </form>
-        </div>
-
-      </section>
+      {/* Formulaire personnel */}
+      <WellbeingSurveyForm
+        fullName={fullName}
+        doneMorning={doneMorning}
+        doneEvening={doneEvening}
+        onSuccess={triggerRefresh}
+      />
 
       {/* Mes statistiques */}
-      <section className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Humeur moy.", value: avgFor("mood_score"), icon: HeartHandshake },
-          { label: "Énergie moy.", value: avgFor("energy_score"), icon: Zap },
-          { label: "Stress moy.", value: avgFor("stress_score"), icon: Activity },
-        ].map((s) => (
-          <div key={s.label} className="rounded-xl border bg-card p-3 text-center shadow-sm">
-            <s.icon className="mx-auto mb-1 h-4 w-4 text-muted-foreground" />
-            <div className="text-lg font-bold">{s.value ?? "—"}<span className="text-xs text-muted-foreground">/5</span></div>
-            <div className="text-[11px] text-muted-foreground">{s.label}</div>
-          </div>
-        ))}
-      </section>
+      <WellbeingStats
+        avgMood={avgMood}
+        avgEnergy={avgEnergy}
+        avgStress={avgStress}
+        totalEntries={personalItems.length}
+      />
 
-      {/* Historique groupé par agent + jour (Matin / Soir côte à côte) */}
-      <section className="rounded-xl border bg-card p-5 shadow-sm">
-        <h2 className="mb-3 font-semibold">{isHrPrivileged ? "Historique des agents" : "Mon historique"}</h2>
-        {mine.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Aucune entrée pour l'instant.</p>
-        ) : (
-          (() => {
-            const groups = new Map<string, { name: string; date: string; morning?: Survey; evening?: Survey }>();
-            for (const i of mine) {
-              const name = i.employees ? `${i.employees.first_name} ${i.employees.last_name}` : "—";
-              const key = `${i.employee_id ?? "x"}__${i.submitted_at}`;
-              const g = groups.get(key) ?? { name, date: i.submitted_at };
-              if (i.moment === "evening") g.evening = i;
-              else g.morning = i;
-              groups.set(key, g);
-            }
-            const rows = Array.from(groups.values())
-              .sort((a, b) => (a.date < b.date ? 1 : -1))
-              .slice(0, 20);
-
-            const Slot = ({ s, label, Icon, color }: { s?: Survey; label: string; Icon: typeof Sunrise; color: string }) => (
-              <div className={cn("rounded-lg border p-2.5", s ? "bg-background" : "bg-muted/30 border-dashed")}>
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <Icon className={cn("h-3.5 w-3.5", color)} />
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
-                  </div>
-                  {s && (isHrPrivileged || s.employee_id === myEmployeeId) && (
-                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeSurvey(s.id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-                {s ? (
-                  <>
-                    <div className="flex flex-wrap gap-1 mb-1">
-                      {s.mood_score != null && (
-                        <Badge variant={s.mood_score >= 4 ? "default" : s.mood_score <= 2 ? "destructive" : "outline"} className="text-[10px]">
-                          😊 {s.mood_score}
-                        </Badge>
-                      )}
-                      {s.energy_score != null && <Badge variant="outline" className="text-[10px]">⚡ {s.energy_score}</Badge>}
-                      {s.stress_score != null && <Badge variant="outline" className="text-[10px]">💢 {s.stress_score}</Badge>}
-                    </div>
-                    {s.highlight && <div className="text-xs text-muted-foreground line-clamp-2">{s.highlight}</div>}
-                  </>
-                ) : (
-                  <div className="text-[11px] italic text-muted-foreground">En attente…</div>
-                )}
+      {/* Section agents (si RH) */}
+      {isHrPrivileged && (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <HeartHandshake className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Vue d'ensemble des agents</h3>
+              <Badge variant="secondary" className="ml-1">
+                {agentBlocks.length} agent{agentBlocks.length > 1 ? "s" : ""}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Rechercher un agent…"
+                  className="h-9 pl-9 text-sm"
+                />
               </div>
-            );
+            </div>
+          </div>
 
-            return (
-              <ul className="space-y-3">
-                {rows.map((g, idx) => (
-                  <li key={idx} className="rounded-xl border bg-card/50 p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold">{g.name}</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {new Date(g.date).toLocaleDateString("fr-FR")}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Slot s={g.morning} label="Matin" Icon={Sunrise} color="text-amber-500" />
-                      <Slot s={g.evening} label="Soir" Icon={Sunset} color="text-orange-500" />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            );
-          })()
-        )}
-      </section>
+          {/* Agent blocks grid */}
+          {agentBlocks.length === 0 ? (
+            <Card className="p-12 text-center text-sm text-muted-foreground border-dashed">
+              {searchQuery
+                ? "Aucun agent ne correspond à votre recherche."
+                : "Aucune donnée bien-être disponible pour les agents."}
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {agentBlocks.map((block) => (
+                <AgentWellbeingBlock
+                  key={block.agentId}
+                  {...block}
+                  onClick={() => setSelectedAgentId(block.agentId)}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Agent detail dialog */}
+      {selectedAgent && selectedAgentData && (
+        <AgentWellbeingHistory
+          agentId={selectedAgentData.agentId}
+          firstName={selectedAgentData.firstName}
+          lastName={selectedAgentData.lastName}
+          matricule={selectedAgentData.matricule}
+          direction={selectedAgentData.direction}
+          onClose={() => setSelectedAgentId(null)}
+          onDelete={removeSurvey}
+        />
+      )}
     </div>
   );
 };
 
 export default BienEtre;
+
