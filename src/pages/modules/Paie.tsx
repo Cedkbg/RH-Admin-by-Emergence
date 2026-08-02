@@ -13,7 +13,6 @@ import { LiveStats } from "@/components/dashboard/LiveStats";
 import { PaieOverview } from "@/components/paie/PaieOverview";
 import { PrePaieProjection } from "@/components/paie/PrePaieProjection";
 
-
 interface Employee {
   id: string;
   first_name: string;
@@ -104,7 +103,6 @@ const STATUS_OPTIONS = [
 ];
 
 // === Barème IPR RDC (mensuel, USD - simplifié, tranches officielles converties) ===
-// Annuel CDF -> on travaille en USD ; les tranches ci-dessous sont mensuelles indicatives.
 const IPR_BRACKETS = [
   { upTo: 162, rate: 0.03 },
   { upTo: 1800, rate: 0.15 },
@@ -182,8 +180,8 @@ const PaieForm = ({
         return { hours_worked: 0, days_worked: 0, overtime_hours: 0, overtime_days: 0, regular_hours: 0 };
       }
       let totalHours = 0;
-      let overtimeHours = 0;     // au-delà de 8h sur un jour ouvré (Lun-Ven)
-      let overtimeDays = 0;      // jours travaillés le samedi ou dimanche
+      let overtimeHours = 0;
+      let overtimeDays = 0;
       const days = new Set<string>();
       for (const r of (data as any[]) || []) {
         if (!r.check_in || !r.check_out) continue;
@@ -193,11 +191,11 @@ const PaieForm = ({
         if (diffH <= 0) continue;
         days.add(r.date);
         totalHours += diffH;
-        const dow = new Date(r.date).getDay(); // 0=Dim, 6=Sam
+        const dow = new Date(r.date).getDay();
         const isWeekend = dow === 0 || dow === 6;
         if (isWeekend) {
           overtimeDays += 1;
-          overtimeHours += diffH; // toutes les heures du WE sont sup
+          overtimeHours += diffH;
         } else if (diffH > STD_HOURS_PER_DAY) {
           overtimeHours += diffH - STD_HOURS_PER_DAY;
         }
@@ -237,7 +235,6 @@ const PaieForm = ({
     if (!emp) return;
     const period = form.period || currentPeriod();
 
-    // 1) Mise à jour immédiate (ne BLOQUE PAS pendant l'await réseau)
     const years = yearsBetween(emp.hire_date, new Date());
     const ancienneteRate = Math.min(0.25, Math.floor(years) * 0.02);
     const base = Number(emp.base_salary ?? 0);
@@ -257,7 +254,6 @@ const PaieForm = ({
       bonus: newBonuses.reduce((s, b) => s + b.amount, 0),
     });
 
-    // 2) Récupération présence en arrière-plan (non bloquant)
     try {
       const att = await fillFromAttendance(empId, period);
       if (att) setForm((prev: any) => ({ ...prev, ...att }));
@@ -275,14 +271,13 @@ const PaieForm = ({
     : null;
   const computedBrut = baseFromHours ?? baseFromDays ?? num(form.base_salary);
 
-  // Heures sup = heures × taux horaire × 1.3 ; Jours sup = jours × taux journalier (ou 8×tauxH) × 1.5
   const overtimeHoursPay = num(form.overtime_hours) * num(form.hourly_rate) * OVERTIME_HOUR_RATE;
   const dailyRateEffective = num(form.daily_rate) || num(form.hourly_rate) * STD_HOURS_PER_DAY;
   const overtimeDaysPay = num(form.overtime_days) * dailyRateEffective * OVERTIME_DAY_RATE;
   const overtimePay = +(overtimeHoursPay + overtimeDaysPay).toFixed(2);
 
   const childrenCount = num(form.children_count);
-  const allocFamPerChild = 5; // USD/enfant indicatif
+  const allocFamPerChild = 5;
   const allocFam = num(form.allocation_familiale) || childrenCount * allocFamPerChild;
 
   const totalPrimes = bonuses.reduce((s, b) => s + num(b.amount), 0);
@@ -290,7 +285,6 @@ const PaieForm = ({
     num(form.transport) + num(form.communication) + num(form.loyer) +
     allocFam + totalPrimes + overtimePay;
 
-  // Assiette (= salaire imposable) : brut + primes imposables (hors familial / transport plafonné)
   const assiette = num(form.assiette_ipr) || (computedBrut + totalPrimes + overtimePay);
 
   const ipr = num(form.ipr) || computeIPR(assiette);
@@ -303,8 +297,6 @@ const PaieForm = ({
   const totalRetenues = ipr + inpp + cnss + onem + num(form.other_deductions) + advance;
   const net = computedBrut + totalAvantages - totalRetenues;
 
-  // Auto-recalcul : à chaque changement d'un paramètre manuel (heures, primes, avances, taux, enfants, retenues manuelles),
-  // on resynchronise tous les champs dérivés pour garantir la cohérence du bulletin.
   useEffect(() => {
     const assiette = +(computedBrut + totalPrimes + overtimePay).toFixed(2);
     const _cnss = +(computedBrut * 0.05).toFixed(2);
@@ -339,7 +331,6 @@ const PaieForm = ({
     form.other_deductions, form.advance,
     form.hours_worked, form.overtime_hours,
   ]);
-
 
   const emp = employees.find((e) => e.id === form.employee_id);
   const dir = emp?.direction_id ? directions.get(emp.direction_id)?.name : null;
@@ -476,7 +467,7 @@ const PaieForm = ({
 };
 
 // === Bulletin imprimable ===
-const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+const esc = (s: any) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "<", ">": ">", '"': "\u0022", "'": "&#39;" }[c]!));
 const printBulletin = (pay: Pay, emp: Employee | undefined, dir: string | null, dep: string | null) => {
   const w = window.open("", "_blank", "width=820,height=900");
   if (!w) return;
@@ -610,10 +601,6 @@ const Paie = () => {
 
   return (
     <div className="space-y-6">
-<<<<<<< HEAD
-      {isAdmin && <LiveStats variant="paie" />}
-      {isAdmin && <PrePaieProjection />}
-=======
       {isAdmin && (
         <div className="rounded-lg border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -638,10 +625,8 @@ const Paie = () => {
         </div>
       )}
       {isAdmin && <LiveStats variant="paie" period={statsPeriod} />}
-      <PaieOverview />
->>>>>>> f25310942e1346fa0eacb68408396bb021e519d7
+      {isAdmin && <PrePaieProjection />}
       <CrudPage<Pay>
-
 
       title="Paie & Rémunération"
       subtitle="bulletin(s)"
@@ -696,10 +681,11 @@ const Paie = () => {
         <PaieForm form={form as any} setForm={setForm as any} employees={employees} directions={directions} departments={departments} />
       )}
     />
+      <PaieOverview />
     </div>
   );
 
 };
 
-
 export default Paie;
+
