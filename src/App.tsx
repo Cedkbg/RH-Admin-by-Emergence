@@ -48,6 +48,7 @@ const PresenceLocations = lazy(() => import("./pages/PresenceLocations"));
 const Install = lazy(() => import("./pages/Install"));
 const MesConges = lazy(() => import("./pages/MesConges"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const Plateforme = lazy(() => import("./pages/Plateforme"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -147,7 +148,9 @@ const App = () => (
                   <Route path="/manager" element={<Ops><ManagerGeneral /></Ops>} />
                   <Route path="/parametres" element={<Ops><Parametres /></Ops>} />
                   <Route path="/admin/cabinets" element={<Staff><AdminCabinets /></Staff>} />
+                  <Route path="/plateforme" element={<Plateforme />} />
                   <Route path="/admin" element={<Protected adminOnly><Admin /></Protected>} />
+
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

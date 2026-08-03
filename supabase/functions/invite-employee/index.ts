@@ -127,14 +127,27 @@ Deno.serve(async (req) => {
       isNew = true;
     }
 
+    // Entreprise (tenant) de l'invitant — l'invité rejoint le même espace
+    const { data: callerOrg } = await admin
+      .from("organization_members").select("organization_id").eq("user_id", callerId).maybeSingle();
+    const orgId = (callerOrg as any)?.organization_id ?? null;
+
+    if (orgId) {
+      await admin.from("organization_members").upsert(
+        { user_id: invitedUserId, organization_id: orgId },
+        { onConflict: "user_id" },
+      );
+    }
+
     // Profil approuvé + onboarding skip
     await admin.from("profiles").upsert({
       id: invitedUserId, email, full_name, approval_status: "approved", onboarding_completed: true,
+      organization_id: orgId,
     });
 
     // Rôle 'employee' ajouté sans retirer les rôles existants (admin/RH/DG/etc.).
     await admin.from("user_roles").upsert(
-      { user_id: invitedUserId, role: "employee" },
+      { user_id: invitedUserId, role: "employee", organization_id: orgId },
       { onConflict: "user_id,role" },
     );
 

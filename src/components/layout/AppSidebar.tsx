@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/sidebar";
 import { modules } from "@/data/modules";
 import { cn } from "@/lib/utils";
-import { Shield, Users2 } from "lucide-react";
+import { Building2, Shield, Users2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,7 @@ export function AppSidebar() {
   const { isAdmin, user, roles, rolesLoading } = useAuth();
   const [logoUrl, setLogoUrl] = useState<string>(companyLogo);
   const [companyName, setCompanyName] = useState<string>("EMERGENCE DRC");
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const canManageCabinets = roles.some((r) => CABINET_ROLES.has(r));
   
   const hasStaff = roles.some((r) => STAFF_ROLES.has(r));
@@ -44,6 +45,28 @@ export function AppSidebar() {
 
   useEffect(() => {
     (async () => {
+      // 0) Statut super-admin plateforme
+      if (user?.id) {
+        const { data: pa } = await supabase
+          .from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();
+        setIsPlatformAdmin(Boolean(pa));
+      }
+      // 1) Profil de l'entreprise (tenant) — source de vérité
+      const { data: member } = await supabase
+        .from("organization_members")
+        .select("organization_id")
+        .maybeSingle();
+      const orgId = (member as any)?.organization_id;
+      if (orgId) {
+        const { data: org } = await supabase
+          .from("organizations")
+          .select("name,logo_url")
+          .eq("id", orgId)
+          .maybeSingle();
+        if ((org as any)?.name) setCompanyName((org as any).name);
+        if ((org as any)?.logo_url) setLogoUrl((org as any).logo_url);
+      }
+      // 2) Repli sur les paramètres de l'espace
       const { data } = await supabase
         .from("app_settings")
         .select("key,value")
@@ -54,7 +77,7 @@ export function AppSidebar() {
         if (r.key === "company_name" && v) setCompanyName(v);
       });
     })();
-  }, []);
+  }, [user?.id]);
 
   return (
     <Sidebar collapsible="icon">
@@ -128,11 +151,25 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
+
+          {isPlatformAdmin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Plateforme">
+                <NavLink
+                  to="/plateforme"
+                  className={cn(location.pathname === "/plateforme" && "bg-sidebar-accent text-sidebar-accent-foreground font-medium")}
+                >
+                  <Building2 className="h-[18px] w-[18px] shrink-0" />
+                  <span className="truncate text-sm">Plateforme</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border px-4 py-3 text-xs text-sidebar-foreground/60">
-        © {new Date().getFullYear()} EMERGENCE DRC
+        © {new Date().getFullYear()} {companyName}
       </SidebarFooter>
     </Sidebar>
   );
