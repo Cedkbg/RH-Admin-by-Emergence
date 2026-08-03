@@ -127,9 +127,20 @@ Deno.serve(async (req) => {
       createdNewUser = true;
     }
 
+    // Entreprise (tenant) du créateur
+    const { data: callerOrg } = await admin
+      .from("organization_members").select("organization_id").eq("user_id", callerId).maybeSingle();
+    const orgId = (callerOrg as any)?.organization_id ?? null;
+    if (orgId) {
+      await admin.from("organization_members").upsert(
+        { user_id: newUserId, organization_id: orgId },
+        { onConflict: "user_id" },
+      );
+    }
+
     // Ensure profile exists / approved
     await admin.from("profiles").upsert({
-      id: newUserId, email, full_name, approval_status: "approved",
+      id: newUserId, email, full_name, approval_status: "approved", organization_id: orgId,
     });
 
     // Remove only the bootstrap 'admin' role auto-assigned to a newly-created subordinate account.
@@ -141,7 +152,7 @@ Deno.serve(async (req) => {
     // 2) Assign requested role (ignore duplicate)
     const { error: roleErr } = await admin
       .from("user_roles")
-      .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
+      .upsert({ user_id: newUserId, role, organization_id: orgId }, { onConflict: "user_id,role" });
     if (roleErr) {
       console.error("[admin-create-user] role assign", roleErr);
       return new Response(JSON.stringify({ error: "Attribution du rôle échouée" }), {
