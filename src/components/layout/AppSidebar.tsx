@@ -45,6 +45,12 @@ export function AppSidebar() {
 
   useEffect(() => {
     (async () => {
+      // 0) Statut super-admin plateforme
+      if (user?.id) {
+        const { data: pa } = await supabase
+          .from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();
+        setIsPlatformAdmin(Boolean(pa));
+      }
       // 1) Profil de l'entreprise (tenant) — source de vérité
       const { data: member } = await supabase
         .from("organization_members")
