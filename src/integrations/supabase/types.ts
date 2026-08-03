@@ -203,20 +203,31 @@ export type Database = {
       app_settings: {
         Row: {
           key: string
+          organization_id: string
           updated_at: string
           value: Json
         }
         Insert: {
           key: string
+          organization_id?: string
           updated_at?: string
           value: Json
         }
         Update: {
           key?: string
+          organization_id?: string
           updated_at?: string
           value?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "app_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       appointments: {
         Row: {
