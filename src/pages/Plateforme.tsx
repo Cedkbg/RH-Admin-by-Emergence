@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Building2, Loader2, Plus, Users2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
-import AccessDenied from "@/components/AccessDenied";
+import { AccessDenied } from "@/components/AccessDenied";
 
 type OrgRow = {
   id: string;
