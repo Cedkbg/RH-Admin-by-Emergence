@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
     if (company.email) rows.push({ key: "company_email", value: company.email });
 
     if (rows.length > 0) {
-      const { error: settingsErr } = await admin.from("app_settings").upsert(rows, { onConflict: "key" });
+      const { error: settingsErr } = await admin.from("app_settings").upsert(rows, { onConflict: "organization_id,key" });
       if (settingsErr) throw settingsErr;
     }
 
