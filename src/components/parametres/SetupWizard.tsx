@@ -55,15 +55,25 @@ export default function SetupWizard({ open, onClose, initial, initialLogo, onSav
   const set = (k: string, val: any) => setV((s) => ({ ...s, [k]: val }));
   const monthlyHours = ((Number(v.work_hours_per_day) || 0) * (Number(v.work_days_per_week) || 0) * 52) / 12;
 
+  const currentOrgId = async (): Promise<string | null> => {
+    const { data } = await supabase.from("organization_members").select("organization_id").maybeSingle();
+    return (data as any)?.organization_id ?? null;
+  };
+
   const uploadLogo = async (file: File) => {
     if (!file.type.startsWith("image/")) return toast.error("Veuillez sélectionner une image");
     setUploading(true);
+    const orgId = await currentOrgId();
     const ext = file.name.split(".").pop() || "png";
-    const path = `logo-${Date.now()}.${ext}`;
+    const path = `${orgId ?? "global"}/logo-${Date.now()}.${ext}`;
     const { error: upErr } = await supabase.storage.from("branding").upload(path, file, { upsert: true, cacheControl: "3600" });
     if (upErr) { setUploading(false); return toast.error(upErr.message); }
     const { data: pub } = supabase.storage.from("branding").getPublicUrl(path);
-    await supabase.from("app_settings").upsert({ key: "company_logo", value: { value: pub.publicUrl } });
+    await supabase.from("app_settings").upsert(
+      { key: "company_logo", value: { value: pub.publicUrl } },
+      { onConflict: "organization_id,key" },
+    );
+    if (orgId) await supabase.from("organizations").update({ logo_url: pub.publicUrl }).eq("id", orgId);
     setUploading(false);
     setLogoUrl(pub.publicUrl);
     toast.success("Logo téléversé");
@@ -72,7 +82,11 @@ export default function SetupWizard({ open, onClose, initial, initialLogo, onSav
   const persist = async (final = false) => {
     setSaving(true);
     const rows = Object.entries(v).map(([key, value]) => ({ key, value: { value } }));
-    const { error } = await supabase.from("app_settings").upsert(rows);
+    const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "organization_id,key" });
+    const orgId = await currentOrgId();
+    if (orgId && v.company_name) {
+      await supabase.from("organizations").update({ name: String(v.company_name) }).eq("id", orgId);
+    }
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success(final ? "Configuration terminée ✅" : "Brouillon enregistré");
