@@ -144,11 +144,25 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
+
+          {isPlatformAdmin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Plateforme">
+                <NavLink
+                  to="/plateforme"
+                  className={cn(location.pathname === "/plateforme" && "bg-sidebar-accent text-sidebar-accent-foreground font-medium")}
+                >
+                  <Building2 className="h-[18px] w-[18px] shrink-0" />
+                  <span className="truncate text-sm">Plateforme</span>
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border px-4 py-3 text-xs text-sidebar-foreground/60">
-        © {new Date().getFullYear()} EMERGENCE DRC
+        © {new Date().getFullYear()} {companyName}
       </SidebarFooter>
     </Sidebar>
   );
