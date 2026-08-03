@@ -77,7 +77,7 @@ export function AppSidebar() {
         if (r.key === "company_name" && v) setCompanyName(v);
       });
     })();
-  }, []);
+  }, [user?.id]);
 
   return (
     <Sidebar collapsible="icon">
