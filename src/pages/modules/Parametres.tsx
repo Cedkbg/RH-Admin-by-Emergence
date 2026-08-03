@@ -123,25 +123,50 @@ const Parametres = () => {
   };
   useEffect(() => { refresh(); }, []);
 
+  const currentOrgId = async (): Promise<string | null> => {
+    const { data } = await supabase.from("organization_members").select("organization_id").maybeSingle();
+    return (data as any)?.organization_id ?? null;
+  };
+
   const uploadLogo = async (file: File) => {
     if (!file.type.startsWith("image/")) return toast.error("Veuillez sélectionner une image");
     setUploadingLogo(true);
+    const orgId = await currentOrgId();
     const ext = file.name.split(".").pop() || "png";
-    const path = `logo-${Date.now()}.${ext}`;
+    const path = `${orgId ?? "global"}/logo-${Date.now()}.${ext}`;
     const { error: upErr } = await supabase.storage.from("branding").upload(path, file, { upsert: true, cacheControl: "3600" });
     if (upErr) { setUploadingLogo(false); return toast.error(upErr.message); }
     const { data: pub } = supabase.storage.from("branding").getPublicUrl(path);
-    const { error } = await supabase.from("app_settings").upsert({ key: "company_logo", value: { value: pub.publicUrl } });
+    const { error } = await supabase
+      .from("app_settings")
+      .upsert({ key: "company_logo", value: { value: pub.publicUrl } }, { onConflict: "organization_id,key" });
+    if (orgId) await supabase.from("organizations").update({ logo_url: pub.publicUrl }).eq("id", orgId);
     setUploadingLogo(false);
     if (error) return toast.error(error.message);
     setLogoUrl(pub.publicUrl);
-    toast.success("Logo mis à jour");
+    toast.success("Logo de l'entreprise mis à jour");
   };
 
   const saveAll = async () => {
     setSaving(true);
     const rows = Object.entries(v).map(([key, value]) => ({ key, value: { value } }));
-    const { error } = await supabase.from("app_settings").upsert(rows);
+    const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "organization_id,key" });
+    const orgId = await currentOrgId();
+    if (orgId) {
+      await supabase.from("organizations").update({
+        name: (v.company_name as string) || undefined,
+        legal_name: (v.company_legal_form as string) || null,
+        address: (v.company_address as string) || null,
+        city: (v.company_city as string) || null,
+        country: (v.company_country as string) || null,
+        phone: (v.company_phone as string) || null,
+        email: (v.company_email as string) || null,
+        website: (v.company_website as string) || null,
+        rccm: (v.company_rccm as string) || null,
+        id_national: (v.company_id_nat as string) || null,
+        tax_number: (v.company_nif as string) || null,
+      }).eq("id", orgId);
+    }
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Profil entreprise enregistré");
