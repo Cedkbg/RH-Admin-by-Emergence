@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/sidebar";
 import { modules } from "@/data/modules";
 import { cn } from "@/lib/utils";
-import { Shield, Users2 } from "lucide-react";
+import { Building2, Shield, Users2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
