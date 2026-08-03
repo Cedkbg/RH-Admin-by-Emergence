@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
         // Marquer l'onboarding comme terminé (la config entreprise se fait ensuite dans Paramètres)
         await admin.from("app_settings").upsert(
           { key: "company_onboarded", value: true },
-          { onConflict: "key" },
+          { onConflict: "organization_id,key" },
         );
       }
     }
