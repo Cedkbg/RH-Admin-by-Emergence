@@ -31,6 +31,7 @@ export function AppSidebar() {
   const { isAdmin, user, roles, rolesLoading } = useAuth();
   const [logoUrl, setLogoUrl] = useState<string>(companyLogo);
   const [companyName, setCompanyName] = useState<string>("EMERGENCE DRC");
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const canManageCabinets = roles.some((r) => CABINET_ROLES.has(r));
   
   const hasStaff = roles.some((r) => STAFF_ROLES.has(r));
