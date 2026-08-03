@@ -44,6 +44,22 @@ export function AppSidebar() {
 
   useEffect(() => {
     (async () => {
+      // 1) Profil de l'entreprise (tenant) — source de vérité
+      const { data: member } = await supabase
+        .from("organization_members")
+        .select("organization_id")
+        .maybeSingle();
+      const orgId = (member as any)?.organization_id;
+      if (orgId) {
+        const { data: org } = await supabase
+          .from("organizations")
+          .select("name,logo_url")
+          .eq("id", orgId)
+          .maybeSingle();
+        if ((org as any)?.name) setCompanyName((org as any).name);
+        if ((org as any)?.logo_url) setLogoUrl((org as any).logo_url);
+      }
+      // 2) Repli sur les paramètres de l'espace
       const { data } = await supabase
         .from("app_settings")
         .select("key,value")
