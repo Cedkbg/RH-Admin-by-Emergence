@@ -148,7 +148,9 @@ const App = () => (
                   <Route path="/manager" element={<Ops><ManagerGeneral /></Ops>} />
                   <Route path="/parametres" element={<Ops><Parametres /></Ops>} />
                   <Route path="/admin/cabinets" element={<Staff><AdminCabinets /></Staff>} />
+                  <Route path="/plateforme" element={<Plateforme />} />
                   <Route path="/admin" element={<Protected adminOnly><Admin /></Protected>} />
+
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
