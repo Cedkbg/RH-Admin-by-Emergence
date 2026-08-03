@@ -167,7 +167,7 @@ export function AgentPresenceHistory({
     return monthlyEvolution.map((m) => {
       const rec = map.get(m.period);
       const present = rec?.present || 0;
-      const total = rec?.totalDays || 1;
+      const total = rec?.total || 1;
       return {
         ...m,
         days: present,
