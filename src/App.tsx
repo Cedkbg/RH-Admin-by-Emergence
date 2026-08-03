@@ -48,6 +48,7 @@ const PresenceLocations = lazy(() => import("./pages/PresenceLocations"));
 const Install = lazy(() => import("./pages/Install"));
 const MesConges = lazy(() => import("./pages/MesConges"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const Plateforme = lazy(() => import("./pages/Plateforme"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
