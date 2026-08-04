@@ -168,7 +168,9 @@ Deno.serve(async (req) => {
       { onConflict: "organization_id,key" },
     );
 
-    return json({ ok: true, organization_id: org.id, admin_user_id: userId });
+    const inviteLink = await makeLink(adminEmail);
+
+    return json({ ok: true, organization_id: org.id, admin_user_id: userId, invite_link: inviteLink });
   } catch (e) {
     console.error("[create-organization]", e);
     return json({ error: "Erreur interne, réessayez." }, 500);
