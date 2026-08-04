@@ -69,11 +69,16 @@ export default function Plateforme() {
       return;
     }
     setSaving(true);
-    const { data, error } = await supabase.functions.invoke("create-organization", { body: form });
+    const { data, error } = await supabase.functions.invoke("create-organization", {
+      body: { ...form, origin: window.location.origin },
+    });
     setSaving(false);
     const res = data as any;
     if (error || res?.error) return toast.error(res?.error || error?.message || "Création échouée");
     toast.success(`Entreprise « ${form.name} » créée avec son administrateur`);
+    if (res?.invite_link) {
+      setInvite({ name: form.name, email: form.admin_email, link: res.invite_link });
+    }
     setForm({ ...EMPTY });
     setOpen(false);
     load();
