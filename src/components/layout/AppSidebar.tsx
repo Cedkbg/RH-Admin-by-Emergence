@@ -55,7 +55,9 @@ export function AppSidebar() {
       const { data: member } = await supabase
         .from("organization_members")
         .select("organization_id")
+        .eq("user_id", user?.id ?? "")
         .maybeSingle();
+
       const orgId = (member as any)?.organization_id;
       if (orgId) {
         const { data: org } = await supabase
