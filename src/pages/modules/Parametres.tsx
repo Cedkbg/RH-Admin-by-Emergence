@@ -124,7 +124,14 @@ const Parametres = () => {
   useEffect(() => { refresh(); }, []);
 
   const currentOrgId = async (): Promise<string | null> => {
-    const { data } = await supabase.from("organization_members").select("organization_id").maybeSingle();
+    const { data: auth } = await supabase.auth.getUser();
+    const uid = auth?.user?.id;
+    if (!uid) return null;
+    const { data } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("user_id", uid)
+      .maybeSingle();
     return (data as any)?.organization_id ?? null;
   };
 
@@ -132,15 +139,16 @@ const Parametres = () => {
     if (!file.type.startsWith("image/")) return toast.error("Veuillez sélectionner une image");
     setUploadingLogo(true);
     const orgId = await currentOrgId();
+    if (!orgId) { setUploadingLogo(false); return toast.error("Aucune entreprise associée à votre compte"); }
     const ext = file.name.split(".").pop() || "png";
-    const path = `${orgId ?? "global"}/logo-${Date.now()}.${ext}`;
+    const path = `${orgId}/logo-${Date.now()}.${ext}`;
     const { error: upErr } = await supabase.storage.from("branding").upload(path, file, { upsert: true, cacheControl: "3600" });
     if (upErr) { setUploadingLogo(false); return toast.error(upErr.message); }
     const { data: pub } = supabase.storage.from("branding").getPublicUrl(path);
     const { error } = await supabase
       .from("app_settings")
-      .upsert({ key: "company_logo", value: { value: pub.publicUrl } }, { onConflict: "organization_id,key" });
-    if (orgId) await supabase.from("organizations").update({ logo_url: pub.publicUrl }).eq("id", orgId);
+      .upsert({ organization_id: orgId, key: "company_logo", value: { value: pub.publicUrl } }, { onConflict: "organization_id,key" });
+    await supabase.from("organizations").update({ logo_url: pub.publicUrl }).eq("id", orgId);
     setUploadingLogo(false);
     if (error) return toast.error(error.message);
     setLogoUrl(pub.publicUrl);
@@ -149,9 +157,10 @@ const Parametres = () => {
 
   const saveAll = async () => {
     setSaving(true);
-    const rows = Object.entries(v).map(([key, value]) => ({ key, value: { value } }));
-    const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "organization_id,key" });
     const orgId = await currentOrgId();
+    if (!orgId) { setSaving(false); return toast.error("Aucune entreprise associée à votre compte"); }
+    const rows = Object.entries(v).map(([key, value]) => ({ organization_id: orgId, key, value: { value } }));
+    const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "organization_id,key" });
     if (orgId) {
       await supabase.from("organizations").update({
         name: (v.company_name as string) || undefined,
