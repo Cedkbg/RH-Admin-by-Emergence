@@ -44,6 +44,7 @@ export function useOnboarding() {
           .from("app_settings")
           .select("value")
           .eq("key", "company_onboarded")
+          .limit(1)
           .maybeSingle();
         if (cancelled) return;
         const v: any = settings?.value;
