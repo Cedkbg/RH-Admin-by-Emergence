@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, Loader2, Plus, Users2, ShieldAlert } from "lucide-react";
+import { Building2, Loader2, Plus, Users2, ShieldAlert, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 import { AccessDenied } from "@/components/AccessDenied";
 
