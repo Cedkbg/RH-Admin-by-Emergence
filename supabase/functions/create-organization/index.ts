@@ -53,6 +53,42 @@ Deno.serve(async (req) => {
     if (req.method !== "POST") return json({ error: "Méthode non autorisée" }, 405);
 
     const body = await req.json().catch(() => ({}));
+
+    const appOrigin = String(body?.origin ?? req.headers.get("origin") ?? "").replace(/\/$/, "");
+
+    const makeLink = async (email: string) => {
+      try {
+        const { data, error } = await admin.auth.admin.generateLink({
+          type: "recovery",
+          email,
+          options: { redirectTo: `${appOrigin}/reset-password` },
+        });
+        if (error) return null;
+        return (data as any)?.properties?.action_link ?? null;
+      } catch {
+        return null;
+      }
+    };
+
+    // Générer un lien de connexion pour l'admin d'une entreprise existante
+    if (body?.action === "invite_link") {
+      const orgId = String(body?.organization_id ?? "");
+      if (!orgId) return json({ error: "organization_id requis" }, 400);
+      const { data: adminProfile } = await admin
+        .from("profiles")
+        .select("email")
+        .eq("organization_id", orgId)
+        .not("email", "is", null)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      const email = (adminProfile as any)?.email;
+      if (!email) return json({ error: "Aucun administrateur trouvé pour cette entreprise" }, 404);
+      const link = await makeLink(email);
+      if (!link) return json({ error: "Génération du lien échouée" }, 500);
+      return json({ ok: true, email, invite_link: link });
+    }
+
     const name = String(body?.name ?? "").trim();
     const adminEmail = String(body?.admin_email ?? "").trim().toLowerCase();
     const adminName = String(body?.admin_full_name ?? "").trim();
@@ -132,7 +168,9 @@ Deno.serve(async (req) => {
       { onConflict: "organization_id,key" },
     );
 
-    return json({ ok: true, organization_id: org.id, admin_user_id: userId });
+    const inviteLink = await makeLink(adminEmail);
+
+    return json({ ok: true, organization_id: org.id, admin_user_id: userId, invite_link: inviteLink });
   } catch (e) {
     console.error("[create-organization]", e);
     return json({ error: "Erreur interne, réessayez." }, 500);

@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
 
     if (req.method === "GET") {
       const [{ data: company }, { data: users }] = await Promise.all([
-        admin.from("app_settings").select("value").eq("key", "company_onboarded").maybeSingle(),
+        admin.from("app_settings").select("value").eq("key", "company_onboarded").limit(1).maybeSingle(),
         admin.auth.admin.listUsers({ page: 1, perPage: 1 }),
       ]);
       const value: any = company?.value;
