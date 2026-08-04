@@ -61,7 +61,7 @@ export function RolesManager() {
     const [{ data: profs }, { data: roles }, { data: principalAdmin }] = await Promise.all([
       supabase.from("profiles").select("id, full_name, email, approval_status").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id, role"),
-      supabase.from("app_settings").select("value").eq("key", "principal_admin_id").maybeSingle(),
+      supabase.from("app_settings").select("value").eq("key", "principal_admin_id").limit(1).maybeSingle(),
     ]);
     setProfiles((profs as Profile[]) || []);
     const principalValue = principalAdmin?.value;
