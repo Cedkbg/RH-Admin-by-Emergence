@@ -48,6 +48,19 @@ export default function Plateforme() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ ...EMPTY });
+  const [invite, setInvite] = useState<{ name: string; email: string; link: string } | null>(null);
+  const [linking, setLinking] = useState<string | null>(null);
+
+  const generateInvite = async (o: OrgRow) => {
+    setLinking(o.id);
+    const { data, error } = await supabase.functions.invoke("create-organization", {
+      body: { action: "invite_link", organization_id: o.id, origin: window.location.origin },
+    });
+    setLinking(null);
+    const res = data as any;
+    if (error || res?.error) return toast.error(res?.error || error?.message || "Génération échouée");
+    setInvite({ name: o.name, email: res.email, link: res.invite_link });
+  };
 
   const load = async () => {
     setFetching(true);
