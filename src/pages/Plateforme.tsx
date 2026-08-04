@@ -195,6 +195,18 @@ export default function Plateforme() {
                   </Badge>
                   <Badge variant={o.active ? "default" : "outline"}>{o.active ? "Active" : "Inactive"}</Badge>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full mt-2"
+                  disabled={linking === o.id}
+                  onClick={() => generateInvite(o)}
+                >
+                  {linking === o.id
+                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    : <LinkIcon className="mr-2 h-4 w-4" />}
+                  Lien de connexion
+                </Button>
               </CardContent>
             </Card>
           ))}
@@ -203,6 +215,29 @@ export default function Plateforme() {
           )}
         </div>
       )}
+
+      <Dialog open={!!invite} onOpenChange={(o) => !o && setInvite(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Lien d'accès — {invite?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Envoyez ce lien à l'administrateur de l'entreprise ({invite?.email}). Il pourra définir son
+              mot de passe puis compléter les informations de son entreprise dans Paramètres.
+            </p>
+            <div className="rounded-md border bg-muted/40 p-2 text-xs break-all">{invite?.link}</div>
+            <Button
+              className="w-full"
+              onClick={() => {
+                navigator.clipboard.writeText(invite?.link ?? "");
+                toast.success("Lien copié");
+              }}
+            >
+              Copier le lien
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
