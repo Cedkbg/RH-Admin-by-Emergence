@@ -22,20 +22,40 @@ const Admin = () => {
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
+  const [rolesByUser, setRolesByUser] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
-    const [{ data: profs }, { data: roles }] = await Promise.all([
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-      supabase.from("user_roles").select("user_id,role").eq("role", "admin"),
-    ]);
-    setProfiles((profs as ProfileRow[]) || []);
-    setAdminIds(new Set((roles || []).map((r: any) => r.user_id)));
+    // On reste strictement dans l'entreprise de l'utilisateur connecté
+    const { data: member } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("user_id", user?.id ?? "")
+      .maybeSingle();
+    const orgId = (member as any)?.organization_id ?? null;
+
+    let query = supabase.from("profiles").select("*").order("created_at", { ascending: false });
+    if (orgId) query = query.eq("organization_id", orgId);
+    const { data: profs } = await query;
+    const rows = (profs as ProfileRow[]) || [];
+    setProfiles(rows);
+
+    const ids = rows.map((r) => r.id);
+    const map: Record<string, string[]> = {};
+    if (ids.length) {
+      const { data: roles } = await supabase.from("user_roles").select("user_id,role").in("user_id", ids);
+      (roles || []).forEach((r: any) => {
+        map[r.user_id] = [...(map[r.user_id] || []), r.role];
+      });
+    }
+    setRolesByUser(map);
+    setAdminIds(new Set(Object.entries(map).filter(([, r]) => r.includes("admin")).map(([id]) => id)));
     setLoading(false);
   };
+
 
   useEffect(() => { refresh(); }, []);
 
