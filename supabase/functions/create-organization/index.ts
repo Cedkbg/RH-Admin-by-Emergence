@@ -14,6 +14,34 @@ const json = (body: unknown, _status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+// Structure organisationnelle de départ, créée pour chaque nouvelle entreprise.
+const DEFAULT_DIRECTIONS = [
+  { code: "DG", name: "Direction Générale" },
+  { code: "DGA", name: "Direction Générale Adjointe" },
+  { code: "D1", name: "Direction Technologie" },
+  { code: "D2", name: "Direction Produits" },
+  { code: "D3", name: "Direction Opérations" },
+  { code: "D4", name: "Direction Financière" },
+  { code: "D5", name: "Direction Risques" },
+  { code: "D6", name: "Direction Commerciale" },
+  { code: "D7", name: "Direction RH" },
+  { code: "D8", name: "Direction Juridique" },
+];
+
+const DEFAULT_DEPARTMENTS: Record<string, string[]> = {
+  DG: ["Secrétariat général", "Audit interne"],
+  DGA: ["Coordination", "Suivi & Évaluation"],
+  D1: ["Infrastructure & Réseau", "Développement"],
+  D2: ["Conception produit", "Qualité"],
+  D3: ["Logistique", "Maintenance"],
+  D4: ["Comptabilité", "Trésorerie", "Budget"],
+  D5: ["Conformité", "Sécurité"],
+  D6: ["Ventes", "Marketing"],
+  D7: ["Recrutement", "Paie & Administration", "Formation"],
+  D8: ["Contentieux", "Contrats"],
+};
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
