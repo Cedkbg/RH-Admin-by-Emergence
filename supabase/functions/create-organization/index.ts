@@ -84,15 +84,40 @@ Deno.serve(async (req) => {
     if (body?.action === "invite_link") {
       const orgId = String(body?.organization_id ?? "");
       if (!orgId) return json({ error: "organization_id requis" }, 400);
-      const { data: adminProfile } = await admin
-        .from("profiles")
-        .select("email")
-        .eq("organization_id", orgId)
-        .not("email", "is", null)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      const email = (adminProfile as any)?.email;
+      // 1) admin via user_roles de l'entreprise, 2) profils rattachés, 3) membres de l'entreprise
+      let email: string | null = null;
+
+      const { data: roleRows } = await admin
+        .from("user_roles").select("user_id").eq("organization_id", orgId).eq("role", "admin");
+      const { data: memberRows } = await admin
+        .from("organization_members").select("user_id").eq("organization_id", orgId);
+
+      const candidateIds = [
+        ...((roleRows ?? []) as any[]).map((r) => r.user_id),
+        ...((memberRows ?? []) as any[]).map((m) => m.user_id),
+      ];
+
+      if (candidateIds.length > 0) {
+        const { data: profs } = await admin
+          .from("profiles").select("id,email,created_at").in("id", candidateIds)
+          .not("email", "is", null).order("created_at", { ascending: true });
+        email = ((profs ?? [])[0] as any)?.email ?? null;
+
+        if (!email) {
+          for (const uid2 of candidateIds) {
+            const { data: u } = await admin.auth.admin.getUserById(uid2);
+            if (u?.user?.email) { email = u.user.email; break; }
+          }
+        }
+      }
+
+      if (!email) {
+        const { data: byOrg } = await admin
+          .from("profiles").select("email").eq("organization_id", orgId)
+          .not("email", "is", null).order("created_at", { ascending: true }).limit(1).maybeSingle();
+        email = (byOrg as any)?.email ?? null;
+      }
+
       if (!email) return json({ error: "Aucun administrateur trouvé pour cette entreprise" }, 404);
       const link = await makeLink(email);
       if (!link) return json({ error: "Génération du lien échouée. Vérifiez que l'email de l'administrateur est valide." }, 500);
