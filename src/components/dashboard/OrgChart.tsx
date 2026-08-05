@@ -13,24 +13,12 @@ interface DirectionRow {
   manager_name: string | null;
 }
 
-const DIRECTION_DEPARTMENTS: Record<string, string[]> = {
-  DG: ["dashboard", "reports", "communication"],
-  DGA: ["dashboard", "tasks", "reports"],
-  D1: ["security", "settings", "documents"],
-  D2: ["tasks", "performance", "talents"],
-  D3: ["attendance", "tasks", "documents"],
-  D4: ["payroll", "reports"],
-  D5: ["legal", "security", "documents"],
-  D6: ["recruitment", "communication", "performance"],
-  D7: ["employees", "recruitment", "training", "attendance", "payroll", "performance", "talents", "wellbeing"],
-  D8: ["legal", "documents"],
-};
-
-function departmentsFor(code: string) {
-  return (DIRECTION_DEPARTMENTS[code] || [])
-    .map((id) => modules.find((m) => m.id === id))
-    .filter((m): m is NonNullable<typeof m> => Boolean(m));
+interface DepartmentRow {
+  id: string;
+  name: string;
+  direction_id: string;
 }
+
 
 function TopNode({
   code,
