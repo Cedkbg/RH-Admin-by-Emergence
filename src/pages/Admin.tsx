@@ -17,6 +17,17 @@ interface ProfileRow {
   created_at: string;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin entreprise",
+  rh: "RH",
+  dg: "Directeur Général",
+  dga: "Directeur Général Adjoint",
+  manager: "Manager",
+  assistant_direction: "Assistant de direction",
+  secretaire: "Secrétariat",
+  employee: "Agent",
+};
+
 const Admin = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
