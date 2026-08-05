@@ -127,11 +127,20 @@ const Admin = () => {
         </td>
         <td className="p-4 text-sm">{p.email}</td>
         <td className="p-4">
-          {isAdminUser
-            ? <Badge>Admin RH</Badge>
-            : <Badge variant="secondary">Employé</Badge>}
-          {isMe && <Badge variant="outline" className="ml-2">Vous</Badge>}
+          <div className="flex flex-wrap gap-1">
+            {(rolesByUser[p.id]?.filter((r) => r !== "employee") ?? []).length > 0
+              ? rolesByUser[p.id]
+                  .filter((r) => r !== "employee")
+                  .map((r) => (
+                    <Badge key={r} variant={r === "admin" ? "default" : "outline"}>
+                      {ROLE_LABELS[r] ?? r}
+                    </Badge>
+                  ))
+              : <Badge variant="secondary">Agent</Badge>}
+            {isMe && <Badge variant="outline">Vous</Badge>}
+          </div>
         </td>
+
         <td className="p-4 text-right space-x-1">
           {mode === "pending" && (
             <>
