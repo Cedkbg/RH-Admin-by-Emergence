@@ -118,6 +118,16 @@ Deno.serve(async (req) => {
       .from("attendance").select("*")
       .eq("employee_id", emp.id).eq("date", today).maybeSingle();
 
+    // Clôture des journées précédentes restées ouvertes (entrée sans sortie) :
+    // le compteur d'hier ne continue pas sur le nouveau jour. Les heures déjà
+    // validées (et donc le salaire cumulé) restent inchangées.
+    await admin
+      .from("attendance")
+      .update({ status: "incomplete" })
+      .eq("employee_id", emp.id)
+      .lt("date", today)
+      .is("check_out", null);
+
     let action: "check_in" | "check_out";
     if (!existing) {
       const { error: ie } = await admin.from("attendance").insert({
