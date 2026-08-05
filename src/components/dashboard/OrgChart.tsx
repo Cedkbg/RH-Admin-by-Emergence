@@ -58,12 +58,11 @@ function TopNode({
   return <div className={classes}>{inner}</div>;
 }
 
-function DirectionColumn({ d }: { d: DirectionRow }) {
+function DirectionColumn({ d, departments }: { d: DirectionRow; departments: DepartmentRow[] }) {
   const code = d.code || "";
   const Icon = iconForCode(code);
   const color = colorForCode(code);
   const c = colorClasses[color];
-  const departments = departmentsFor(code);
 
   return (
     <div className="flex w-[132px] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm hover:shadow-md transition">
@@ -83,24 +82,22 @@ function DirectionColumn({ d }: { d: DirectionRow }) {
       </div>
       {departments.length > 0 && (
         <div className="space-y-1 border-t border-border bg-muted/35 p-2">
-          {departments.map((dept) => {
-            const DeptIcon = dept.icon;
-            return (
-              <Link
-                key={dept.id}
-                to={dept.path}
-                className="flex min-h-8 items-center gap-1.5 rounded-md bg-card px-2 py-1 text-[10px] font-medium leading-tight text-foreground shadow-sm transition hover:bg-muted"
-              >
-                <DeptIcon className={cn("h-3 w-3 shrink-0", colorClasses[dept.color].text)} />
-                <span className="line-clamp-2">{dept.label}</span>
-              </Link>
-            );
-          })}
+          {departments.map((dept) => (
+            <Link
+              key={dept.id}
+              to={code ? `/direction/${code}` : "#"}
+              className="flex min-h-8 items-center gap-1.5 rounded-md bg-card px-2 py-1 text-[10px] font-medium leading-tight text-foreground shadow-sm transition hover:bg-muted"
+            >
+              <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", c.bg)} />
+              <span className="line-clamp-2">{dept.name}</span>
+            </Link>
+          ))}
         </div>
       )}
     </div>
   );
 }
+
 
 export function OrgChart() {
   const [directions, setDirections] = useState<DirectionRow[]>([]);
