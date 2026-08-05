@@ -204,7 +204,7 @@ export function OrgChart() {
                 {others.map((d) => (
                   <div key={d.id} className="flex flex-col items-center">
                     <div className="h-4 w-px bg-border" />
-                    <DirectionColumn d={d} />
+                    <DirectionColumn d={d} departments={departments.filter((x) => x.direction_id === d.id)} />
                   </div>
                 ))}
               </div>
