@@ -6,9 +6,11 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-const json = (body: unknown, status = 200) =>
+// Toujours répondre en 200 : supabase.functions.invoke masque le corps des réponses
+// non-2xx ("Edge Function returned a non-2xx status code"), on perd le vrai message.
+const json = (body: unknown, _status = 200) =>
   new Response(JSON.stringify(body), {
-    status,
+    status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
@@ -57,17 +59,25 @@ Deno.serve(async (req) => {
     const appOrigin = String(body?.origin ?? req.headers.get("origin") ?? "").replace(/\/$/, "");
 
     const makeLink = async (email: string) => {
-      try {
-        const { data, error } = await admin.auth.admin.generateLink({
-          type: "recovery",
-          email,
-          options: { redirectTo: `${appOrigin}/reset-password` },
-        });
-        if (error) return null;
-        return (data as any)?.properties?.action_link ?? null;
-      } catch {
-        return null;
+      const redirectTo = `${appOrigin || ""}/reset-password`;
+      const types = ["recovery", "magiclink"] as const;
+      let lastErr = "";
+      for (const type of types) {
+        try {
+          const { data, error } = await admin.auth.admin.generateLink({
+            type: type as any,
+            email,
+            options: { redirectTo },
+          });
+          if (error) { lastErr = error.message; continue; }
+          const link = (data as any)?.properties?.action_link ?? (data as any)?.action_link ?? null;
+          if (link) return link;
+        } catch (e) {
+          lastErr = e instanceof Error ? e.message : String(e);
+        }
       }
+      console.error("[create-organization] makeLink failed:", lastErr);
+      return null;
     };
 
     // Générer un lien de connexion pour l'admin d'une entreprise existante
@@ -85,7 +95,7 @@ Deno.serve(async (req) => {
       const email = (adminProfile as any)?.email;
       if (!email) return json({ error: "Aucun administrateur trouvé pour cette entreprise" }, 404);
       const link = await makeLink(email);
-      if (!link) return json({ error: "Génération du lien échouée" }, 500);
+      if (!link) return json({ error: "Génération du lien échouée. Vérifiez que l'email de l'administrateur est valide." }, 500);
       return json({ ok: true, email, invite_link: link });
     }
 
@@ -173,6 +183,7 @@ Deno.serve(async (req) => {
     return json({ ok: true, organization_id: org.id, admin_user_id: userId, invite_link: inviteLink });
   } catch (e) {
     console.error("[create-organization]", e);
-    return json({ error: "Erreur interne, réessayez." }, 500);
+    const msg = e instanceof Error ? e.message : String(e);
+    return json({ error: `Erreur interne : ${msg}` }, 500);
   }
 });
