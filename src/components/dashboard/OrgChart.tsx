@@ -123,19 +123,12 @@ export function OrgChart() {
       .select("id,code,name,manager_name")
       .order("code", { ascending: true })
       .then(({ data }) => {
-        const rows = data || [];
-        const completed = directionTemplates.map((template) => {
-          const existing = rows.find((row) => row.code === template.code);
-          return existing || {
-            id: template.code,
-            code: template.code,
-            name: template.name,
-            manager_name: null,
-          };
-        });
-        setDirections(completed);
+        // Uniquement les directions réellement enregistrées pour l'entreprise
+        // de l'utilisateur (isolation multi-entreprise).
+        setDirections((data || []) as DirectionRow[]);
       });
   }, []);
+
 
   const dg = directions.find((d) => d.code === "DG");
   const dga = directions.find((d) => d.code === "DGA");
