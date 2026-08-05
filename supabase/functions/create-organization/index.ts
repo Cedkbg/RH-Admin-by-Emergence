@@ -14,6 +14,34 @@ const json = (body: unknown, _status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+// Structure organisationnelle de départ, créée pour chaque nouvelle entreprise.
+const DEFAULT_DIRECTIONS = [
+  { code: "DG", name: "Direction Générale" },
+  { code: "DGA", name: "Direction Générale Adjointe" },
+  { code: "D1", name: "Direction Technologie" },
+  { code: "D2", name: "Direction Produits" },
+  { code: "D3", name: "Direction Opérations" },
+  { code: "D4", name: "Direction Financière" },
+  { code: "D5", name: "Direction Risques" },
+  { code: "D6", name: "Direction Commerciale" },
+  { code: "D7", name: "Direction RH" },
+  { code: "D8", name: "Direction Juridique" },
+];
+
+const DEFAULT_DEPARTMENTS: Record<string, string[]> = {
+  DG: ["Secrétariat général", "Audit interne"],
+  DGA: ["Coordination", "Suivi & Évaluation"],
+  D1: ["Infrastructure & Réseau", "Développement"],
+  D2: ["Conception produit", "Qualité"],
+  D3: ["Logistique", "Maintenance"],
+  D4: ["Comptabilité", "Trésorerie", "Budget"],
+  D5: ["Conformité", "Sécurité"],
+  D6: ["Ventes", "Marketing"],
+  D7: ["Recrutement", "Paie & Administration", "Formation"],
+  D8: ["Contentieux", "Contrats"],
+};
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -194,6 +222,31 @@ Deno.serve(async (req) => {
       { user_id: userId, role: "admin", organization_id: org.id },
       { onConflict: "user_id,role" },
     );
+    // Le trigger d'inscription ajoute parfois un rôle "employee" : l'admin de
+    // l'entreprise ne doit pas apparaître comme un simple agent.
+    await admin.from("user_roles").delete().eq("user_id", userId).eq("role", "employee");
+
+    // Structure de départ propre à l'entreprise (directions + départements)
+    const { data: seededDirections } = await admin
+      .from("directions")
+      .insert(
+        DEFAULT_DIRECTIONS.map((d) => ({
+          organization_id: org.id,
+          code: d.code,
+          name: d.name,
+        })),
+      )
+      .select("id,code");
+
+    const deptRows = (seededDirections ?? []).flatMap((d: any) =>
+      (DEFAULT_DEPARTMENTS[d.code] ?? []).map((dept: string, i: number) => ({
+        organization_id: org.id,
+        direction_id: d.id,
+        code: `${d.code}-${i + 1}`,
+        name: dept,
+      })),
+    );
+    if (deptRows.length) await admin.from("departments").insert(deptRows);
 
     await admin.from("app_settings").upsert(
       [
@@ -202,6 +255,7 @@ Deno.serve(async (req) => {
       ],
       { onConflict: "organization_id,key" },
     );
+
 
     const inviteLink = await makeLink(adminEmail);
 

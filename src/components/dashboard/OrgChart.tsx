@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { User, UserCog, Briefcase, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { colorClasses, modules } from "@/data/modules";
-import { directionTemplates, iconForCode, colorForCode } from "@/data/orgData";
+import { colorClasses } from "@/data/modules";
+import { iconForCode, colorForCode } from "@/data/orgData";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DirectionRow {
@@ -13,24 +13,12 @@ interface DirectionRow {
   manager_name: string | null;
 }
 
-const DIRECTION_DEPARTMENTS: Record<string, string[]> = {
-  DG: ["dashboard", "reports", "communication"],
-  DGA: ["dashboard", "tasks", "reports"],
-  D1: ["security", "settings", "documents"],
-  D2: ["tasks", "performance", "talents"],
-  D3: ["attendance", "tasks", "documents"],
-  D4: ["payroll", "reports"],
-  D5: ["legal", "security", "documents"],
-  D6: ["recruitment", "communication", "performance"],
-  D7: ["employees", "recruitment", "training", "attendance", "payroll", "performance", "talents", "wellbeing"],
-  D8: ["legal", "documents"],
-};
-
-function departmentsFor(code: string) {
-  return (DIRECTION_DEPARTMENTS[code] || [])
-    .map((id) => modules.find((m) => m.id === id))
-    .filter((m): m is NonNullable<typeof m> => Boolean(m));
+interface DepartmentRow {
+  id: string;
+  name: string;
+  direction_id: string;
 }
+
 
 function TopNode({
   code,
@@ -70,12 +58,11 @@ function TopNode({
   return <div className={classes}>{inner}</div>;
 }
 
-function DirectionColumn({ d }: { d: DirectionRow }) {
+function DirectionColumn({ d, departments }: { d: DirectionRow; departments: DepartmentRow[] }) {
   const code = d.code || "";
   const Icon = iconForCode(code);
   const color = colorForCode(code);
   const c = colorClasses[color];
-  const departments = departmentsFor(code);
 
   return (
     <div className="flex w-[132px] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm hover:shadow-md transition">
@@ -95,47 +82,41 @@ function DirectionColumn({ d }: { d: DirectionRow }) {
       </div>
       {departments.length > 0 && (
         <div className="space-y-1 border-t border-border bg-muted/35 p-2">
-          {departments.map((dept) => {
-            const DeptIcon = dept.icon;
-            return (
-              <Link
-                key={dept.id}
-                to={dept.path}
-                className="flex min-h-8 items-center gap-1.5 rounded-md bg-card px-2 py-1 text-[10px] font-medium leading-tight text-foreground shadow-sm transition hover:bg-muted"
-              >
-                <DeptIcon className={cn("h-3 w-3 shrink-0", colorClasses[dept.color].text)} />
-                <span className="line-clamp-2">{dept.label}</span>
-              </Link>
-            );
-          })}
+          {departments.map((dept) => (
+            <Link
+              key={dept.id}
+              to={code ? `/direction/${code}` : "#"}
+              className="flex min-h-8 items-center gap-1.5 rounded-md bg-card px-2 py-1 text-[10px] font-medium leading-tight text-foreground shadow-sm transition hover:bg-muted"
+            >
+              <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", c.bg)} />
+              <span className="line-clamp-2">{dept.name}</span>
+            </Link>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
+
 export function OrgChart() {
   const [directions, setDirections] = useState<DirectionRow[]>([]);
+  const [departments, setDepartments] = useState<DepartmentRow[]>([]);
 
   useEffect(() => {
-    supabase
-      .from("directions")
-      .select("id,code,name,manager_name")
-      .order("code", { ascending: true })
-      .then(({ data }) => {
-        const rows = data || [];
-        const completed = directionTemplates.map((template) => {
-          const existing = rows.find((row) => row.code === template.code);
-          return existing || {
-            id: template.code,
-            code: template.code,
-            name: template.name,
-            manager_name: null,
-          };
-        });
-        setDirections(completed);
-      });
+    (async () => {
+      // Uniquement les directions/départements de l'entreprise de l'utilisateur
+      // (isolation multi-entreprise assurée par les règles d'accès).
+      const [{ data: dirs }, { data: depts }] = await Promise.all([
+        supabase.from("directions").select("id,code,name,manager_name").order("code", { ascending: true }),
+        supabase.from("departments").select("id,name,direction_id").order("name", { ascending: true }),
+      ]);
+      setDirections((dirs || []) as DirectionRow[]);
+      setDepartments((depts || []) as DepartmentRow[]);
+    })();
   }, []);
+
+
 
   const dg = directions.find((d) => d.code === "DG");
   const dga = directions.find((d) => d.code === "DGA");
@@ -223,7 +204,7 @@ export function OrgChart() {
                 {others.map((d) => (
                   <div key={d.id} className="flex flex-col items-center">
                     <div className="h-4 w-px bg-border" />
-                    <DirectionColumn d={d} />
+                    <DirectionColumn d={d} departments={departments.filter((x) => x.direction_id === d.id)} />
                   </div>
                 ))}
               </div>
