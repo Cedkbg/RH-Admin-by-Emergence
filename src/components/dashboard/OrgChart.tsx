@@ -101,18 +101,21 @@ function DirectionColumn({ d, departments }: { d: DirectionRow; departments: Dep
 
 export function OrgChart() {
   const [directions, setDirections] = useState<DirectionRow[]>([]);
+  const [departments, setDepartments] = useState<DepartmentRow[]>([]);
 
   useEffect(() => {
-    supabase
-      .from("directions")
-      .select("id,code,name,manager_name")
-      .order("code", { ascending: true })
-      .then(({ data }) => {
-        // Uniquement les directions réellement enregistrées pour l'entreprise
-        // de l'utilisateur (isolation multi-entreprise).
-        setDirections((data || []) as DirectionRow[]);
-      });
+    (async () => {
+      // Uniquement les directions/départements de l'entreprise de l'utilisateur
+      // (isolation multi-entreprise assurée par les règles d'accès).
+      const [{ data: dirs }, { data: depts }] = await Promise.all([
+        supabase.from("directions").select("id,code,name,manager_name").order("code", { ascending: true }),
+        supabase.from("departments").select("id,name,direction_id").order("name", { ascending: true }),
+      ]);
+      setDirections((dirs || []) as DirectionRow[]);
+      setDepartments((depts || []) as DepartmentRow[]);
+    })();
   }, []);
+
 
 
   const dg = directions.find((d) => d.code === "DG");
