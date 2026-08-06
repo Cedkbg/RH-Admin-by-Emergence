@@ -57,17 +57,17 @@ const AgentDashboard = () => {
   }, []);
 
   const loadAttendance = async (employeeId: string) => {
-    const today = new Date().toISOString().slice(0, 10);
-    const result = await withTimeout(
-      supabase
-        .from("attendance")
-        .select("id,date,check_in,check_out,status")
-        .eq("employee_id", employeeId)
-        .eq("date", today)
-        .maybeSingle(),
-      1800
-    );
-    setTodayAttendance((result?.data as Attendance | null) ?? null);
+    // Date locale RDC (Africa/Kinshasa) — identique a celle enregistree par le scan
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Africa/Kinshasa", year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(new Date());
+    const { data } = await supabase
+      .from("attendance")
+      .select("id,date,check_in,check_out,status")
+      .eq("employee_id", employeeId)
+      .eq("date", today)
+      .maybeSingle();
+    setTodayAttendance((data as Attendance | null) ?? null);
   };
 
   // Timeout de secu : ne jamais laisser l'ecran sur Chargement
