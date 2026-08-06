@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     const userEmail = userData.user.email;
 
     const body = await req.json();
-    const { qr_token, gps_lat, gps_lng, gps_accuracy } = body || {};
+    const { qr_token, gps_lat, gps_lng, gps_accuracy, late_reason } = body || {};
     if (!qr_token || typeof gps_lat !== "number" || typeof gps_lng !== "number") {
       return new Response(JSON.stringify({ error: "QR et position GPS requis" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
