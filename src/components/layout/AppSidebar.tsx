@@ -1,15 +1,67 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
+  SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { modules } from "@/data/modules";
 import { cn } from "@/lib/utils";
-import { Building2, Shield, Users2 } from "lucide-react";
+import { Building2, ChevronDown, Shield, Users2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import companyLogo from "@/assets/company-logo.jpeg";
+
+type NavEntry =
+  | { type: "module"; id: string }
+  | { type: "extra"; id: string; label: string; path: string; icon: typeof Building2 };
+
+const NAV_GROUPS: { label: string; defaultOpen?: boolean; items: NavEntry[] }[] = [
+  {
+    label: "Pilotage",
+    defaultOpen: true,
+    items: [
+      { type: "module", id: "dashboard" },
+      { type: "module", id: "tasks" },
+      { type: "module", id: "communication" },
+      { type: "module", id: "secretariat" },
+      { type: "module", id: "payroll" },
+      { type: "module", id: "reports" },
+      { type: "extra", id: "cabinets", label: "Cabinets", path: "/admin/cabinets", icon: Users2 },
+    ],
+  },
+  {
+    label: "Gestion du Personnel",
+    items: [
+      { type: "module", id: "org" },
+      { type: "module", id: "employees" },
+      { type: "module", id: "recruitment" },
+      { type: "module", id: "training" },
+      { type: "module", id: "talents" },
+      { type: "module", id: "performance" },
+    ],
+  },
+  {
+    label: "Suivi",
+    items: [
+      { type: "module", id: "attendance" },
+      { type: "module", id: "wellbeing" },
+      { type: "module", id: "legal" },
+      { type: "module", id: "documents" },
+    ],
+  },
+  {
+    label: "Administration Système",
+    items: [
+      { type: "extra", id: "admin", label: "Administration", path: "/admin", icon: Shield },
+      { type: "module", id: "security" },
+      { type: "module", id: "settings" },
+      { type: "extra", id: "plateforme", label: "Plateforme", path: "/plateforme", icon: Building2 },
+    ],
+  },
+];
+
 
 const CABINET_ROLES = new Set(["admin", "dg", "dga", "manager"]);
 const OPS_ROLES = new Set(["admin", "dg", "dga", "manager", "rh", "assistant_direction"]);
