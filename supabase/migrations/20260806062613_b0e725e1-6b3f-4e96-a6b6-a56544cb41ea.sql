@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.set_attendance_organization() FROM anon, authenticated, public;

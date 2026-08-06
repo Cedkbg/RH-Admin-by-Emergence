@@ -3,6 +3,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { Camera, CheckCircle2, MapPin, AlertTriangle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -36,6 +37,36 @@ const PresenceScan = () => {
   const [message, setMessage] = useState<string>("");
   const [gpsMsg, setGpsMsg] = useState<string>("Recherche GPS…");
   const [result, setResult] = useState<any>(null);
+  const [lateReason, setLateReason] = useState("");
+  const [needsLateReason, setNeedsLateReason] = useState(false);
+
+  // Heure locale RDC
+  const kinshasaTime = () =>
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Kinshasa", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+    }).format(new Date());
+  const kinshasaDate = () =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Africa/Kinshasa", year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(new Date());
+
+  // Retard = arrivée après 09:00, uniquement si l'entrée du jour n'est pas encore pointée
+  const checkLateRequirement = async () => {
+    if (kinshasaTime() <= "09:00:00") { setNeedsLateReason(false); return; }
+    try {
+      const email = session?.user?.email;
+      if (!email) { setNeedsLateReason(true); return; }
+      const { data: emp } = await supabase.from("employees").select("id").ilike("email", email).maybeSingle();
+      if (!emp) { setNeedsLateReason(true); return; }
+      const { data: att } = await supabase
+        .from("attendance").select("check_in")
+        .eq("employee_id", emp.id).eq("date", kinshasaDate()).maybeSingle();
+      setNeedsLateReason(!att?.check_in);
+    } catch {
+      setNeedsLateReason(true);
+    }
+  };
+
 
   const stopScanner = async () => {
     const scanner = scannerRef.current;
@@ -83,6 +114,8 @@ const PresenceScan = () => {
         setGpsMsg(`Position GPS acquise (±${acc} m)`);
         setMessage("Position confirmée. Lancez maintenant la caméra pour scanner le QR code.");
         setStatus("gpsReady");
+        void checkLateRequirement();
+
       } else {
         setGpsMsg("GPS refusé ou indisponible");
         setStatus("error");
@@ -221,6 +254,7 @@ const PresenceScan = () => {
         gps_lat: gps.latitude,
         gps_lng: gps.longitude,
         gps_accuracy: Number.isFinite(gps.accuracy) ? gps.accuracy : null,
+        late_reason: lateReason.trim() || null,
       },
     });
     if (error || data?.error) {
@@ -268,11 +302,30 @@ const PresenceScan = () => {
                 {gpsMsg}
               </div>
               <p className="text-sm text-muted-foreground">{message}</p>
+              {status === "gpsReady" && needsLateReason && (
+                <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-50 p-3 dark:bg-amber-950/20">
+                  <div className="flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="h-4 w-4" /> Arrivée après 09:00 — justification obligatoire
+                  </div>
+                  <Textarea
+                    value={lateReason}
+                    onChange={(e) => setLateReason(e.target.value.slice(0, 1000))}
+                    placeholder="Expliquez le motif de votre retard (transmis à la RH)…"
+                    rows={3}
+                  />
+                </div>
+              )}
               {status === "gpsReady" && (
-                <Button size="lg" className="w-full" onClick={startCamera}>
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={startCamera}
+                  disabled={needsLateReason && lateReason.trim().length < 5}
+                >
                   <Camera className="mr-2 h-5 w-5" /> Ouvrir la caméra
                 </Button>
               )}
+
             </div>
           )}
 

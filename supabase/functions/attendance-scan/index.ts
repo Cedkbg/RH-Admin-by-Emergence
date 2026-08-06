@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     const userEmail = userData.user.email;
 
     const body = await req.json();
-    const { qr_token, gps_lat, gps_lng, gps_accuracy } = body || {};
+    const { qr_token, gps_lat, gps_lng, gps_accuracy, late_reason } = body || {};
     if (!qr_token || typeof gps_lat !== "number" || typeof gps_lng !== "number") {
       return new Response(JSON.stringify({ error: "QR et position GPS requis" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     if (!userEmail) {
       return new Response(JSON.stringify({ error: "Email utilisateur introuvable" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    const { data: emp } = await admin.from("employees").select("id,first_name,last_name").eq("email", userEmail).maybeSingle();
+    const { data: emp } = await admin.from("employees").select("id,first_name,last_name,organization_id").eq("email", userEmail).maybeSingle();
     if (!emp) {
       return new Response(JSON.stringify({ error: "Aucune fiche agent liée à votre compte. Contactez la RH." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -128,15 +128,56 @@ Deno.serve(async (req) => {
       .lt("date", today)
       .is("check_out", null);
 
+    // Seuil de retard : arrivée après 09:00 (heure locale RDC)
+    const LATE_AFTER = "09:00:00";
+    const isLate = nowTime > LATE_AFTER;
+
     let action: "check_in" | "check_out";
     if (!existing) {
+      const reason = typeof late_reason === "string" ? late_reason.trim().slice(0, 1000) : "";
+      if (isLate && reason.length < 5) {
+        return new Response(JSON.stringify({
+          error: "Vous arrivez après 09:00. Une justification de retard est obligatoire avant de pointer.",
+          late_justification_required: true,
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       const { error: ie } = await admin.from("attendance").insert({
-        employee_id: emp.id, date: today, status: "present",
+        employee_id: emp.id, date: today, status: isLate ? "late" : "present",
         check_in: nowTime, location_id: loc.id, scan_method: "qr",
         gps_lat, gps_lng, distance_meters: distance,
       });
       if (ie) throw ie;
       action = "check_in";
+
+      if (isLate) {
+        // Justification enregistrée et transmise à la RH
+        await admin.from("absence_justifications").insert({
+          employee_id: emp.id,
+          organization_id: emp.organization_id,
+          period: today,
+          reason: `Retard (arrivée ${nowTime}) : ${reason}`,
+          status: "pending",
+        });
+
+        const { data: hr } = await admin
+          .from("user_roles")
+          .select("user_id")
+          .in("role", ["rh", "admin"])
+          .eq("organization_id", emp.organization_id);
+        if (hr?.length) {
+          await admin.from("notifications").insert(
+            hr.map((r: any) => ({
+              user_id: r.user_id,
+              organization_id: emp.organization_id,
+              title: "Retard signalé",
+              message: `${emp.first_name} ${emp.last_name} est arrivé(e) à ${nowTime} : ${reason}`,
+              link: "/presence",
+              category: "attendance",
+            })),
+          );
+        }
+      }
     } else if (!existing.check_out) {
       const { error: ue } = await admin.from("attendance")
         .update({ check_out: nowTime, gps_lat, gps_lng, distance_meters: distance })
@@ -146,6 +187,7 @@ Deno.serve(async (req) => {
     } else {
       return new Response(JSON.stringify({ error: "Vous avez déjà pointé entrée + sortie aujourd'hui." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
 
     return new Response(JSON.stringify({
       success: true, action,
