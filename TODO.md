@@ -1,19 +1,17 @@
-# 🚀 Plan : Salaire en temps réel basé sur la présence
-
-## Objectif
-Afficher le **salaire accumulé en temps réel** dans les blocs de présence et l'historique :
-- Salaire qui **monte progressivement** pendant que l'agent pointe
-- Calcul : heures travaillées × taux horaire
-- Affichage en direct (mise à jour périodique)
+# TODO — Bouton « Supprimer une entreprise » sur la page Plateforme
 
 ## Étapes
-1. **Mettre à jour `AgentPresenceBlock.tsx`** — Ajouter le salaire accumulé et le taux horaire dans le bloc
-2. **Mettre à jour `AgentPresenceHistory.tsx`** — Ajouter colonne salaire dans le tableau et les stats
-3. **Mettre à jour `Presence.tsx`** — Charger les `hourly_rate` des employés et calculer le salaire en direct
-4. **Ajouter un compteur en temps réel** — Pour les agents en train de pointer aujourd'hui, calculer le salaire qui s'accumule minute par minute
-
-## Fichiers à modifier
-- [ ] `src/components/presence/AgentPresenceBlock.tsx`
-- [ ] `src/components/presence/AgentPresenceHistory.tsx`
-- [ ] `src/pages/modules/Presence.tsx`
-
+- [x] 1. Backend : ajouter l'action `delete` dans la fonction edge `create-organization/index.ts`
+  - [x] Vérifier org introuvable → erreur
+  - [x] Protéger `emergence-drc` (organisation principale)
+  - [x] Protéger l'organisation de l'admin connecté
+  - [x] Récupérer les user_ids des membres / profils
+  - [x] Supprimer les comptes `auth.users` via `admin.auth.admin.deleteUser`
+  - [x] Supprimer l'organisation (cascade sur les données métier)
+- [x] 2. Frontend : ajouter le bouton « Supprimer » + confirmation dans `src/pages/Plateforme.tsx`
+  - [x] Importer `Trash2` + composants `AlertDialog`
+  - [x] État de suppression (id en cours + cible de confirmation)
+  - [x] Bouton « Supprimer » sur chaque carte
+  - [x] `AlertDialog` de confirmation
+  - [x] Appel de la fonction edge + reload + toast
+- [x] 3. Vérification / build

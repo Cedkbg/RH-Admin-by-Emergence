@@ -89,10 +89,29 @@ export default function DirectionDetail() {
   const isExecutiveZone = ["DG", "DGA"].includes(upperCode) || /^D\d+$/.test(upperCode);
   const { allowed, loading: accessLoading } = useDirectionAccess(isExecutiveZone ? upperCode : undefined);
 
-  const refresh = async () => {
-    const { data: dir } = await supabase
-      .from("directions").select("*").eq("code", upperCode).maybeSingle();
-    setDirection(dir as Direction | null);
+const refresh = async () => {
+    // Robustesse : s'il existe plusieurs directions avec le même code (doublons),
+    // on conserve celle qui a le plus de départements (à égalité, la plus ancienne).
+    const { data: dirs, error } = await supabase
+      .from("directions").select("*").eq("code", upperCode)
+      .order("created_at", { ascending: true });
+    if (error) { setDirection(null); return; }
+    if ((dirs || []).length === 0) { setDirection(null); return; }
+
+    let dir: Direction | null = (dirs as Direction[])[0];
+    if ((dirs as Direction[]).length > 1) {
+      const { data: counts } = await supabase
+        .from("departments").select("direction_id");
+      const deptCount = new Map<string, number>();
+      (counts || []).forEach((d: any) => {
+        deptCount.set(d.direction_id, (deptCount.get(d.direction_id) ?? 0) + 1);
+      });
+      dir = (dirs as Direction[]).reduce((best, d) =>
+        (deptCount.get(d.id) ?? 0) > (deptCount.get(best.id) ?? 0) ? d : best
+      );
+    }
+
+    setDirection(dir);
     if (!dir) return;
 
     const [{ data: depts }, { data: emps }] = await Promise.all([

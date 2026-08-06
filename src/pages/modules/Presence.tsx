@@ -16,9 +16,8 @@ import ValidationConges from "@/pages/ValidationConges";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { AgentPresenceBlock } from "@/components/presence/AgentPresenceBlock";
 import { AgentPresenceHistory } from "@/components/presence/AgentPresenceHistory";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} 
+from "@/components/ui/select";
 
 interface AttRow { id: string; employee_id: string; date: string; check_in: string | null; check_out: string | null; status: string; }
 interface LeaveRow { id: string; employee_id: string; leave_type: string; start_date: string; end_date: string; reason: string | null; status: string; }

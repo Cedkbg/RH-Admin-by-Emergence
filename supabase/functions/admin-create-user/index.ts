@@ -72,12 +72,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Singleton enforcement: only ONE DG and ONE DGA allowed in the whole organisation
+// Singleton enforcement: only ONE DG and ONE DGA allowed per organisation (tenant)
     if (role === "dg" || role === "dga") {
-      const { count } = await admin
-        .from("user_roles")
-        .select("*", { count: "exact", head: true })
-        .eq("role", role);
+      const { data: callerOrgForRole } = await admin
+        .from("organization_members").select("organization_id").eq("user_id", callerId).maybeSingle();
+      const callerOrgId = (callerOrgForRole as any)?.organization_id ?? null;
+      const roleQuery = admin.from("user_roles").select("*", { count: "exact", head: true }).eq("role", role);
+      const { count } = callerOrgId
+        ? await roleQuery.eq("organization_id", callerOrgId)
+        : await roleQuery;
       if ((count ?? 0) > 0) {
         return new Response(JSON.stringify({
           error: role === "dg"
@@ -127,7 +130,7 @@ Deno.serve(async (req) => {
       createdNewUser = true;
     }
 
-    // Entreprise (tenant) du créateur
+// Entreprise (tenant) du créateur
     const { data: callerOrg } = await admin
       .from("organization_members").select("organization_id").eq("user_id", callerId).maybeSingle();
     const orgId = (callerOrg as any)?.organization_id ?? null;
@@ -136,12 +139,21 @@ Deno.serve(async (req) => {
         { user_id: newUserId, organization_id: orgId },
         { onConflict: "user_id" },
       );
+      // Force le rattachement à l'entreprise du créateur (isolation stricte) :
+      // le trigger handle_new_user ne rattache plus automatiquement, mais par
+      // sécurité on s'assure que le compte est bien dans CETTE entreprise.
+      await admin.from("organization_members")
+        .update({ organization_id: orgId })
+        .eq("user_id", newUserId);
     }
 
-    // Ensure profile exists / approved
+    // Ensure profile exists / approved (upsert force org si le trigger a mis NULL)
     await admin.from("profiles").upsert({
       id: newUserId, email, full_name, approval_status: "approved", organization_id: orgId,
     });
+    if (orgId) {
+      await admin.from("profiles").update({ organization_id: orgId }).eq("id", newUserId);
+    }
 
     // Remove only the bootstrap 'admin' role auto-assigned to a newly-created subordinate account.
     // Never remove roles from an existing account.

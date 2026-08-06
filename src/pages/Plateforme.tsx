@@ -7,7 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, Loader2, Plus, Users2, ShieldAlert, Link as LinkIcon } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Building2, Loader2, Plus, Users2, ShieldAlert, Link as LinkIcon, Trash2, Network, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { AccessDenied } from "@/components/AccessDenied";
 
@@ -50,6 +60,66 @@ export default function Plateforme() {
   const [form, setForm] = useState({ ...EMPTY });
   const [invite, setInvite] = useState<{ name: string; email: string; link: string } | null>(null);
   const [linking, setLinking] = useState<string | null>(null);
+const [toDelete, setToDelete] = useState<OrgRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+const [restoring, setRestoring] = useState(false);
+  const [deduping, setDeduping] = useState(false);
+
+  const handleDedupeDirections = async () => {
+    setDeduping(true);
+    const { data, error } = await supabase.functions.invoke("create-organization", {
+      body: { action: "dedupe_directions" },
+    });
+    setDeduping(false);
+    const res = data as any;
+    if (error || res?.error) {
+      toast.error(res?.error || error?.message || "Déduplication échouée");
+      return;
+    }
+    toast.success(
+      `Doublons nettoyés : ${res?.removed_directions ?? 0} direction(s) supprimée(s), ` +
+      `${res?.moved_departments ?? 0} département(s), ${res?.moved_employees ?? 0} agent(s) ré-affecté(s)`,
+    );
+  };
+
+  const handleRestoreDirections = async () => {
+    setRestoring(true);
+    const { data, error } = await supabase.functions.invoke("create-organization", {
+      body: { action: "restore_directions" },
+    });
+    setRestoring(false);
+    const res = data as any;
+    if (error || res?.error) {
+      toast.error(res?.error || error?.message || "Restauration échouée");
+      return;
+    }
+    toast.success(
+      `Organigramme restauré : ${res?.created_directions ?? 0} direction(s), ${res?.created_departments ?? 0} département(s)`,
+    );
+  };
+
+const handleDelete = async () => {
+    if (!toDelete) return;
+    // Protéger l'entreprise principale / racine
+    if (toDelete.slug === "emergence-drc") {
+      toast.error("L'entreprise principale « Emergence DRC » ne peut pas être supprimée.");
+      setToDelete(null);
+      return;
+    }
+    setDeleting(true);
+    // Suppression directe via la politique RLS "platform admins delete organizations".
+    // Les données métier (directions, employés, paie, etc.) partent en cascade via
+    // organization_id ... REFERENCES organizations(id) ON DELETE CASCADE.
+    const { error } = await supabase.from("organizations").delete().eq("id", toDelete.id);
+    setDeleting(false);
+    if (error) {
+      toast.error(error.message || "Suppression échouée");
+      return;
+    }
+    toast.success(`Entreprise « ${toDelete.name} » supprimée`);
+    setToDelete(null);
+    load();
+  };
 
   const generateInvite = async (o: OrgRow) => {
     setLinking(o.id);
@@ -131,10 +201,29 @@ export default function Plateforme() {
             Gestion des entreprises clientes du logiciel. Chaque entreprise dispose de son espace isolé.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" />Nouvelle entreprise</Button>
-          </DialogTrigger>
+<div className="flex items-center gap-2">
+<Button
+            variant="outline"
+            disabled={restoring}
+            onClick={handleRestoreDirections}
+            title="Recrée les 10 directions par défaut (DG, DGA, D1-D8) et leurs départements pour chaque entreprise qui en manque"
+          >
+            {restoring && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Network className="mr-2 h-4 w-4" />Restaurer l'organigramme
+          </Button>
+          <Button
+            variant="outline"
+            disabled={deduping}
+            onClick={handleDedupeDirections}
+            title="Fusionne les directions en double (même code) d'une même entreprise en ré-affectant leurs départements et agents"
+          >
+            {deduping && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Sparkles className="mr-2 h-4 w-4" />Dédupliquer les directions
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button><Plus className="mr-2 h-4 w-4" />Nouvelle entreprise</Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>Créer une entreprise cliente</DialogTitle></DialogHeader>
             <form onSubmit={submit} className="space-y-5">
@@ -163,9 +252,10 @@ export default function Plateforme() {
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Créer
                 </Button>
               </DialogFooter>
-            </form>
+</form>
           </DialogContent>
         </Dialog>
+      </div>
       </div>
 
       {fetching ? (
@@ -195,18 +285,30 @@ export default function Plateforme() {
                   </Badge>
                   <Badge variant={o.active ? "default" : "outline"}>{o.active ? "Active" : "Inactive"}</Badge>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full mt-2"
-                  disabled={linking === o.id}
-                  onClick={() => generateInvite(o)}
-                >
-                  {linking === o.id
-                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    : <LinkIcon className="mr-2 h-4 w-4" />}
-                  Lien de connexion
-                </Button>
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    disabled={linking === o.id}
+                    onClick={() => generateInvite(o)}
+                  >
+                    {linking === o.id
+                      ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      : <LinkIcon className="mr-2 h-4 w-4" />}
+                    Lien
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="flex-1"
+                    disabled={deleting === true}
+                    onClick={() => setToDelete(o)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Supprimer
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -237,7 +339,34 @@ export default function Plateforme() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
 
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette entreprise ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vous êtes sur le point de supprimer définitivement « <strong>{toDelete?.name}</strong> ».
+              Toutes les données associées (employés, congés, paie, paramètres, etc.) ainsi que les
+              comptes utilisateurs de ses membres seront irrémédiablement supprimés. Cette action est
+              irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+            >
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }

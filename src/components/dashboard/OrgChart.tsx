@@ -107,7 +107,7 @@ export function OrgChart() {
     (async () => {
       // Uniquement les directions/départements de l'entreprise de l'utilisateur
       // (isolation multi-entreprise assurée par les règles d'accès).
-      const [{ data: dirs }, { data: depts }] = await Promise.all([
+const [{ data: dirs }, { data: depts }] = await Promise.all([
         supabase.from("directions").select("id,code,name,manager_name").order("code", { ascending: true }),
         supabase.from("departments").select("id,name,direction_id").order("name", { ascending: true }),
       ]);

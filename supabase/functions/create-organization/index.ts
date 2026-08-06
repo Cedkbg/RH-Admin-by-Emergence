@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+"Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
 };
 
 // Toujours répondre en 200 : supabase.functions.invoke masque le corps des réponses
@@ -77,12 +77,192 @@ Deno.serve(async (req) => {
       (members ?? []).forEach((m: any) => {
         counts[m.organization_id] = (counts[m.organization_id] ?? 0) + 1;
       });
-      return json({ organizations: (orgs ?? []).map((o: any) => ({ ...o, member_count: counts[o.id] ?? 0 })) });
+return json({ organizations: (orgs ?? []).map((o: any) => ({ ...o, member_count: counts[o.id] ?? 0 })) });
+    }
+
+    if (req.method === "DELETE") {
+      const orgId = String(req.headers.get("x-organization-id") ?? "");
+      if (!orgId) return json({ error: "organization_id requis" }, 400);
+
+      const { data: org, error: orgErr } = await admin
+        .from("organizations").select("id,name,slug").eq("id", orgId).maybeSingle();
+      if (orgErr) throw orgErr;
+      if (!org) return json({ error: "Entreprise introuvable" }, 404);
+
+      // Protéger l'organisation principale / racine
+      if (org.slug === "emergence-drc") {
+        return json({ error: "L'entreprise principale « Emergence DRC » ne peut pas être supprimée." }, 403);
+      }
+
+      // Réutiliser l'utilisateur authentifié (uid) pour ne pas se supprimer soi-même
+      const { data: selfOrg } = await admin
+        .from("organization_members").select("organization_id").eq("user_id", uid).maybeSingle();
+      if (selfOrg?.organization_id === orgId) {
+        return json({ error: "Impossible de supprimer l'entreprise à laquelle votre compte est rattaché." }, 403);
+      }
+
+      // Récupérer tous les user_ids rattachés à l'entreprise (members + profiles)
+      const { data: memberRows } = await admin
+        .from("organization_members").select("user_id").eq("organization_id", orgId);
+      const { data: profileRows } = await admin
+        .from("profiles").select("id").eq("organization_id", orgId);
+      const userIds = Array.from(new Set([
+        ...((memberRows ?? []) as any[]).map((m) => m.user_id),
+        ...((profileRows ?? []) as any[]).map((p) => p.id),
+      ].filter(Boolean)));
+
+      // Ne jamais supprimer le compte plateforme / admin connecté
+      const safeIds = userIds.filter((id) => id !== uid);
+
+      // Supprimer les comptes auth.users associés (pas de cascade via organization_id)
+      let deletedUsers = 0;
+      for (const i of safeIds) {
+        try {
+          const { error: delErr } = await admin.auth.admin.deleteUser(i);
+          if (delErr) {
+            console.error(`[create-organization] deleteUser ${i} failed:`, delErr);
+          } else {
+            deletedUsers++;
+          }
+        } catch (e) {
+          console.error(`[create-organization] deleteUser ${i} error:`, e);
+        }
+      }
+
+      // Supprimer l'organisation (les données métier partent en cascade via ON DELETE CASCADE)
+      const { error: rmErr } = await admin.from("organizations").delete().eq("id", orgId);
+      if (rmErr) throw rmErr;
+
+      return json({ ok: true, deleted_users: deletedUsers });
+    }
+
+const body = await req.json().catch(() => ({}));
+
+    // Restaurer les 10 directions par défaut pour toutes les organisations
+    // (et leurs départements par défaut) si elles en manquent. Idempotent.
+    if (body?.action === "restore_directions") {
+      const DEFAULT_DIRS: Array<[string, string, string[]]> = [
+        ["DG",  "Direction Générale",          ["Secrétariat général", "Audit interne"]],
+        ["DGA", "Direction Générale Adjointe", ["Coordination", "Suivi & Évaluation"]],
+        ["D1",  "Direction Technologie",       ["Infrastructure & Réseau", "Développement"]],
+        ["D2",  "Direction Produits",          ["Conception produit", "Qualité"]],
+        ["D3",  "Direction Opérations",        ["Logistique", "Maintenance"]],
+        ["D4",  "Direction Financière",        ["Comptabilité", "Trésorerie", "Budget"]],
+        ["D5",  "Direction Risques",           ["Conformité", "Sécurité"]],
+        ["D6",  "Direction Commerciale",       ["Ventes", "Marketing"]],
+        ["D7",  "Direction RH",                ["Recrutement", "Paie & Administration", "Formation"]],
+        ["D8",  "Direction Juridique",         ["Contentieux", "Contrats"]],
+      ];
+
+      const { data: orgs } = await admin.from("organizations").select("id");
+      let createdDirs = 0;
+      let createdDepts = 0;
+
+      for (const org of (orgs ?? []) as any[]) {
+        // Directions existantes pour cette org
+        const { data: existing } = await admin
+          .from("directions").select("code").eq("organization_id", org.id);
+        const have = new Set((existing ?? []).map((d: any) => d.code));
+
+        for (const [code, name, depts] of DEFAULT_DIRS) {
+          if (have.has(code)) continue;
+          const { data: dir, error: dErr } = await admin
+            .from("directions").insert({ organization_id: org.id, code, name })
+            .select("id")
+            .single();
+          if (dErr || !dir) continue;
+          createdDirs++;
+
+          const deptRows = depts.map((dn: string, i: number) => ({
+            organization_id: org.id,
+            direction_id: dir.id,
+            code: `${code}-${i + 1}`,
+            name: dn,
+          }));
+          if (deptRows.length) {
+            const { error: deptErr } = await admin.from("departments").insert(deptRows);
+            if (!deptErr) createdDepts += deptRows.length;
+          }
+        }
+      }
+
+return json({ ok: true, created_directions: createdDirs, created_departments: createdDepts });
+    }
+
+    // Dédupliquer les directions : pour chaque groupe de directions ayant le même
+    // code + même organization_id, on conserve celle qui a le plus de départements
+    // (à égalité, la plus ancienne). Les départements, employés et executives des
+    // doublons sont ré-affectés à la direction conservée avant suppression.
+    if (body?.action === "dedupe_directions") {
+const { data: dirs } = await admin.from("directions").select("id,code,organization_id,created_at");
+      const { data: depts } = await admin.from("departments").select("direction_id");
+
+      const deptCount = new Map<string, number>();
+      (depts ?? []).forEach((d: any) => {
+        deptCount.set(d.direction_id, (deptCount.get(d.direction_id) ?? 0) + 1);
+      });
+
+      // Regrouper par (organization_id, code)
+      const groups = new Map<string, any[]>();
+      for (const d of (dirs ?? []) as any[]) {
+        if (!d.code || !d.organization_id) continue;
+        const key = `${d.organization_id}::${String(d.code).toUpperCase()}`;
+        const arr = groups.get(key) ?? [];
+        arr.push(d);
+        groups.set(key, arr);
+      }
+
+      let removedDirs = 0;
+      let movedDepts = 0;
+      let movedEmps = 0;
+      let movedExecs = 0;
+
+      for (const arr of groups.values()) {
+        if (arr.length < 2) continue;
+        // Conserver celle avec le plus de départements (à égalité, la plus ancienne)
+        const keep = arr.reduce((best, d) => {
+          const bCount = deptCount.get(best.id) ?? 0;
+          const dCount = deptCount.get(d.id) ?? 0;
+          if (dCount > bCount) return d;
+          if (dCount === bCount && d.created_at < best.created_at) return d;
+          return best;
+        });
+        const dupIds = arr.filter((d) => d.id !== keep.id).map((d) => d.id);
+
+        for (const dup of dupIds) {
+// Ré-affecter départements
+          if ((deptCount.get(dup) ?? 0) > 0) {
+            const { error } = await admin.from("departments").update({ direction_id: keep.id }).eq("direction_id", dup);
+            if (!error) movedDepts += deptCount.get(dup) ?? 0;
+          }
+          // Ré-affecter employés
+          const { data: mEmps } = await admin.from("employees").select("id").eq("direction_id", dup);
+          if ((mEmps ?? []).length) {
+            const { error } = await admin.from("employees").update({ direction_id: keep.id }).eq("direction_id", dup);
+            if (!error) movedEmps += (mEmps ?? []).length;
+          }
+          // Ré-affecter executives
+          const { data: mExecs } = await admin.from("direction_executives").select("id").eq("direction_id", dup);
+          if ((mExecs ?? []).length) {
+            const { error } = await admin.from("direction_executives").update({ direction_id: keep.id }).eq("direction_id", dup);
+            if (!error) movedExecs += (mExecs ?? []).length;
+          }
+          // Supprimer le doublon
+          const { error: dErr } = await admin.from("directions").delete().eq("id", dup);
+          if (!dErr) removedDirs++;
+        }
+      }
+
+      return json({
+        ok: true,
+        removed_directions: removedDirs,
+        moved_departments: movedDepts,
+        moved_employees: movedEmps,
+        moved_executives: movedExecs,
+      });
     }
 
     if (req.method !== "POST") return json({ error: "Méthode non autorisée" }, 405);
-
-    const body = await req.json().catch(() => ({}));
 
     const appOrigin = String(body?.origin ?? req.headers.get("origin") ?? "").replace(/\/$/, "");
 
@@ -152,7 +332,7 @@ Deno.serve(async (req) => {
       return json({ ok: true, email, invite_link: link });
     }
 
-    const name = String(body?.name ?? "").trim();
+const name = String(body?.name ?? "").trim();
     const adminEmail = String(body?.admin_email ?? "").trim().toLowerCase();
     const adminName = String(body?.admin_full_name ?? "").trim();
     const adminPassword = String(body?.admin_password ?? "");
@@ -202,8 +382,12 @@ Deno.serve(async (req) => {
       return json({ error: createErr?.message ?? "Création du compte administrateur échouée" }, 400);
     }
 
-    const userId = created.user.id;
+const userId = created.user.id;
 
+    // Rattaché l'admin à SA nouvelle entreprise de façon FORCÉE.
+    // On utilise un update direct (et non un upsert) : le trigger handle_new_user
+    // peut avoir déjà rattaché l'utilisateur à une autre organisation (la première),
+    // et un upsert avec ON CONFLICT DO NOTHING ne corrigerait pas ce rattachement.
     await admin.from("profiles").upsert({
       id: userId,
       email: adminEmail,
@@ -212,41 +396,33 @@ Deno.serve(async (req) => {
       onboarding_completed: true,
       organization_id: org.id,
     });
+    await admin.from("profiles").update({ organization_id: org.id }).eq("id", userId);
 
     await admin.from("organization_members").upsert(
       { user_id: userId, organization_id: org.id },
       { onConflict: "user_id" },
     );
+    // Force le rattachement à la nouvelle entreprise (même si le trigger l'a placé ailleurs)
+    await admin.from("organization_members")
+      .update({ organization_id: org.id })
+      .eq("user_id", userId);
 
     await admin.from("user_roles").upsert(
       { user_id: userId, role: "admin", organization_id: org.id },
       { onConflict: "user_id,role" },
     );
+    // Force l'org du rôle admin (le trigger a pu créer un rôle avec une autre org)
+    await admin.from("user_roles")
+      .update({ organization_id: org.id })
+      .eq("user_id", userId)
+      .eq("role", "admin");
     // Le trigger d'inscription ajoute parfois un rôle "employee" : l'admin de
     // l'entreprise ne doit pas apparaître comme un simple agent.
     await admin.from("user_roles").delete().eq("user_id", userId).eq("role", "employee");
 
-    // Structure de départ propre à l'entreprise (directions + départements)
-    const { data: seededDirections } = await admin
-      .from("directions")
-      .insert(
-        DEFAULT_DIRECTIONS.map((d) => ({
-          organization_id: org.id,
-          code: d.code,
-          name: d.name,
-        })),
-      )
-      .select("id,code");
-
-    const deptRows = (seededDirections ?? []).flatMap((d: any) =>
-      (DEFAULT_DEPARTMENTS[d.code] ?? []).map((dept: string, i: number) => ({
-        organization_id: org.id,
-        direction_id: d.id,
-        code: `${d.code}-${i + 1}`,
-        name: dept,
-      })),
-    );
-    if (deptRows.length) await admin.from("departments").insert(deptRows);
+    // L'organigramme de la nouvelle entreprise démarre VIDE (option B) :
+    // l'admin de l'entreprise crée lui-même ses propres directions.
+    // Les modules restent entièrement disponibles (non affectés par ce choix).
 
     await admin.from("app_settings").upsert(
       [
