@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     if (!userEmail) {
       return new Response(JSON.stringify({ error: "Email utilisateur introuvable" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    const { data: emp } = await admin.from("employees").select("id,first_name,last_name").eq("email", userEmail).maybeSingle();
+    const { data: emp } = await admin.from("employees").select("id,first_name,last_name,organization_id").eq("email", userEmail).maybeSingle();
     if (!emp) {
       return new Response(JSON.stringify({ error: "Aucune fiche agent liée à votre compte. Contactez la RH." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
