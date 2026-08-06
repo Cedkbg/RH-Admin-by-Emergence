@@ -57,18 +57,36 @@ const AgentDashboard = () => {
   }, []);
 
   const loadAttendance = async (employeeId: string) => {
-    const today = new Date().toISOString().slice(0, 10);
-    const result = await withTimeout(
-      supabase
-        .from("attendance")
-        .select("id,date,check_in,check_out,status")
-        .eq("employee_id", employeeId)
-        .eq("date", today)
-        .maybeSingle(),
-      1800
-    );
-    setTodayAttendance((result?.data as Attendance | null) ?? null);
+    // Date locale RDC (Africa/Kinshasa) — identique a celle enregistree par le scan
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Africa/Kinshasa", year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(new Date());
+    const { data } = await supabase
+      .from("attendance")
+      .select("id,date,check_in,check_out,status")
+      .eq("employee_id", employeeId)
+      .eq("date", today)
+      .maybeSingle();
+    setTodayAttendance((data as Attendance | null) ?? null);
   };
+
+  // Rafraichissement automatique du pointage du jour (retour de scan, onglet reactive)
+  useEffect(() => {
+    if (!me?.id) return;
+    const refresh = () => loadAttendance(me.id).catch(() => null);
+    const id = setInterval(refresh, 30_000);
+    const onFocus = () => refresh();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.id]);
+
+
 
   // Timeout de secu : ne jamais laisser l'ecran sur Chargement
   useEffect(() => {
@@ -147,6 +165,24 @@ const AgentDashboard = () => {
   const isLate = !checkedIn && (now.getHours() > ARRIVAL_DEADLINE_HOUR ||
     (now.getHours() === ARRIVAL_DEADLINE_HOUR && now.getMinutes() > 0));
 
+  // Duree travaillee aujourd'hui (en cours si pas encore de sortie)
+  const toMinutes = (t?: string | null) => {
+    if (!t) return null;
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  };
+  const nowKinshasaMin = (() => {
+    const s = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Kinshasa", hour: "2-digit", minute: "2-digit", hour12: false,
+    }).format(now);
+    return toMinutes(s) ?? 0;
+  })();
+  const startMin = toMinutes(todayAttendance?.check_in);
+  const endMin = toMinutes(todayAttendance?.check_out) ?? (startMin !== null ? nowKinshasaMin : null);
+  const workedMin = startMin !== null && endMin !== null ? Math.max(0, endMin - startMin) : 0;
+  const workedLabel = `${Math.floor(workedMin / 60)}h ${String(workedMin % 60).padStart(2, "0")}min`;
+
+
   return (
     <div className="mx-auto max-w-[1200px] space-y-6 animate-fade-in">
       <header>
@@ -185,6 +221,15 @@ const AgentDashboard = () => {
                   {checkedOut ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Clock className="h-4 w-4 text-muted-foreground" />}
                   <span><b>Sortie :</b> {checkedOut ? todayAttendance!.check_out?.slice(0, 5) : <span className="text-muted-foreground">non pointee</span>}</span>
                 </div>
+                {checkedIn && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <span>
+                      <b>Temps de travail :</b> {workedLabel}
+                      {!checkedOut && <span className="ml-1 text-xs text-muted-foreground">(en cours)</span>}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Alerte heure limite */}
