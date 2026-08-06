@@ -195,7 +195,7 @@ const handleDelete = async () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <ShieldAlert className="h-6 w-6 text-primary" /> Plateforme
+<ShieldAlert className="h-6 w-6 text-primary" /> Sites
           </h1>
           <p className="text-sm text-muted-foreground">
             Gestion des entreprises clientes du logiciel. Chaque entreprise dispose de son espace isolé.

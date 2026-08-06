@@ -57,7 +57,7 @@ const NAV_GROUPS: { label: string; defaultOpen?: boolean; items: NavEntry[] }[] 
       { type: "extra", id: "admin", label: "Administration", path: "/admin", icon: Shield },
       { type: "module", id: "security" },
       { type: "module", id: "settings" },
-      { type: "extra", id: "plateforme", label: "Plateforme", path: "/plateforme", icon: Building2 },
+{ type: "extra", id: "plateforme", label: "Sites", path: "/plateforme", icon: Building2 },
     ],
   },
 ];
