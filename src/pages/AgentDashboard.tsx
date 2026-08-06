@@ -70,6 +70,24 @@ const AgentDashboard = () => {
     setTodayAttendance((data as Attendance | null) ?? null);
   };
 
+  // Rafraichissement automatique du pointage du jour (retour de scan, onglet reactive)
+  useEffect(() => {
+    if (!me?.id) return;
+    const refresh = () => loadAttendance(me.id).catch(() => null);
+    const id = setInterval(refresh, 30_000);
+    const onFocus = () => refresh();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.id]);
+
+
+
   // Timeout de secu : ne jamais laisser l'ecran sur Chargement
   useEffect(() => {
     const timer = setTimeout(() => {
