@@ -253,6 +253,7 @@ const PresenceScan = () => {
         gps_lat: gps.latitude,
         gps_lng: gps.longitude,
         gps_accuracy: Number.isFinite(gps.accuracy) ? gps.accuracy : null,
+        late_reason: lateReason.trim() || null,
       },
     });
     if (error || data?.error) {
