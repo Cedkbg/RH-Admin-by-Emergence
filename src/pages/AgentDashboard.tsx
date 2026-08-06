@@ -165,6 +165,24 @@ const AgentDashboard = () => {
   const isLate = !checkedIn && (now.getHours() > ARRIVAL_DEADLINE_HOUR ||
     (now.getHours() === ARRIVAL_DEADLINE_HOUR && now.getMinutes() > 0));
 
+  // Duree travaillee aujourd'hui (en cours si pas encore de sortie)
+  const toMinutes = (t?: string | null) => {
+    if (!t) return null;
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  };
+  const nowKinshasaMin = (() => {
+    const s = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Kinshasa", hour: "2-digit", minute: "2-digit", hour12: false,
+    }).format(now);
+    return toMinutes(s) ?? 0;
+  })();
+  const startMin = toMinutes(todayAttendance?.check_in);
+  const endMin = toMinutes(todayAttendance?.check_out) ?? (startMin !== null ? nowKinshasaMin : null);
+  const workedMin = startMin !== null && endMin !== null ? Math.max(0, endMin - startMin) : 0;
+  const workedLabel = `${Math.floor(workedMin / 60)}h ${String(workedMin % 60).padStart(2, "0")}min`;
+
+
   return (
     <div className="mx-auto max-w-[1200px] space-y-6 animate-fade-in">
       <header>
