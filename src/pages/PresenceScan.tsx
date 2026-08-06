@@ -3,6 +3,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { Camera, CheckCircle2, MapPin, AlertTriangle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
