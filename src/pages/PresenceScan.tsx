@@ -36,6 +36,36 @@ const PresenceScan = () => {
   const [message, setMessage] = useState<string>("");
   const [gpsMsg, setGpsMsg] = useState<string>("Recherche GPS…");
   const [result, setResult] = useState<any>(null);
+  const [lateReason, setLateReason] = useState("");
+  const [needsLateReason, setNeedsLateReason] = useState(false);
+
+  // Heure locale RDC
+  const kinshasaTime = () =>
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Kinshasa", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+    }).format(new Date());
+  const kinshasaDate = () =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Africa/Kinshasa", year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(new Date());
+
+  // Retard = arrivée après 09:00, uniquement si l'entrée du jour n'est pas encore pointée
+  const checkLateRequirement = async () => {
+    if (kinshasaTime() <= "09:00:00") { setNeedsLateReason(false); return; }
+    try {
+      const email = session?.user?.email;
+      if (!email) { setNeedsLateReason(true); return; }
+      const { data: emp } = await supabase.from("employees").select("id").ilike("email", email).maybeSingle();
+      if (!emp) { setNeedsLateReason(true); return; }
+      const { data: att } = await supabase
+        .from("attendance").select("check_in")
+        .eq("employee_id", emp.id).eq("date", kinshasaDate()).maybeSingle();
+      setNeedsLateReason(!att?.check_in);
+    } catch {
+      setNeedsLateReason(true);
+    }
+  };
+
 
   const stopScanner = async () => {
     const scanner = scannerRef.current;
