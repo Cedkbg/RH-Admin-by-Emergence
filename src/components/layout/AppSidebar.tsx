@@ -96,79 +96,80 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-2">
-        <SidebarMenu>
-          {modules.map((m) => {
-            const Icon = m.icon;
-            // Agent : seulement le tableau de bord et la page présence
-            if (isAgentOnly && !AGENT_ALLOWED_PATHS.has(m.path)) return null;
-            // Cacher complètement les modules terrain pour le cabinet exécutif (DG/DGA/Secrétaire)
-            if (isExecutiveOnly && FIELD_ONLY_PATHS.has(m.path)) return null;
-            const active = m.path === "/" ? location.pathname === "/" : location.pathname.startsWith(m.path);
-            const restricted = RESTRICTED_PATHS.has(m.path) && !hasOpsAccess && !(isAgentOnly && AGENT_ALLOWED_PATHS.has(m.path));
-            return (
-              <SidebarMenuItem key={m.id}>
-                <SidebarMenuButton asChild tooltip={restricted ? `${m.label} (accès restreint)` : m.label}>
-                  <NavLink
-                    to={m.path}
-                    onClick={(e) => { if (restricted) e.preventDefault(); }}
-                    aria-disabled={restricted}
-                    className={cn(
-                      active && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
-                      restricted && "opacity-40 cursor-not-allowed pointer-events-none",
-                    )}
-                  >
-                    <Icon className="h-[18px] w-[18px] shrink-0" />
-                    <span className="truncate text-sm">{m.label}</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            );
-          })}
+        {NAV_GROUPS.map((group) => {
+          const items = group.items
+            .map((entry) => {
+              if (entry.type === "extra") {
+                const allowed =
+                  (entry.id === "cabinets" && canManageCabinets) ||
+                  (entry.id === "admin" && isAdmin) ||
+                  (entry.id === "plateforme" && isPlatformAdmin);
+                if (!allowed) return null;
+                return { id: entry.id, label: entry.label!, path: entry.path!, icon: entry.icon!, restricted: false };
+              }
+              const m = modules.find((mod) => mod.id === entry.id);
+              if (!m) return null;
+              if (isAgentOnly && !AGENT_ALLOWED_PATHS.has(m.path)) return null;
+              if (isExecutiveOnly && FIELD_ONLY_PATHS.has(m.path)) return null;
+              const restricted =
+                RESTRICTED_PATHS.has(m.path) && !hasOpsAccess && !(isAgentOnly && AGENT_ALLOWED_PATHS.has(m.path));
+              return { id: m.id, label: m.label, path: m.path, icon: m.icon, restricted };
+            })
+            .filter(Boolean) as { id: string; label: string; path: string; icon: typeof Building2; restricted: boolean }[];
 
+          if (items.length === 0) return null;
 
-          {canManageCabinets && (
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Cabinets (DG/DGA/Manager)">
-                <NavLink
-                  to="/admin/cabinets"
-                  className={cn(location.pathname.startsWith("/admin/cabinets") && "bg-sidebar-accent text-sidebar-accent-foreground font-medium")}
-                >
-                  <Users2 className="h-[18px] w-[18px] shrink-0" />
-                  <span className="truncate text-sm">Cabinets</span>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
+          const groupActive = items.some((it) =>
+            it.path === "/" ? location.pathname === "/" : location.pathname.startsWith(it.path),
+          );
 
-          {isAdmin && (
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Administration">
-                <NavLink
-                  to="/admin"
-                  className={cn(location.pathname === "/admin" && "bg-sidebar-accent text-sidebar-accent-foreground font-medium")}
-                >
-                  <Shield className="h-[18px] w-[18px] shrink-0" />
-                  <span className="truncate text-sm">Administration</span>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
-
-          {isPlatformAdmin && (
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Plateforme">
-                <NavLink
-                  to="/plateforme"
-                  className={cn(location.pathname === "/plateforme" && "bg-sidebar-accent text-sidebar-accent-foreground font-medium")}
-                >
-                  <Building2 className="h-[18px] w-[18px] shrink-0" />
-                  <span className="truncate text-sm">Plateforme</span>
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
-        </SidebarMenu>
+          return (
+            <Collapsible key={group.label} defaultOpen={groupActive || group.defaultOpen} className="group/collapsible">
+              <SidebarGroup>
+                <SidebarGroupLabel asChild>
+                  <CollapsibleTrigger className="flex w-full items-center justify-between">
+                    <span className="truncate">{group.label}</span>
+                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=closed]/collapsible:-rotate-90" />
+                  </CollapsibleTrigger>
+                </SidebarGroupLabel>
+                <CollapsibleContent>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {items.map((it) => {
+                        const Icon = it.icon;
+                        const active =
+                          it.path === "/" ? location.pathname === "/" : location.pathname.startsWith(it.path);
+                        return (
+                          <SidebarMenuItem key={it.id}>
+                            <SidebarMenuButton
+                              asChild
+                              tooltip={it.restricted ? `${it.label} (accès restreint)` : it.label}
+                            >
+                              <NavLink
+                                to={it.path}
+                                onClick={(e) => { if (it.restricted) e.preventDefault(); }}
+                                aria-disabled={it.restricted}
+                                className={cn(
+                                  active && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+                                  it.restricted && "opacity-40 cursor-not-allowed pointer-events-none",
+                                )}
+                              >
+                                <Icon className="h-[18px] w-[18px] shrink-0" />
+                                <span className="truncate text-sm">{it.label}</span>
+                              </NavLink>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </CollapsibleContent>
+              </SidebarGroup>
+            </Collapsible>
+          );
+        })}
       </SidebarContent>
+
 
       <SidebarFooter className="border-t border-sidebar-border px-4 py-3 text-xs text-sidebar-foreground/60">
         © {new Date().getFullYear()} {companyName}
