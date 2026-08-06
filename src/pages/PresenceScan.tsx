@@ -113,6 +113,8 @@ const PresenceScan = () => {
         setGpsMsg(`Position GPS acquise (±${acc} m)`);
         setMessage("Position confirmée. Lancez maintenant la caméra pour scanner le QR code.");
         setStatus("gpsReady");
+        void checkLateRequirement();
+
       } else {
         setGpsMsg("GPS refusé ou indisponible");
         setStatus("error");
