@@ -221,6 +221,15 @@ const AgentDashboard = () => {
                   {checkedOut ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Clock className="h-4 w-4 text-muted-foreground" />}
                   <span><b>Sortie :</b> {checkedOut ? todayAttendance!.check_out?.slice(0, 5) : <span className="text-muted-foreground">non pointee</span>}</span>
                 </div>
+                {checkedIn && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <span>
+                      <b>Temps de travail :</b> {workedLabel}
+                      {!checkedOut && <span className="ml-1 text-xs text-muted-foreground">(en cours)</span>}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Alerte heure limite */}
