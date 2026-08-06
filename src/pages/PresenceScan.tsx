@@ -300,11 +300,30 @@ const PresenceScan = () => {
                 {gpsMsg}
               </div>
               <p className="text-sm text-muted-foreground">{message}</p>
+              {status === "gpsReady" && needsLateReason && (
+                <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-50 p-3 dark:bg-amber-950/20">
+                  <div className="flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="h-4 w-4" /> Arrivée après 09:00 — justification obligatoire
+                  </div>
+                  <Textarea
+                    value={lateReason}
+                    onChange={(e) => setLateReason(e.target.value.slice(0, 1000))}
+                    placeholder="Expliquez le motif de votre retard (transmis à la RH)…"
+                    rows={3}
+                  />
+                </div>
+              )}
               {status === "gpsReady" && (
-                <Button size="lg" className="w-full" onClick={startCamera}>
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={startCamera}
+                  disabled={needsLateReason && lateReason.trim().length < 5}
+                >
                   <Camera className="mr-2 h-5 w-5" /> Ouvrir la caméra
                 </Button>
               )}
+
             </div>
           )}
 
