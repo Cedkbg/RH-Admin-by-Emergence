@@ -87,15 +87,8 @@ var get_current_user_default = defineTool({
 });
 
 // src/lib/mcp/tools/list-employees.ts
-import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.106.2";
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.24.0";
 import { z } from "npm:zod@^3.25.76";
-function supabaseForUser2(ctx) {
-  return createClient2(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
-    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
-}
 var list_employees_default = defineTool2({
   name: "list_employees",
   title: "List employees",
@@ -110,7 +103,7 @@ var list_employees_default = defineTool2({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const capped = Math.min(limit ?? 50, 200);
-    let query = supabaseForUser2(ctx).from("employees").select("id,matricule,first_name,last_name,email,position,direction_code,department_id,active").order("last_name", { ascending: true }).limit(capped);
+    let query = supabaseForUser(ctx).from("employees").select("id,matricule,first_name,last_name,email,position,direction_code,department_id,active").order("last_name", { ascending: true }).limit(capped);
     if (search) {
       const s = search.replace(/[%,]/g, "");
       query = query.or(`first_name.ilike.%${s}%,last_name.ilike.%${s}%,email.ilike.%${s}%`);
@@ -125,15 +118,8 @@ var list_employees_default = defineTool2({
 });
 
 // src/lib/mcp/tools/list-my-reports.ts
-import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.106.2";
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.24.0";
 import { z as z2 } from "npm:zod@^3.25.76";
-function supabaseForUser3(ctx) {
-  return createClient3(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
-    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
-}
 var list_my_reports_default = defineTool3({
   name: "list_reports",
   title: "List reports",
@@ -148,7 +134,7 @@ var list_my_reports_default = defineTool3({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const capped = Math.min(limit ?? 25, 100);
-    let query = supabaseForUser3(ctx).from("agent_reports").select("id,title,category,status,confidentiality,summary,created_at,updated_at,author_id").order("created_at", { ascending: false }).limit(capped);
+    let query = supabaseForUser(ctx).from("agent_reports").select("id,title,category,status,confidentiality,summary,created_at,updated_at,author_id").order("created_at", { ascending: false }).limit(capped);
     if (status) query = query.eq("status", status);
     const { data, error } = await query;
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
@@ -160,15 +146,8 @@ var list_my_reports_default = defineTool3({
 });
 
 // src/lib/mcp/tools/list-announcements.ts
-import { createClient as createClient4 } from "npm:@supabase/supabase-js@^2.106.2";
 import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.24.0";
 import { z as z3 } from "npm:zod@^3.25.76";
-function supabaseForUser4(ctx) {
-  return createClient4(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
-    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
-}
 var list_announcements_default = defineTool4({
   name: "list_announcements",
   title: "List announcements",
@@ -182,7 +161,7 @@ var list_announcements_default = defineTool4({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const capped = Math.min(limit ?? 20, 100);
-    const { data, error } = await supabaseForUser4(ctx).from("announcements").select("id,title,body,created_at,author_id").order("created_at", { ascending: false }).limit(capped);
+    const { data, error } = await supabaseForUser(ctx).from("announcements").select("id,title,body,created_at,author_id").order("created_at", { ascending: false }).limit(capped);
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {
       content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
