@@ -13,8 +13,7 @@
     <meta http-equiv="Permissions-Policy" content="camera=(self), microphone=(), geolocation=(self), interest-cohort=()" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
-    <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
-    <meta name="theme-color" content="#0f172a" />
+    <link rel="manifest" href="./manifest.webmanifest">    <meta name="theme-color" content="#0f172a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="EMERGENCE" />
@@ -36,8 +35,7 @@
 
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-    <script>
+    <script type="module" src="./src/main.tsx"></script>    <script>
       // Prevent FOUC (Flash of Unstyled Content) for dark mode
       (function() {
         const theme = localStorage.getItem('theme') || 'light';
