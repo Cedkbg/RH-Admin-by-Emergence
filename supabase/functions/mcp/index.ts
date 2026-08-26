@@ -2,7 +2,188 @@
 // To take ownership, delete this banner line; the plugin then leaves the file alone.
 // supabase function: mcp
 // Bundled from src/lib/mcp/index.ts by @lovable.dev/mcp-js.
+// src/lib/mcp/index.ts
+import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.24.0";
+
+// src/lib/mcp/tools/get-current-user.ts
+import { defineTool } from "npm:@lovable.dev/mcp-js@0.24.0";
+
+// src/lib/mcp/supabase.ts
+import { createClient } from "npm:@supabase/supabase-js@^2.106.2";
+function runtimeEnv(name) {
+  const runtime = globalThis;
+  return runtime.Deno?.env?.get?.(name) ?? runtime.process?.env?.[name];
+}
+function configuredEnv(names) {
+  for (const name of names) {
+    const value = runtimeEnv(name)?.trim();
+    if (value) return value;
+  }
+  return void 0;
+}
+function supabaseProjectUrl() {
+  const url = configuredEnv(["SUPABASE_URL", "VITE_SUPABASE_URL"]);
+  if (!url) throw new Error("SUPABASE_URL (or VITE_SUPABASE_URL) is required");
+  return url;
+}
+function supabasePublishableKey() {
+  const direct = configuredEnv(["SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_PUBLISHABLE_KEY"]);
+  if (direct) return direct;
+  const keyset = runtimeEnv("SUPABASE_PUBLISHABLE_KEYS");
+  if (keyset) {
+    try {
+      const parsed = JSON.parse(keyset);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const keys = parsed;
+        const key = [keys.default, ...Object.values(keys)].find((v) => typeof v === "string" && v.trim().startsWith("sb_publishable_"))?.trim();
+        if (key) return key;
+      }
+    } catch {
+    }
+  }
+  const legacy = configuredEnv(["SUPABASE_ANON_KEY", "VITE_SUPABASE_ANON_KEY"]);
+  if (legacy) return legacy;
+  throw new Error("SUPABASE_PUBLISHABLE_KEY, SUPABASE_PUBLISHABLE_KEYS, or SUPABASE_ANON_KEY is required");
+}
+function supabaseForUser(ctx) {
+  const token = ctx.getToken();
+  if (!token) throw new Error("supabaseForUser requires a verified OAuth token");
+  return createClient(supabaseProjectUrl(), supabasePublishableKey(), {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+
+// src/lib/mcp/tools/get-current-user.ts
+var get_current_user_default = defineTool({
+  name: "get_current_user",
+  title: "Get current user",
+  description: "Return the profile, roles, and linked employee record of the signed-in Emergence DRC user.",
+  inputSchema: {},
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (_input, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    }
+    const supabase = supabaseForUser(ctx);
+    const userId = ctx.getUserId();
+    const [{ data: profile }, { data: roles }, { data: employee }] = await Promise.all([
+      supabase.from("profiles").select("id,full_name,email,approval_status").eq("id", userId).maybeSingle(),
+      supabase.from("user_roles").select("role").eq("user_id", userId),
+      supabase.rpc("current_employee_id")
+    ]);
+    const payload = {
+      user_id: userId,
+      email: ctx.getUserEmail(),
+      profile,
+      roles: (roles ?? []).map((r) => r.role),
+      employee_id: employee ?? null
+    };
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload
+    };
+  }
+});
+
+// src/lib/mcp/tools/list-employees.ts
+import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.24.0";
+import { z } from "npm:zod@^3.25.76";
+var list_employees_default = defineTool2({
+  name: "list_employees",
+  title: "List employees",
+  description: "List employees visible to the signed-in user (respects Emergence DRC access rules). Supports optional name/email search and a result limit.",
+  inputSchema: {
+    search: z.string().trim().min(1).optional().describe("Optional substring matched against first name, last name, or email."),
+    limit: z.number().int().positive().optional().describe("Maximum number of rows to return (default 50).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ search, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    }
+    const capped = Math.min(limit ?? 50, 200);
+    let query = supabaseForUser(ctx).from("employees").select("id,matricule,first_name,last_name,email,position,direction_code,department_id,active").order("last_name", { ascending: true }).limit(capped);
+    if (search) {
+      const s = search.replace(/[%,]/g, "");
+      query = query.or(`first_name.ilike.%${s}%,last_name.ilike.%${s}%,email.ilike.%${s}%`);
+    }
+    const { data, error } = await query;
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
+      structuredContent: { employees: data ?? [] }
+    };
+  }
+});
+
+// src/lib/mcp/tools/list-my-reports.ts
+import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.24.0";
+import { z as z2 } from "npm:zod@^3.25.76";
+var list_my_reports_default = defineTool3({
+  name: "list_reports",
+  title: "List reports",
+  description: "List Emergence DRC agent reports the signed-in user can see. Filter by status (draft, submitted, approved, rejected) and limit.",
+  inputSchema: {
+    status: z2.enum(["draft", "submitted", "approved", "rejected"]).optional(),
+    limit: z2.number().int().positive().optional()
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ status, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    }
+    const capped = Math.min(limit ?? 25, 100);
+    let query = supabaseForUser(ctx).from("agent_reports").select("id,title,category,status,confidentiality,summary,created_at,updated_at,author_id").order("created_at", { ascending: false }).limit(capped);
+    if (status) query = query.eq("status", status);
+    const { data, error } = await query;
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
+      structuredContent: { reports: data ?? [] }
+    };
+  }
+});
+
+// src/lib/mcp/tools/list-announcements.ts
+import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.24.0";
+import { z as z3 } from "npm:zod@^3.25.76";
+var list_announcements_default = defineTool4({
+  name: "list_announcements",
+  title: "List announcements",
+  description: "List the most recent internal announcements visible to the signed-in user.",
+  inputSchema: {
+    limit: z3.number().int().positive().optional()
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ limit }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    }
+    const capped = Math.min(limit ?? 20, 100);
+    const { data, error } = await supabaseForUser(ctx).from("announcements").select("id,title,body,created_at,author_id").order("created_at", { ascending: false }).limit(capped);
+    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? [], null, 2) }],
+      structuredContent: { announcements: data ?? [] }
+    };
+  }
+});
+
+// src/lib/mcp/index.ts
+var projectRef = "fjinuubbglswajfbommv";
+var mcp_default = defineMcp({
+  name: "emergence-drc-mcp",
+  title: "Emergence DRC",
+  version: "0.1.0",
+  instructions: "Tools for the Emergence DRC HR platform. Every call runs as the signed-in user and respects the app's row-level security (RH, paie, pr\xE9sence, rapports, etc.). Use get_current_user first to confirm identity and roles.",
+  auth: auth.oauth.issuer({
+    issuer: `https://${projectRef}.supabase.co/auth/v1`,
+    acceptedAudiences: "authenticated"
+  }),
+  tools: [get_current_user_default, list_employees_default, list_my_reports_default, list_announcements_default]
+});
+
 // lovable-mcp-supabase-entry.ts
-import mcp from "npm:D:\\CEDA_CODE\\RH-Admin-by-Emergence\\src\\lib\\mcp\\index.ts";
 import { createSupabaseHandler } from "npm:@lovable.dev/mcp-js@0.24.0/stacks/supabase";
-Deno.serve(createSupabaseHandler(mcp, { functionName: "mcp" }));
+Deno.serve(createSupabaseHandler(mcp_default, { functionName: "mcp" }));
