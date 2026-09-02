@@ -264,7 +264,10 @@ const AgentDashboard = () => {
         </section>
       )}
 
+      {me && <BreakReminder employeeId={me.id} active={checkedIn && !checkedOut} />}
+
       {me && <MyAttendanceCard employeeId={me.id} />}
+
 
       {!me ? (
         <section className="rounded-xl border bg-card p-6 shadow-sm">
