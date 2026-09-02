@@ -179,7 +179,20 @@ const Presence = () => {
         const baseSal = Number(emp.base_salary || 0);
         const hourlyRate = hr > 0 ? hr : (baseSal > 0 ? baseSal / 160 : 0);
         const earnedSalary = +(totalHours * hourlyRate).toFixed(2);
-        
+
+        // Statut du jour (clignotant) : congé > retard > présent > absent
+        const todayRow = attendance.find((a) => a.employee_id === emp.id && a.date === todayStr);
+        const onLeave = leaves.some(
+          (l) => l.employee_id === emp.id && l.status === "approved" && l.start_date <= todayStr && l.end_date >= todayStr,
+        );
+        const todayStatus: TodayStatus = onLeave
+          ? "leave"
+          : todayRow?.status === "late"
+            ? "late"
+            : todayRow?.check_in
+              ? "present"
+              : "absent";
+
         return {
           agentId: emp.id,
           firstName: emp.first_name,
@@ -194,10 +207,12 @@ const Presence = () => {
           presenceRate,
           hourlyRate,
           earnedSalary,
+          todayStatus,
           isCurrentlyWorking: stats?.isCurrent || false,
           currentCheckIn: stats?.lastCheckIn || null,
         };
       })
+
       .filter((block) => {
         if (!searchQuery.trim()) return true;
         const q = searchQuery.toLowerCase();
