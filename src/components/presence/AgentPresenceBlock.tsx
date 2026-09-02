@@ -155,10 +155,12 @@ export function AgentPresenceBlock({
               <User className="h-3 w-3" />
               <span className="truncate">{matricule || "—"}</span>
             </div>
+            <div className="mt-1"><BlinkingStatus status={todayStatus} /></div>
           </div>
         </div>
         <MentionBadge m={mention} />
       </div>
+
 
       {/* Direction/Position */}
       <div className="text-xs text-muted-foreground mb-3 space-y-0.5">
