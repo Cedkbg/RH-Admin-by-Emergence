@@ -223,7 +223,7 @@ const Presence = () => {
           block.direction.toLowerCase().includes(q)
         );
       });
-  }, [employees, attendance, attendancePeriod, directions, searchQuery]);
+  }, [employees, attendance, leaves, attendancePeriod, directions, departments, searchQuery]);
 
   const selectedAgent = selectedAgentId ? employees.find((e) => e.id === selectedAgentId) : null;
 
