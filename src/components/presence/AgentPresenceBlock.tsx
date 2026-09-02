@@ -93,8 +93,10 @@ export function AgentPresenceBlock({
   period,
   hourlyRate,
   earnedSalary,
+  todayStatus = "absent",
   isCurrentlyWorking,
   currentCheckIn,
+
   onClick,
 }: AgentPresenceBlockProps) {
   const mention = mentionFor(presenceRate);
