@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.set_break_organization() FROM PUBLIC, anon, authenticated;
