@@ -14,8 +14,10 @@ import { useNavigate } from "react-router-dom";
 import { LiveStats } from "@/components/dashboard/LiveStats";
 import ValidationConges from "@/pages/ValidationConges";
 import { useUserRoles } from "@/hooks/useUserRoles";
-import { AgentPresenceBlock } from "@/components/presence/AgentPresenceBlock";
+import { AgentPresenceBlock, type TodayStatus } from "@/components/presence/AgentPresenceBlock";
 import { AgentPresenceHistory } from "@/components/presence/AgentPresenceHistory";
+import { BreakStats } from "@/components/presence/BreakStats";
+
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} 
 from "@/components/ui/select";
 
