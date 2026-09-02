@@ -250,6 +250,9 @@ const Presence = () => {
 
       <LiveStats variant="presence" />
 
+      <BreakStats />
+
+
       <Tabs defaultValue="attendance">
         <TabsList>
           <TabsTrigger value="attendance"><ClipboardList className="mr-2 h-4 w-4" /> Pointage</TabsTrigger>
