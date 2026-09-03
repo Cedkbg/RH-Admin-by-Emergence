@@ -110,10 +110,8 @@ const App = () => (
         <AuthProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter
-            basename="/RH-Admin-by-Emergence"
-            future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
->            <AuthRedirectGuard />
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <AuthRedirectGuard />
             <Suspense fallback={<PageFallback />}>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
