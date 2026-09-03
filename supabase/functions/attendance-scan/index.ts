@@ -151,7 +151,9 @@ Deno.serve(async (req) => {
           employee_id: emp.id,
           organization_id: emp.organization_id,
           period: today,
-          reason: `Retard (arrivée ${nowTime}) : ${reason}`,
+          reason: reason
+            ? `Retard (arrivée ${nowTime}) : ${reason}`
+            : `Retard (arrivée ${nowTime}) : aucune justification fournie`,
           status: "pending",
         });
 
@@ -166,7 +168,7 @@ Deno.serve(async (req) => {
               user_id: r.user_id,
               organization_id: emp.organization_id,
               title: "Retard signalé",
-              message: `${emp.first_name} ${emp.last_name} est arrivé(e) à ${nowTime} : ${reason}`,
+              message: `${emp.first_name} ${emp.last_name} est arrivé(e) à ${nowTime}${reason ? ` : ${reason}` : " (sans justification)"}`,
               link: "/presence",
               category: "attendance",
             })),
