@@ -6,7 +6,7 @@ import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-base: "/RH-Admin-by-Emergence/",
+base: "/",
   server: {
     host: "::",
     port: 8080,
