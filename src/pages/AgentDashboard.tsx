@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { MyAttendanceCard } from "@/components/dashboard/MyAttendanceCard";
 import { BreakReminder } from "@/components/presence/BreakReminder";
+import { EndOfDayReminder } from "@/components/presence/EndOfDayReminder";
 
 
 interface Direction { id: string; name: string; code: string | null; manager_name: string | null; description: string | null; }
@@ -265,6 +266,8 @@ const AgentDashboard = () => {
           )}
         </section>
       )}
+
+      {me && <EndOfDayReminder checkIn={todayAttendance?.check_in ?? null} active={checkedIn && !checkedOut} />}
 
       {me && <BreakReminder employeeId={me.id} active={checkedIn && !checkedOut} />}
 
