@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Award, Minus, AlertTriangle, AlertOctagon, Clock, CalendarDays, User, DollarSign, TrendingUp } from "lucide-react";
 
 type Mention = "excellent" | "moyenne" | "faible" | "tres_faible";
-export type TodayStatus = "present" | "late" | "leave" | "absent";
+export type TodayStatus = "present" | "late" | "leave" | "absent" | "finished";
 
 interface AgentPresenceBlockProps {
   agentId: string;
@@ -21,7 +21,7 @@ interface AgentPresenceBlockProps {
   period: string;
   hourlyRate: number;
   earnedSalary: number;
-  /** Statut du jour : présent (vert), retard (orange), congé (rouge), absent (gris) */
+  /** Statut du jour : présent (vert), retard (orange), congé (rouge), absent (gris), journée terminée (bleu fixe) */
   todayStatus?: TodayStatus;
   /** If agent is currently checked in (no check_out today), we show a live counter */
   isCurrentlyWorking: boolean;
@@ -35,20 +35,24 @@ const STATUS_STYLES: Record<TodayStatus, { dot: string; label: string; text: str
   late: { dot: "bg-orange-500", label: "En retard", text: "text-orange-600 dark:text-orange-400" },
   leave: { dot: "bg-red-500", label: "En congé", text: "text-red-600 dark:text-red-400" },
   absent: { dot: "bg-muted-foreground", label: "Absent", text: "text-muted-foreground" },
+  finished: { dot: "bg-sky-500", label: "Journée terminée", text: "text-sky-600 dark:text-sky-400" },
 };
 
 const BlinkingStatus = ({ status }: { status: TodayStatus }) => {
   const s = STATUS_STYLES[status];
+  const still = status === "finished";
   return (
     <span className="inline-flex items-center gap-1.5">
       <span className="relative flex h-2.5 w-2.5">
-        <span
-          className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${s.dot}`}
-          style={{ animation: "ping 1s cubic-bezier(0,0,0.2,1) infinite" }}
-        />
+        {!still && (
+          <span
+            className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${s.dot}`}
+            style={{ animation: "ping 1s cubic-bezier(0,0,0.2,1) infinite" }}
+          />
+        )}
         <span
           className={`relative inline-flex h-2.5 w-2.5 rounded-full ${s.dot}`}
-          style={{ animation: "pulse 1s cubic-bezier(0.4,0,0.6,1) infinite" }}
+          style={still ? undefined : { animation: "pulse 1s cubic-bezier(0.4,0,0.6,1) infinite" }}
         />
       </span>
       <span className={`text-[10px] font-semibold uppercase tracking-wide ${s.text}`}>{s.label}</span>

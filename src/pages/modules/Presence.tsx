@@ -187,11 +187,13 @@ const Presence = () => {
         );
         const todayStatus: TodayStatus = onLeave
           ? "leave"
-          : todayRow?.status === "late"
-            ? "late"
-            : todayRow?.check_in
-              ? "present"
-              : "absent";
+          : todayRow?.check_in && todayRow?.check_out
+            ? "finished"
+            : todayRow?.status === "late"
+              ? "late"
+              : todayRow?.check_in
+                ? "present"
+                : "absent";
 
         return {
           agentId: emp.id,
