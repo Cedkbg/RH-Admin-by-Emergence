@@ -266,6 +266,8 @@ const AgentDashboard = () => {
         </section>
       )}
 
+      {me && <EndOfDayReminder checkIn={todayAttendance?.check_in ?? null} active={checkedIn && !checkedOut} />}
+
       {me && <BreakReminder employeeId={me.id} active={checkedIn && !checkedOut} />}
 
       {me && <MyAttendanceCard employeeId={me.id} />}
