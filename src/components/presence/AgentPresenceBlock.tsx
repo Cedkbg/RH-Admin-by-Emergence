@@ -27,8 +27,71 @@ interface AgentPresenceBlockProps {
   isCurrentlyWorking: boolean;
   /** Check-in time string like "08:30" if currently working */
   currentCheckIn: string | null;
+  /** Heure d'entrée du jour "HH:MM(:SS)" */
+  todayCheckIn?: string | null;
+  /** Heure de sortie du jour "HH:MM(:SS)" */
+  todayCheckOut?: string | null;
   onClick: () => void;
 }
+
+const DAY_MINUTES = 8 * 60;
+
+const toMinutes = (t?: string | null) => {
+  if (!t) return null;
+  const [h, m] = t.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return h * 60 + m;
+};
+
+const fmtDuration = (mins: number) =>
+  `${Math.floor(mins / 60)}h ${String(Math.max(0, Math.round(mins % 60))).padStart(2, "0")}min`;
+
+const nowKinshasaMinutes = () => {
+  const s = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Kinshasa", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(new Date());
+  return toMinutes(s) ?? 0;
+};
+
+/** Temps de travail du jour : normal (max 8h) + heures supplémentaires */
+const TodayWorkTime = ({ checkIn, checkOut }: { checkIn?: string | null; checkOut?: string | null }) => {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (checkIn && !checkOut) {
+      const id = setInterval(() => setTick((t) => t + 1), 30000);
+      return () => clearInterval(id);
+    }
+  }, [checkIn, checkOut]);
+
+  const start = toMinutes(checkIn);
+  if (start === null) {
+    return (
+      <div className="text-right">
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Temps du jour</p>
+        <p className="text-sm font-bold text-muted-foreground">—</p>
+      </div>
+    );
+  }
+  const end = toMinutes(checkOut) ?? nowKinshasaMinutes();
+  const worked = Math.max(0, end - start);
+  const normal = Math.min(worked, DAY_MINUTES);
+  const overtime = Math.max(0, worked - DAY_MINUTES);
+  const done = !!checkOut;
+
+  return (
+    <div className="text-right">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+        {done ? "Journée terminée" : "Temps du jour"}
+      </p>
+      <p className={`text-sm font-bold ${done ? "text-sky-600 dark:text-sky-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+        {fmtDuration(normal)}
+      </p>
+      <p className={`text-[10px] ${overtime > 0 ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground"}`}>
+        {overtime > 0 ? `+ ${fmtDuration(overtime)} sup.` : "0 h sup."}
+      </p>
+    </div>
+  );
+};
 
 const STATUS_STYLES: Record<TodayStatus, { dot: string; label: string; text: string }> = {
   present: { dot: "bg-emerald-500", label: "Présent", text: "text-emerald-600 dark:text-emerald-400" },
