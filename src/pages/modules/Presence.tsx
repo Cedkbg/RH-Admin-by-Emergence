@@ -212,6 +212,8 @@ const Presence = () => {
           todayStatus,
           isCurrentlyWorking: stats?.isCurrent || false,
           currentCheckIn: stats?.lastCheckIn || null,
+          todayCheckIn: todayRow?.check_in ?? null,
+          todayCheckOut: todayRow?.check_out ?? null,
         };
       })
 
