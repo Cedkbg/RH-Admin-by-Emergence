@@ -65,11 +65,21 @@ export function BreakReminder({ employeeId, active }: Props) {
   const dueMin = baseMin + (row?.postponed_minutes ?? 0);
   const status: BreakStatus = row?.status ?? "pending";
 
+  // N'ouvre le pop-up qu'une seule fois par échéance (mémorisé pour la journée)
+  const seenKey = `break-popup-seen:${employeeId}:${kinshasaToday()}:${dueMin}`;
   useEffect(() => {
     if (!active) return;
     if (status === "skipped" || status === "done" || status === "on_break") return;
-    if (kinshasaMinutes() >= dueMin) setOpen(true);
-  }, [active, status, dueMin, tick]);
+    if (kinshasaMinutes() < dueMin) return;
+    try {
+      if (localStorage.getItem(seenKey)) return;
+      localStorage.setItem(seenKey, "1");
+    } catch {
+      /* localStorage indisponible : on affiche quand même une fois */
+    }
+    setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, status, dueMin, tick, seenKey]);
 
   const save = async (patch: Partial<BreakRow> & { status: BreakStatus }) => {
     setBusy(true);

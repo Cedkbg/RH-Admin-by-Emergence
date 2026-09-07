@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Award, Minus, AlertTriangle, AlertOctagon, Clock, CalendarDays, User, DollarSign, TrendingUp } from "lucide-react";
+import { Clock, CalendarDays, User, DollarSign, TrendingUp } from "lucide-react";
 
-type Mention = "excellent" | "moyenne" | "faible" | "tres_faible";
 export type TodayStatus = "present" | "late" | "leave" | "absent" | "finished";
 
 interface AgentPresenceBlockProps {
@@ -124,23 +122,6 @@ const BlinkingStatus = ({ status }: { status: TodayStatus }) => {
 };
 
 
-const mentionFor = (rate: number): Mention => {
-  if (rate >= 95) return "excellent";
-  if (rate >= 70) return "moyenne";
-  if (rate >= 50) return "faible";
-  return "tres_faible";
-};
-
-const MentionBadge = ({ m }: { m: Mention }) => {
-  if (m === "excellent")
-    return <Badge className="bg-emerald-600 hover:bg-emerald-700 gap-1"><Award className="h-3 w-3" />Excellent</Badge>;
-  if (m === "moyenne")
-    return <Badge variant="secondary" className="gap-1"><Minus className="h-3 w-3" />Moyenne</Badge>;
-  if (m === "faible")
-    return <Badge className="bg-orange-500 hover:bg-orange-600 gap-1"><AlertTriangle className="h-3 w-3" />Faible</Badge>;
-  return <Badge variant="destructive" className="gap-1"><AlertOctagon className="h-3 w-3" />Très faible</Badge>;
-};
-
 const initials = (first: string, last: string) =>
   `${(first?.[0] || "")}${(last?.[0] || "")}`.toUpperCase();
 
@@ -163,10 +144,10 @@ export function AgentPresenceBlock({
   todayStatus = "absent",
   isCurrentlyWorking,
   currentCheckIn,
-
+  todayCheckIn,
+  todayCheckOut,
   onClick,
 }: AgentPresenceBlockProps) {
-  const mention = mentionFor(presenceRate);
 
   // Live salary counter for agents currently working
   const [liveSalary, setLiveSalary] = useState(earnedSalary);
@@ -225,7 +206,7 @@ export function AgentPresenceBlock({
             <div className="mt-1"><BlinkingStatus status={todayStatus} /></div>
           </div>
         </div>
-        <MentionBadge m={mention} />
+        <TodayWorkTime checkIn={todayCheckIn} checkOut={todayCheckOut} />
       </div>
 
 
