@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Award, Minus, AlertTriangle, AlertOctagon, Clock, CalendarDays, User, DollarSign, TrendingUp } from "lucide-react";
+import { Clock, CalendarDays, User, DollarSign, TrendingUp } from "lucide-react";
 
-type Mention = "excellent" | "moyenne" | "faible" | "tres_faible";
 export type TodayStatus = "present" | "late" | "leave" | "absent" | "finished";
 
 interface AgentPresenceBlockProps {
@@ -146,10 +144,10 @@ export function AgentPresenceBlock({
   todayStatus = "absent",
   isCurrentlyWorking,
   currentCheckIn,
-
+  todayCheckIn,
+  todayCheckOut,
   onClick,
 }: AgentPresenceBlockProps) {
-  const mention = mentionFor(presenceRate);
 
   // Live salary counter for agents currently working
   const [liveSalary, setLiveSalary] = useState(earnedSalary);
@@ -208,7 +206,7 @@ export function AgentPresenceBlock({
             <div className="mt-1"><BlinkingStatus status={todayStatus} /></div>
           </div>
         </div>
-        <MentionBadge m={mention} />
+        <TodayWorkTime checkIn={todayCheckIn} checkOut={todayCheckOut} />
       </div>
 
 
