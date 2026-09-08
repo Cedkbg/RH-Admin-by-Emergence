@@ -50,6 +50,7 @@ const fmtDate = (s: string) =>
   new Date(s + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 
 interface AttendanceRecord {
+  id: string;
   date: string;
   check_in: string | null;
   check_out: string | null;
@@ -71,6 +72,10 @@ interface AgentPresenceHistoryProps {
   matricule: string | null;
   direction: string;
   onClose: () => void;
+  /** RH/admin : autorise la clôture manuelle des journées non pointées en sortie */
+  canClose?: boolean;
+  /** Appelé après une clôture pour rafraîchir la page parente */
+  onChanged?: () => void;
 }
 
 export function AgentPresenceHistory({
@@ -80,6 +85,8 @@ export function AgentPresenceHistory({
   matricule,
   direction,
   onClose,
+  canClose = false,
+  onChanged,
 }: AgentPresenceHistoryProps) {
   const [historyPeriod, setHistoryPeriod] = useState(periodKey(new Date()));
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
