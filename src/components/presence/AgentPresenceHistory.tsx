@@ -4,6 +4,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -50,6 +51,7 @@ const fmtDate = (s: string) =>
   new Date(s + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 
 interface AttendanceRecord {
+  id: string;
   date: string;
   check_in: string | null;
   check_out: string | null;
@@ -71,6 +73,10 @@ interface AgentPresenceHistoryProps {
   matricule: string | null;
   direction: string;
   onClose: () => void;
+  /** RH/admin : autorise la clôture manuelle des journées non pointées en sortie */
+  canClose?: boolean;
+  /** Appelé après une clôture pour rafraîchir la page parente */
+  onChanged?: () => void;
 }
 
 export function AgentPresenceHistory({
@@ -80,11 +86,15 @@ export function AgentPresenceHistory({
   matricule,
   direction,
   onClose,
+  canClose = false,
+  onChanged,
 }: AgentPresenceHistoryProps) {
   const [historyPeriod, setHistoryPeriod] = useState(periodKey(new Date()));
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [justifications, setJustifications] = useState<Justification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [closeTimes, setCloseTimes] = useState<Record<string, string>>({});
+  const [closing, setClosing] = useState<string | null>(null);
 
   // Generate last 12 months for the evolution chart
   const monthlyEvolution = useMemo(() => {
@@ -117,7 +127,7 @@ export function AgentPresenceHistory({
       // Load attendance for the last 12 months
       const { data: attData, error: attErr } = await supabase
         .from("attendance")
-        .select("date,check_in,check_out,status")
+        .select("id,date,check_in,check_out,status")
         .eq("employee_id", agentId)
         .gte("date", startDate)
         .order("date", { ascending: false });
@@ -185,6 +195,42 @@ export function AgentPresenceHistory({
     return justifications.filter((j) => j.period === historyPeriod);
   }, [justifications, historyPeriod]);
 
+  // Journées ouvertes (entrée sans sortie) — clôture manuelle RH/admin
+  const openSessions = useMemo(
+    () => attendance.filter((a) => a.check_in && !a.check_out),
+    [attendance]
+  );
+
+  const closeSession = async (rec: AttendanceRecord) => {
+    const t = closeTimes[rec.id];
+    if (!t) {
+      toast.error("Choisissez l'heure de sortie");
+      return;
+    }
+    setClosing(rec.id);
+    try {
+      const checkOut = t.length === 5 ? `${t}:00` : t;
+      const { error } = await supabase
+        .from("attendance")
+        .update({ check_out: checkOut })
+        .eq("id", rec.id);
+      if (error) throw error;
+      toast.success(`Sortie enregistrée à ${t} pour le ${fmtDate(rec.date)}`);
+      setCloseTimes((p) => {
+        const n = { ...p };
+        delete n[rec.id];
+        return n;
+      });
+      await loadData();
+      onChanged?.();
+    } catch (err: any) {
+      console.error("[AgentPresenceHistory] closeSession:", err);
+      toast.error("Impossible d'enregistrer la sortie");
+    } finally {
+      setClosing(null);
+    }
+  };
+
   // Stats for selected period
   const periodStats = useMemo(() => {
     const total = computedMonths.find((m) => m.period === historyPeriod);
@@ -242,6 +288,50 @@ export function AgentPresenceHistory({
             <div className="flex justify-center">
               <MentionBadge m={mentionFor(periodStats.rate)} />
             </div>
+
+            {/* Clôture manuelle d'une journée (RH/admin) — ex. agent parti en mission */}
+            {canClose && openSessions.length > 0 && (
+              <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                    Journée à clôturer ({openSessions.length})
+                  </h4>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Cet agent n'a pas pointé sa sortie. Saisissez l'heure de fin pour clôturer la journée.
+                </p>
+                {openSessions.map((rec) => (
+                  <div
+                    key={rec.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-card p-2"
+                  >
+                    <p className="text-xs">
+                      <span className="font-semibold">{fmtDate(rec.date)}</span>
+                      <span className="text-muted-foreground"> · entrée </span>
+                      <span className="font-mono font-semibold">{rec.check_in?.slice(0, 5)}</span>
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="time"
+                        className="h-8 w-28"
+                        value={closeTimes[rec.id] ?? ""}
+                        onChange={(e) =>
+                          setCloseTimes((p) => ({ ...p, [rec.id]: e.target.value }))
+                        }
+                      />
+                      <Button
+                        size="sm"
+                        disabled={closing === rec.id}
+                        onClick={() => closeSession(rec)}
+                      >
+                        {closing === rec.id ? "…" : "Clôturer"}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Monthly evolution chart */}
             <div>
