@@ -54,6 +54,8 @@ const Presence = () => {
   const [attendancePeriod, setAttendancePeriod] = useState(currentPeriod());
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [openManual, setOpenManual] = useState(false);
+  const [manualTimes, setManualTimes] = useState<Record<string, string>>({});
 
   const refresh = async () => {
     const [e, a, l, d, dep] = await Promise.all([
@@ -124,6 +126,24 @@ const Presence = () => {
     if (error) { toast.error(error.message); return; }
     toast.success("Anciens pointages supprimés"); refresh();
   };
+
+  const manualCheckout = async (row: AttRow) => {
+    const time = manualTimes[row.id];
+    if (!time) { toast.error("Heure de sortie requise"); return; }
+    const { error } = await supabase
+      .from("attendance")
+      .update({ check_out: time.length === 5 ? `${time}:00` : time })
+      .eq("id", row.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Sortie enregistrée pour ${empName(row.employee_id)}`);
+    setManualTimes((p) => { const n = { ...p }; delete n[row.id]; return n; });
+    refresh();
+  };
+
+  const openSessions = useMemo(
+    () => attendance.filter((a) => a.check_in && !a.check_out).sort((a, b) => (a.date < b.date ? 1 : -1)),
+    [attendance],
+  );
 
   const deleteLeave = async (id: string) => {
     if (!confirm("Supprimer cette demande de congé ?")) return;
@@ -299,6 +319,14 @@ const Presence = () => {
               <Badge variant="secondary" className="h-9 px-3">
                 {agentBlocks.filter((b) => b.daysWorked > 0).length}/{agentBlocks.length} actifs
               </Badge>
+              {canValidate && (
+                <Button size="sm" variant="outline" onClick={() => setOpenManual(true)}>
+                  <ClipboardList className="mr-1 h-4 w-4" /> Clôturer une sortie
+                  {openSessions.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">{openSessions.length}</Badge>
+                  )}
+                </Button>
+              )}
               {isAdmin && (
                 <>
                   <Button size="sm" variant="outline" onClick={purgeOldAttendance}>
@@ -392,6 +420,46 @@ const Presence = () => {
         direction={selectedAgent?.direction_id ? directions.get(selectedAgent.direction_id) || "—" : "—"}
         onClose={() => setSelectedAgentId(null)}
       />
+
+      <Dialog open={openManual} onOpenChange={setOpenManual}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Clôturer une sortie manuellement</DialogTitle>
+            <DialogDescription>
+              Pour les agents partis en mission qui n'ont pas pu scanner leur sortie.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+            {openSessions.length === 0 ? (
+              <p className="p-8 text-center text-sm text-muted-foreground">Aucune session ouverte.</p>
+            ) : openSessions.map((row) => {
+              const info = empInfo(row.employee_id);
+              return (
+                <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">{empName(row.employee_id)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {info.mat} · {new Date(row.date).toLocaleDateString("fr-FR")} · entrée {row.check_in?.slice(0, 5)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="time"
+                      className="h-9 w-32"
+                      value={manualTimes[row.id] ?? ""}
+                      onChange={(e) => setManualTimes((p) => ({ ...p, [row.id]: e.target.value }))}
+                    />
+                    <Button size="sm" onClick={() => manualCheckout(row)}>Valider</Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenManual(false)}>Fermer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={openAtt} onOpenChange={setOpenAtt}>
         <DialogContent>
