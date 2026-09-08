@@ -289,6 +289,50 @@ export function AgentPresenceHistory({
               <MentionBadge m={mentionFor(periodStats.rate)} />
             </div>
 
+            {/* Clôture manuelle d'une journée (RH/admin) — ex. agent parti en mission */}
+            {canClose && openSessions.length > 0 && (
+              <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                    Journée à clôturer ({openSessions.length})
+                  </h4>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Cet agent n'a pas pointé sa sortie. Saisissez l'heure de fin pour clôturer la journée.
+                </p>
+                {openSessions.map((rec) => (
+                  <div
+                    key={rec.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-card p-2"
+                  >
+                    <p className="text-xs">
+                      <span className="font-semibold">{fmtDate(rec.date)}</span>
+                      <span className="text-muted-foreground"> · entrée </span>
+                      <span className="font-mono font-semibold">{rec.check_in?.slice(0, 5)}</span>
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="time"
+                        className="h-8 w-28"
+                        value={closeTimes[rec.id] ?? ""}
+                        onChange={(e) =>
+                          setCloseTimes((p) => ({ ...p, [rec.id]: e.target.value }))
+                        }
+                      />
+                      <Button
+                        size="sm"
+                        disabled={closing === rec.id}
+                        onClick={() => closeSession(rec)}
+                      >
+                        {closing === rec.id ? "…" : "Clôturer"}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Monthly evolution chart */}
             <div>
               <div className="flex items-center gap-2 mb-2">
