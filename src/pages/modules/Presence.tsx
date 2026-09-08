@@ -421,6 +421,46 @@ const Presence = () => {
         onClose={() => setSelectedAgentId(null)}
       />
 
+      <Dialog open={openManual} onOpenChange={setOpenManual}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Clôturer une sortie manuellement</DialogTitle>
+            <DialogDescription>
+              Pour les agents partis en mission qui n'ont pas pu scanner leur sortie.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+            {openSessions.length === 0 ? (
+              <p className="p-8 text-center text-sm text-muted-foreground">Aucune session ouverte.</p>
+            ) : openSessions.map((row) => {
+              const info = empInfo(row.employee_id);
+              return (
+                <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">{empName(row.employee_id)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {info.mat} · {new Date(row.date).toLocaleDateString("fr-FR")} · entrée {row.check_in?.slice(0, 5)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="time"
+                      className="h-9 w-32"
+                      value={manualTimes[row.id] ?? ""}
+                      onChange={(e) => setManualTimes((p) => ({ ...p, [row.id]: e.target.value }))}
+                    />
+                    <Button size="sm" onClick={() => manualCheckout(row)}>Valider</Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenManual(false)}>Fermer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={openAtt} onOpenChange={setOpenAtt}>
         <DialogContent>
           <DialogHeader><DialogTitle>Nouveau pointage</DialogTitle><DialogDescription>Enregistrer une présence.</DialogDescription></DialogHeader>
