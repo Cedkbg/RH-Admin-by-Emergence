@@ -194,6 +194,42 @@ export function AgentPresenceHistory({
     return justifications.filter((j) => j.period === historyPeriod);
   }, [justifications, historyPeriod]);
 
+  // Journées ouvertes (entrée sans sortie) — clôture manuelle RH/admin
+  const openSessions = useMemo(
+    () => attendance.filter((a) => a.check_in && !a.check_out),
+    [attendance]
+  );
+
+  const closeSession = async (rec: AttendanceRecord) => {
+    const t = closeTimes[rec.id];
+    if (!t) {
+      toast.error("Choisissez l'heure de sortie");
+      return;
+    }
+    setClosing(rec.id);
+    try {
+      const checkOut = t.length === 5 ? `${t}:00` : t;
+      const { error } = await supabase
+        .from("attendance")
+        .update({ check_out: checkOut })
+        .eq("id", rec.id);
+      if (error) throw error;
+      toast.success(`Sortie enregistrée à ${t} pour le ${fmtDate(rec.date)}`);
+      setCloseTimes((p) => {
+        const n = { ...p };
+        delete n[rec.id];
+        return n;
+      });
+      await loadData();
+      onChanged?.();
+    } catch (err: any) {
+      console.error("[AgentPresenceHistory] closeSession:", err);
+      toast.error("Impossible d'enregistrer la sortie");
+    } finally {
+      setClosing(null);
+    }
+  };
+
   // Stats for selected period
   const periodStats = useMemo(() => {
     const total = computedMonths.find((m) => m.period === historyPeriod);
