@@ -419,6 +419,8 @@ const Presence = () => {
         matricule={selectedAgent?.matricule || null}
         direction={selectedAgent?.direction_id ? directions.get(selectedAgent.direction_id) || "—" : "—"}
         onClose={() => setSelectedAgentId(null)}
+        canClose={canValidate}
+        onChanged={refresh}
       />
 
       <Dialog open={openManual} onOpenChange={setOpenManual}>
