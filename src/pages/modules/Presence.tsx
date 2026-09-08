@@ -54,6 +54,8 @@ const Presence = () => {
   const [attendancePeriod, setAttendancePeriod] = useState(currentPeriod());
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [openManual, setOpenManual] = useState(false);
+  const [manualTimes, setManualTimes] = useState<Record<string, string>>({});
 
   const refresh = async () => {
     const [e, a, l, d, dep] = await Promise.all([
@@ -124,6 +126,24 @@ const Presence = () => {
     if (error) { toast.error(error.message); return; }
     toast.success("Anciens pointages supprimés"); refresh();
   };
+
+  const manualCheckout = async (row: AttRow) => {
+    const time = manualTimes[row.id];
+    if (!time) { toast.error("Heure de sortie requise"); return; }
+    const { error } = await supabase
+      .from("attendance")
+      .update({ check_out: time.length === 5 ? `${time}:00` : time })
+      .eq("id", row.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Sortie enregistrée pour ${empName(row.employee_id)}`);
+    setManualTimes((p) => { const n = { ...p }; delete n[row.id]; return n; });
+    refresh();
+  };
+
+  const openSessions = useMemo(
+    () => attendance.filter((a) => a.check_in && !a.check_out).sort((a, b) => (a.date < b.date ? 1 : -1)),
+    [attendance],
+  );
 
   const deleteLeave = async (id: string) => {
     if (!confirm("Supprimer cette demande de congé ?")) return;
