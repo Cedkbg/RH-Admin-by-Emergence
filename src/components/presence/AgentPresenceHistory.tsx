@@ -92,6 +92,8 @@ export function AgentPresenceHistory({
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [justifications, setJustifications] = useState<Justification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [closeTimes, setCloseTimes] = useState<Record<string, string>>({});
+  const [closing, setClosing] = useState<string | null>(null);
 
   // Generate last 12 months for the evolution chart
   const monthlyEvolution = useMemo(() => {
@@ -124,7 +126,7 @@ export function AgentPresenceHistory({
       // Load attendance for the last 12 months
       const { data: attData, error: attErr } = await supabase
         .from("attendance")
-        .select("date,check_in,check_out,status")
+        .select("id,date,check_in,check_out,status")
         .eq("employee_id", agentId)
         .gte("date", startDate)
         .order("date", { ascending: false });
