@@ -319,6 +319,14 @@ const Presence = () => {
               <Badge variant="secondary" className="h-9 px-3">
                 {agentBlocks.filter((b) => b.daysWorked > 0).length}/{agentBlocks.length} actifs
               </Badge>
+              {canValidate && (
+                <Button size="sm" variant="outline" onClick={() => setOpenManual(true)}>
+                  <ClipboardList className="mr-1 h-4 w-4" /> Clôturer une sortie
+                  {openSessions.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">{openSessions.length}</Badge>
+                  )}
+                </Button>
+              )}
               {isAdmin && (
                 <>
                   <Button size="sm" variant="outline" onClick={purgeOldAttendance}>
