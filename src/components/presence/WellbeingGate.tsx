@@ -201,9 +201,18 @@ export function WellbeingGate({ children }: { children: ReactNode }) {
               {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Valider et accéder au scan
             </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => setDone(true)}
+              disabled={submitting}
+            >
+              Passer cette étape
+            </Button>
             <p className="text-center text-[11px] text-muted-foreground">
-              <Badge variant="outline" className="mr-1">Obligatoire</Badge>
-              Le scan QR s'active dès que ce check-in est validé.
+              <Badge variant="outline" className="mr-1">Facultatif</Badge>
+              Vous pouvez scanner directement, avec ou sans check-in.
             </p>
           </form>
         </DialogContent>
