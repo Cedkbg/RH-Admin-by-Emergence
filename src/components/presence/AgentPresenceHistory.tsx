@@ -11,7 +11,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import {
   Award, Minus, AlertTriangle, AlertOctagon,
-  Clock, CalendarDays, FileText, TrendingUp, DollarSign,
+  Clock, CalendarDays, FileText, TrendingUp, DollarSign, ChevronDown,
 } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, Legend,
@@ -95,6 +95,7 @@ export function AgentPresenceHistory({
   const [loading, setLoading] = useState(false);
   const [closeTimes, setCloseTimes] = useState<Record<string, string>>({});
   const [closing, setClosing] = useState<string | null>(null);
+  const [openClosePanel, setOpenClosePanel] = useState(false);
 
   // Generate last 12 months for the evolution chart
   const monthlyEvolution = useMemo(() => {
@@ -292,16 +293,27 @@ export function AgentPresenceHistory({
             {/* Clôture manuelle d'une journée (RH/admin) — ex. agent parti en mission */}
             {canClose && openSessions.length > 0 && (
               <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-300">
-                    Journée à clôturer ({openSessions.length})
-                  </h4>
-                </div>
+              <button
+                  type="button"
+                  onClick={() => setOpenClosePanel((v) => !v)}
+                  className="flex w-full items-center justify-between gap-2"
+                >
+                  <span className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                      Journées à clôturer ({openSessions.length})
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 text-amber-600 transition-transform ${openClosePanel ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {openClosePanel && (
                 <p className="text-[11px] text-muted-foreground">
                   Cet agent n'a pas pointé sa sortie. Saisissez l'heure de fin pour clôturer la journée.
                 </p>
-                {openSessions.map((rec) => (
+                )}
+                {openClosePanel && openSessions.map((rec) => (
                   <div
                     key={rec.id}
                     className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-card p-2"
