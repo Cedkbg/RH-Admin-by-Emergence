@@ -12,6 +12,15 @@ import { useNavigate } from "react-router-dom";
 
 interface Doc { id: string; title: string; category: string | null; file_url: string | null; created_at: string; }
 
+/** Documents de référence obligatoires de l'entreprise */
+const DOC_TYPES = [
+  "Code du travail",
+  "Statut du personnel",
+  "Règlement d'ordre intérieur",
+  "Manuel de procédures administratives et financières",
+  "Contrats",
+] as const;
+
 const Documents = () => {
   const { isAdmin, user } = useAuth();
   const navigate = useNavigate();
@@ -74,6 +83,53 @@ const Documents = () => {
           <Button onClick={() => setOpen(true)}><Upload className="mr-2 h-4 w-4" /> Téléverser</Button>
         ) : <Badge variant="secondary">Lecture seule</Badge>}
       </div>
+
+      {/* Documents de référence */}
+      <section className="rounded-xl border bg-card p-4 shadow-sm">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Documents de référence
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {DOC_TYPES.map((type) => {
+            const items = docs.filter((d) => (d.category || "") === type);
+            return (
+              <div key={type} className="rounded-lg border p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold leading-tight">{type}</p>
+                  <Badge variant={items.length ? "default" : "outline"} className="shrink-0 text-[10px]">
+                    {items.length ? `${items.length}` : "Manquant"}
+                  </Badge>
+                </div>
+                <div className="mt-2 space-y-1">
+                  {items.slice(0, 3).map((d) => (
+                    <button
+                      key={d.id}
+                      onClick={() => d.file_url && download(d.file_url)}
+                      className="flex w-full items-center gap-1.5 truncate text-left text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <FileText className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{d.title}</span>
+                    </button>
+                  ))}
+                  {items.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Aucun fichier déposé.</p>
+                  )}
+                </div>
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-2 h-7 w-full text-xs"
+                    onClick={() => { setCategory(type); setOpen(true); }}
+                  >
+                    <Upload className="mr-1 h-3 w-3" /> Ajouter
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="rounded-xl border bg-card shadow-sm overflow-hidden">
         <table className="w-full">
