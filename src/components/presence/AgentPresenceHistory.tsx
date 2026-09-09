@@ -11,7 +11,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import {
   Award, Minus, AlertTriangle, AlertOctagon,
-  Clock, CalendarDays, FileText, TrendingUp, DollarSign,
+  Clock, CalendarDays, FileText, TrendingUp, DollarSign, ChevronDown,
 } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, Legend,
@@ -95,6 +95,7 @@ export function AgentPresenceHistory({
   const [loading, setLoading] = useState(false);
   const [closeTimes, setCloseTimes] = useState<Record<string, string>>({});
   const [closing, setClosing] = useState<string | null>(null);
+  const [openClosePanel, setOpenClosePanel] = useState(false);
 
   // Generate last 12 months for the evolution chart
   const monthlyEvolution = useMemo(() => {
