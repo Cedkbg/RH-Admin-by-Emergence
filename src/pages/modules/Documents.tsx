@@ -172,7 +172,18 @@ const Documents = () => {
           <DialogHeader><DialogTitle>Téléverser un document</DialogTitle><DialogDescription>Le fichier sera stocké de manière sécurisée.</DialogDescription></DialogHeader>
           <form onSubmit={upload} className="space-y-3">
             <div><Label>Titre *</Label><Input required value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-            <div><Label>Catégorie</Label><Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Contrat, RH, Légal…" /></div>
+            <div>
+              <Label>Catégorie</Label>
+              <Input
+                list="doc-categories"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="Code du travail, Contrats…"
+              />
+              <datalist id="doc-categories">
+                {DOC_TYPES.map((t) => <option key={t} value={t} />)}
+              </datalist>
+            </div>
             <div><Label>Fichier *</Label><Input type="file" required onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></div>
             <DialogFooter><Button variant="outline" type="button" onClick={() => setOpen(false)}>Annuler</Button><Button type="submit" disabled={uploading}>{uploading ? "Envoi…" : "Téléverser"}</Button></DialogFooter>
           </form>
