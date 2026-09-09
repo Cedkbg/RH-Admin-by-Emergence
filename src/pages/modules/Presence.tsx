@@ -117,13 +117,6 @@ const Presence = () => {
     toast.success("Pointage supprimé"); refresh();
   };
 
-  const purgeOldAttendance = async () => {
-    if (!confirm("Supprimer tous les pointages de plus de 90 jours ?")) return;
-    const cutoff = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-    const { error } = await supabase.from("attendance").delete().lt("date", cutoff);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Anciens pointages supprimés"); refresh();
-  };
 
   const deleteLeave = async (id: string) => {
     if (!confirm("Supprimer cette demande de congé ?")) return;
@@ -300,14 +293,10 @@ const Presence = () => {
                 {agentBlocks.filter((b) => b.daysWorked > 0).length}/{agentBlocks.length} actifs
               </Badge>
               {isAdmin && (
-                <>
-                  <Button size="sm" variant="outline" onClick={purgeOldAttendance}>
-                    <Eraser className="mr-1 h-4 w-4" /> Purge {`>`}90j
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setOpenAtt(true)}>
-                    <Plus className="mr-1 h-4 w-4" /> Pointage
-                  </Button>
-                </>
+                <Button size="sm" variant="outline" onClick={() => setOpenAtt(true)}>
+                  <Plus className="mr-1 h-4 w-4" /> Pointage
+                </Button>
+
               )}
             </div>
           </div>
