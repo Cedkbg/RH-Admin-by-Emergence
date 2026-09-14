@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Award, Minus, AlertTriangle, AlertOctagon, Clock, CalendarDays, User, DollarSign, TrendingUp } from "lucide-react";
+import { Clock, CalendarDays, User, DollarSign, TrendingUp } from "lucide-react";
 
-type Mention = "excellent" | "moyenne" | "faible" | "tres_faible";
+export type TodayStatus = "present" | "late" | "leave" | "absent" | "finished";
 
 interface AgentPresenceBlockProps {
   agentId: string;
@@ -20,29 +19,108 @@ interface AgentPresenceBlockProps {
   period: string;
   hourlyRate: number;
   earnedSalary: number;
+  /** Statut du jour : présent (vert), retard (orange), congé (rouge), absent (gris), journée terminée (bleu fixe) */
+  todayStatus?: TodayStatus;
   /** If agent is currently checked in (no check_out today), we show a live counter */
   isCurrentlyWorking: boolean;
   /** Check-in time string like "08:30" if currently working */
   currentCheckIn: string | null;
+  /** Heure d'entrée du jour "HH:MM(:SS)" */
+  todayCheckIn?: string | null;
+  /** Heure de sortie du jour "HH:MM(:SS)" */
+  todayCheckOut?: string | null;
   onClick: () => void;
 }
 
-const mentionFor = (rate: number): Mention => {
-  if (rate >= 95) return "excellent";
-  if (rate >= 70) return "moyenne";
-  if (rate >= 50) return "faible";
-  return "tres_faible";
+const DAY_MINUTES = 8 * 60;
+
+const toMinutes = (t?: string | null) => {
+  if (!t) return null;
+  const [h, m] = t.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return h * 60 + m;
 };
 
-const MentionBadge = ({ m }: { m: Mention }) => {
-  if (m === "excellent")
-    return <Badge className="bg-emerald-600 hover:bg-emerald-700 gap-1"><Award className="h-3 w-3" />Excellent</Badge>;
-  if (m === "moyenne")
-    return <Badge variant="secondary" className="gap-1"><Minus className="h-3 w-3" />Moyenne</Badge>;
-  if (m === "faible")
-    return <Badge className="bg-orange-500 hover:bg-orange-600 gap-1"><AlertTriangle className="h-3 w-3" />Faible</Badge>;
-  return <Badge variant="destructive" className="gap-1"><AlertOctagon className="h-3 w-3" />Très faible</Badge>;
+const fmtDuration = (mins: number) =>
+  `${Math.floor(mins / 60)}h ${String(Math.max(0, Math.round(mins % 60))).padStart(2, "0")}min`;
+
+const nowKinshasaMinutes = () => {
+  const s = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Kinshasa", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(new Date());
+  return toMinutes(s) ?? 0;
 };
+
+/** Temps de travail du jour : normal (max 8h) + heures supplémentaires */
+const TodayWorkTime = ({ checkIn, checkOut }: { checkIn?: string | null; checkOut?: string | null }) => {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (checkIn && !checkOut) {
+      const id = setInterval(() => setTick((t) => t + 1), 30000);
+      return () => clearInterval(id);
+    }
+  }, [checkIn, checkOut]);
+
+  const start = toMinutes(checkIn);
+  if (start === null) {
+    return (
+      <div className="text-right">
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Temps du jour</p>
+        <p className="text-sm font-bold text-muted-foreground">—</p>
+      </div>
+    );
+  }
+  const end = toMinutes(checkOut) ?? nowKinshasaMinutes();
+  const worked = Math.max(0, end - start);
+  const normal = Math.min(worked, DAY_MINUTES);
+  const overtime = Math.max(0, worked - DAY_MINUTES);
+  const done = !!checkOut;
+
+  return (
+    <div className="text-right">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+        {done ? "Journée terminée" : "Temps du jour"}
+      </p>
+      <p className={`text-sm font-bold ${done ? "text-sky-600 dark:text-sky-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+        {fmtDuration(normal)}
+      </p>
+      <p className={`text-[10px] ${overtime > 0 ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground"}`}>
+        {overtime > 0 ? `+ ${fmtDuration(overtime)} sup.` : "0 h sup."}
+      </p>
+    </div>
+  );
+};
+
+const STATUS_STYLES: Record<TodayStatus, { dot: string; label: string; text: string }> = {
+  present: { dot: "bg-emerald-500", label: "Présent", text: "text-emerald-600 dark:text-emerald-400" },
+  late: { dot: "bg-orange-500", label: "En retard", text: "text-orange-600 dark:text-orange-400" },
+  leave: { dot: "bg-red-500", label: "En congé", text: "text-red-600 dark:text-red-400" },
+  absent: { dot: "bg-muted-foreground", label: "Absent", text: "text-muted-foreground" },
+  finished: { dot: "bg-sky-500", label: "Journée terminée", text: "text-sky-600 dark:text-sky-400" },
+};
+
+const BlinkingStatus = ({ status }: { status: TodayStatus }) => {
+  const s = STATUS_STYLES[status];
+  const still = status === "finished";
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="relative flex h-2.5 w-2.5">
+        {!still && (
+          <span
+            className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${s.dot}`}
+            style={{ animation: "ping 1s cubic-bezier(0,0,0.2,1) infinite" }}
+          />
+        )}
+        <span
+          className={`relative inline-flex h-2.5 w-2.5 rounded-full ${s.dot}`}
+          style={still ? undefined : { animation: "pulse 1s cubic-bezier(0.4,0,0.6,1) infinite" }}
+        />
+      </span>
+      <span className={`text-[10px] font-semibold uppercase tracking-wide ${s.text}`}>{s.label}</span>
+    </span>
+  );
+};
+
 
 const initials = (first: string, last: string) =>
   `${(first?.[0] || "")}${(last?.[0] || "")}`.toUpperCase();
@@ -63,11 +141,13 @@ export function AgentPresenceBlock({
   period,
   hourlyRate,
   earnedSalary,
+  todayStatus = "absent",
   isCurrentlyWorking,
   currentCheckIn,
+  todayCheckIn,
+  todayCheckOut,
   onClick,
 }: AgentPresenceBlockProps) {
-  const mention = mentionFor(presenceRate);
 
   // Live salary counter for agents currently working
   const [liveSalary, setLiveSalary] = useState(earnedSalary);
@@ -123,10 +203,12 @@ export function AgentPresenceBlock({
               <User className="h-3 w-3" />
               <span className="truncate">{matricule || "—"}</span>
             </div>
+            <div className="mt-1"><BlinkingStatus status={todayStatus} /></div>
           </div>
         </div>
-        <MentionBadge m={mention} />
+        <TodayWorkTime checkIn={todayCheckIn} checkOut={todayCheckOut} />
       </div>
+
 
       {/* Direction/Position */}
       <div className="text-xs text-muted-foreground mb-3 space-y-0.5">

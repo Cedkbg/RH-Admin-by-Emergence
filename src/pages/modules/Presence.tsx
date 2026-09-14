@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ClipboardList, Plus, ArrowLeft, QrCode, MapPinned, ShieldCheck, Trash2, Eraser, Search } from "lucide-react";
+import { CalendarDays, ClipboardList, Plus, ArrowLeft, QrCode, MapPinned, ShieldCheck, Trash2, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +14,10 @@ import { useNavigate } from "react-router-dom";
 import { LiveStats } from "@/components/dashboard/LiveStats";
 import ValidationConges from "@/pages/ValidationConges";
 import { useUserRoles } from "@/hooks/useUserRoles";
-import { AgentPresenceBlock } from "@/components/presence/AgentPresenceBlock";
+import { AgentPresenceBlock, type TodayStatus } from "@/components/presence/AgentPresenceBlock";
 import { AgentPresenceHistory } from "@/components/presence/AgentPresenceHistory";
+import { BreakStats } from "@/components/presence/BreakStats";
+
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} 
 from "@/components/ui/select";
 
@@ -115,13 +117,6 @@ const Presence = () => {
     toast.success("Pointage supprimé"); refresh();
   };
 
-  const purgeOldAttendance = async () => {
-    if (!confirm("Supprimer tous les pointages de plus de 90 jours ?")) return;
-    const cutoff = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-    const { error } = await supabase.from("attendance").delete().lt("date", cutoff);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Anciens pointages supprimés"); refresh();
-  };
 
   const deleteLeave = async (id: string) => {
     if (!confirm("Supprimer cette demande de congé ?")) return;
@@ -177,7 +172,22 @@ const Presence = () => {
         const baseSal = Number(emp.base_salary || 0);
         const hourlyRate = hr > 0 ? hr : (baseSal > 0 ? baseSal / 160 : 0);
         const earnedSalary = +(totalHours * hourlyRate).toFixed(2);
-        
+
+        // Statut du jour (clignotant) : congé > retard > présent > absent
+        const todayRow = attendance.find((a) => a.employee_id === emp.id && a.date === todayStr);
+        const onLeave = leaves.some(
+          (l) => l.employee_id === emp.id && l.status === "approved" && l.start_date <= todayStr && l.end_date >= todayStr,
+        );
+        const todayStatus: TodayStatus = onLeave
+          ? "leave"
+          : todayRow?.check_in && todayRow?.check_out
+            ? "finished"
+            : todayRow?.status === "late"
+              ? "late"
+              : todayRow?.check_in
+                ? "present"
+                : "absent";
+
         return {
           agentId: emp.id,
           firstName: emp.first_name,
@@ -192,10 +202,14 @@ const Presence = () => {
           presenceRate,
           hourlyRate,
           earnedSalary,
+          todayStatus,
           isCurrentlyWorking: stats?.isCurrent || false,
           currentCheckIn: stats?.lastCheckIn || null,
+          todayCheckIn: todayRow?.check_in ?? null,
+          todayCheckOut: todayRow?.check_out ?? null,
         };
       })
+
       .filter((block) => {
         if (!searchQuery.trim()) return true;
         const q = searchQuery.toLowerCase();
@@ -206,7 +220,7 @@ const Presence = () => {
           block.direction.toLowerCase().includes(q)
         );
       });
-  }, [employees, attendance, attendancePeriod, directions, searchQuery]);
+  }, [employees, attendance, leaves, attendancePeriod, directions, departments, searchQuery]);
 
   const selectedAgent = selectedAgentId ? employees.find((e) => e.id === selectedAgentId) : null;
 
@@ -232,6 +246,9 @@ const Presence = () => {
       </div>
 
       <LiveStats variant="presence" />
+
+      <BreakStats />
+
 
       <Tabs defaultValue="attendance">
         <TabsList>
@@ -276,14 +293,10 @@ const Presence = () => {
                 {agentBlocks.filter((b) => b.daysWorked > 0).length}/{agentBlocks.length} actifs
               </Badge>
               {isAdmin && (
-                <>
-                  <Button size="sm" variant="outline" onClick={purgeOldAttendance}>
-                    <Eraser className="mr-1 h-4 w-4" /> Purge {`>`}90j
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setOpenAtt(true)}>
-                    <Plus className="mr-1 h-4 w-4" /> Pointage
-                  </Button>
-                </>
+                <Button size="sm" variant="outline" onClick={() => setOpenAtt(true)}>
+                  <Plus className="mr-1 h-4 w-4" /> Pointage
+                </Button>
+
               )}
             </div>
           </div>
@@ -367,7 +380,10 @@ const Presence = () => {
         matricule={selectedAgent?.matricule || null}
         direction={selectedAgent?.direction_id ? directions.get(selectedAgent.direction_id) || "—" : "—"}
         onClose={() => setSelectedAgentId(null)}
+        canClose={canValidate}
+        onChanged={refresh}
       />
+
 
       <Dialog open={openAtt} onOpenChange={setOpenAtt}>
         <DialogContent>

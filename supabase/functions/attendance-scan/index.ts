@@ -134,13 +134,8 @@ Deno.serve(async (req) => {
 
     let action: "check_in" | "check_out";
     if (!existing) {
+      // Justification de retard facultative : l'agent peut pointer sans motif.
       const reason = typeof late_reason === "string" ? late_reason.trim().slice(0, 1000) : "";
-      if (isLate && reason.length < 5) {
-        return new Response(JSON.stringify({
-          error: "Vous arrivez après 09:00. Une justification de retard est obligatoire avant de pointer.",
-          late_justification_required: true,
-        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
 
       const { error: ie } = await admin.from("attendance").insert({
         employee_id: emp.id, date: today, status: isLate ? "late" : "present",
@@ -156,7 +151,9 @@ Deno.serve(async (req) => {
           employee_id: emp.id,
           organization_id: emp.organization_id,
           period: today,
-          reason: `Retard (arrivée ${nowTime}) : ${reason}`,
+          reason: reason
+            ? `Retard (arrivée ${nowTime}) : ${reason}`
+            : `Retard (arrivée ${nowTime}) : aucune justification fournie`,
           status: "pending",
         });
 
@@ -171,7 +168,7 @@ Deno.serve(async (req) => {
               user_id: r.user_id,
               organization_id: emp.organization_id,
               title: "Retard signalé",
-              message: `${emp.first_name} ${emp.last_name} est arrivé(e) à ${nowTime} : ${reason}`,
+              message: `${emp.first_name} ${emp.last_name} est arrivé(e) à ${nowTime}${reason ? ` : ${reason}` : " (sans justification)"}`,
               link: "/presence",
               category: "attendance",
             })),

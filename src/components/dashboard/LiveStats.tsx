@@ -85,7 +85,7 @@ export function LiveStats({ variant, period: periodProp }: Props) {
         const present = rows.filter((r: any) => r.status === "present").length;
         const enMission = rows.filter((r: any) => r.status === "mission" || r.status === "deplacement").length;
         const inOffice = rows.filter((r: any) => r.check_in && !r.check_out).length;
-        const lateThreshold = "08:15:00";
+        const lateThreshold = "09:00:00";
         const retards = rows.filter((r: any) => r.check_in && r.check_in > lateThreshold).length;
         const absents = Math.max(0, totalActifs - present - enMission);
         const tauxPresence = totalActifs > 0 ? Math.round(((present + enMission) / totalActifs) * 100) : 0;
@@ -279,7 +279,7 @@ export function LiveStats({ variant, period: periodProp }: Props) {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
           <Kpi icon={UserCheck} label="Présents" value={data.present ?? 0} color="from-emerald-500 to-emerald-600" tone="emerald" />
           <Kpi icon={UserX} label="Absents" value={data.absents ?? 0} color="from-rose-500 to-rose-600" tone="rose" />
-          <Kpi icon={Timer} label="Retards" value={data.retards ?? 0} hint="après 8h15" color="from-amber-500 to-amber-600" tone="amber" />
+          <Kpi icon={Timer} label="Retards" value={data.retards ?? 0} hint="après 9h00" color="from-amber-500 to-amber-600" tone="amber" />
           <Kpi icon={Briefcase} label="En mission" value={data.enMission ?? 0} color="from-indigo-500 to-indigo-600" tone="indigo" />
           <Kpi icon={Activity} label="Actifs au bureau" value={data.inOffice ?? 0} hint="non sortis" color="from-cyan-500 to-cyan-600" tone="cyan" />
           <Kpi icon={Calendar} label="Congés à valider" value={data.pendingLeaves ?? 0} color="from-violet-500 to-violet-600" tone="violet" />
