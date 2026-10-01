@@ -50,6 +50,9 @@ const periodLabel = (p: string) => {
 const fmtDate = (s: string) =>
   new Date(s + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 
+const todayKin = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Kinshasa", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+
 interface AttendanceRecord {
   id: string;
   date: string;
@@ -96,6 +99,9 @@ export function AgentPresenceHistory({
   const [closeTimes, setCloseTimes] = useState<Record<string, string>>({});
   const [closing, setClosing] = useState<string | null>(null);
   const [openClosePanel, setOpenClosePanel] = useState(false);
+  const [openManual, setOpenManual] = useState(false);
+  const [manual, setManual] = useState({ date: "", check_in: "08:00", check_out: "16:00" });
+  const [savingManual, setSavingManual] = useState(false);
 
   // Generate last 12 months for the evolution chart
   const monthlyEvolution = useMemo(() => {
@@ -232,6 +238,44 @@ export function AgentPresenceHistory({
     }
   };
 
+  const saveManual = async () => {
+    const { date, check_in, check_out } = manual;
+    if (!agentId || !date || !check_in || !check_out) {
+      toast.error("Date, entrée et sortie requises");
+      return;
+    }
+    if (date > todayKin()) { toast.error("Date dans le futur"); return; }
+    if (check_out <= check_in) { toast.error("La sortie doit être après l'entrée"); return; }
+    setSavingManual(true);
+    try {
+      const ci = `${check_in.slice(0, 5)}:00`;
+      const co = `${check_out.slice(0, 5)}:00`;
+      const status = ci > "09:00:00" ? "late" : "present";
+      const existing = attendance.filter((a) => a.date === date);
+      const target = existing.find((a) => a.check_in) || existing[0];
+      if (target) {
+        const { error } = await supabase.from("attendance")
+          .update({ check_in: ci, check_out: co, status, scan_method: "manual" })
+          .eq("id", target.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("attendance").insert({
+          employee_id: agentId, date, check_in: ci, check_out: co, status, scan_method: "manual",
+        });
+        if (error) throw error;
+      }
+      toast.success(`Pointage du ${fmtDate(date)} enregistré`);
+      setManual({ date: "", check_in: "08:00", check_out: "16:00" });
+      await loadData();
+      onChanged?.();
+    } catch (err: any) {
+      console.error("[AgentPresenceHistory] saveManual:", err);
+      toast.error("Impossible d'enregistrer le pointage");
+    } finally {
+      setSavingManual(false);
+    }
+  };
+
   // Stats for selected period
   const periodStats = useMemo(() => {
     const total = computedMonths.find((m) => m.period === historyPeriod);
@@ -342,6 +386,50 @@ export function AgentPresenceHistory({
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Saisie manuelle d'une journée passée non scannée (RH/admin) */}
+            {canClose && (
+              <div className="rounded-lg border p-3 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setOpenManual((v) => !v)}
+                  className="flex w-full items-center justify-between gap-2"
+                >
+                  <span className="flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold">Ajouter un pointage manuel</span>
+                  </span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${openManual ? "rotate-180" : ""}`} />
+                </button>
+                {openManual && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-muted-foreground">
+                      Pour un jour où l'agent n'a pas pu scanner. Si un pointage existe déjà ce jour-là, il sera complété.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Date</p>
+                        <Input type="date" className="h-8" max={todayKin()} value={manual.date}
+                          onChange={(e) => setManual((p) => ({ ...p, date: e.target.value }))} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Entrée</p>
+                        <Input type="time" className="h-8" value={manual.check_in}
+                          onChange={(e) => setManual((p) => ({ ...p, check_in: e.target.value }))} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-1">Sortie</p>
+                        <Input type="time" className="h-8" value={manual.check_out}
+                          onChange={(e) => setManual((p) => ({ ...p, check_out: e.target.value }))} />
+                      </div>
+                      <Button size="sm" disabled={savingManual} onClick={saveManual}>
+                        {savingManual ? "…" : "Enregistrer"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
