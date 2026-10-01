@@ -114,9 +114,27 @@ Deno.serve(async (req) => {
     const nowTime = fmtTime.format(new Date());
 
     // Pointage du jour existant ?
-    const { data: existing } = await admin
+    // Tolère d'éventuels doublons : on prend la ligne la plus pertinente (entrée renseignée en priorité)
+    const { data: rows } = await admin
       .from("attendance").select("*")
-      .eq("employee_id", emp.id).eq("date", today).maybeSingle();
+      .eq("employee_id", emp.id).eq("date", today)
+      .order("check_in", { ascending: true, nullsFirst: false });
+    const existing = (rows || []).find((r: any) => r.check_in && !r.check_out)
+      || (rows || []).find((r: any) => r.check_in)
+      || (rows || [])[0] || null;
+    if (existing && !existing.check_in) {
+      // Ligne vide (sans entrée) : on la complète comme une entrée
+      const LATE = "09:00:00";
+      const { error: fe } = await admin.from("attendance").update({
+        check_in: nowTime, status: nowTime > LATE ? "late" : "present",
+        location_id: loc.id, scan_method: "qr", gps_lat, gps_lng, distance_meters: distance,
+      }).eq("id", existing.id);
+      if (fe) throw fe;
+      return new Response(JSON.stringify({
+        success: true, action: "check_in", employee: `${emp.first_name} ${emp.last_name}`,
+        location: loc.name, time: nowTime, distance_meters: Math.round(distance),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // Clôture des journées précédentes restées ouvertes (entrée sans sortie) :
     // le compteur d'hier ne continue pas sur le nouveau jour. Les heures déjà

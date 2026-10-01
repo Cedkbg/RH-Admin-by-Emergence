@@ -136,7 +136,7 @@ const Presence = () => {
     const periodAtt = attendance.filter((a) => a.date.startsWith(attendancePeriod));
 
     const agentMap = new Map<string, { days: Set<string>; totalHours: number; lastCheckIn: string | null; isCurrent: boolean }>();
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Kinshasa", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     
     periodAtt.forEach((a) => {
       let rec = agentMap.get(a.employee_id);
@@ -174,7 +174,12 @@ const Presence = () => {
         const earnedSalary = +(totalHours * hourlyRate).toFixed(2);
 
         // Statut du jour (clignotant) : congé > retard > présent > absent
-        const todayRow = attendance.find((a) => a.employee_id === emp.id && a.date === todayStr);
+        // S'il existe plusieurs lignes pour le jour, on garde la plus complète (entrée/sortie renseignées)
+        const todayRows = attendance.filter((a) => a.employee_id === emp.id && a.date === todayStr);
+        const todayRow =
+          todayRows.find((a) => a.check_in && !a.check_out) ||
+          todayRows.find((a) => a.check_in) ||
+          todayRows[0];
         const onLeave = leaves.some(
           (l) => l.employee_id === emp.id && l.status === "approved" && l.start_date <= todayStr && l.end_date >= todayStr,
         );
