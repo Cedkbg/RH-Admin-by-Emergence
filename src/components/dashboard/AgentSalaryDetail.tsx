@@ -165,6 +165,7 @@ export function AgentSalaryDetail({ selectedAgentId }: Props) {
 
     return {
       workedHours: +workedHours.toFixed(2),
+      overtimeHours: +overtimeHours.toFixed(2),
       presentDays,
       workingDays,
       presenceRate,
