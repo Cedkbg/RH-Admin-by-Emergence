@@ -131,7 +131,8 @@ export function LiveStats({ variant, period: periodProp }: Props) {
             h = 8;
           }
           const cur = hoursByEmp.get(r.employee_id) || { hours: 0, days: 0 };
-          cur.hours += h;
+          // Plafond 8 h/jour : les heures supplémentaires restent hors du salaire horaire
+          cur.hours += Math.min(h, 8);
           cur.days += 1;
           hoursByEmp.set(r.employee_id, cur);
         });

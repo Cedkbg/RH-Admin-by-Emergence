@@ -121,7 +121,8 @@ export function PrePaieProjection() {
           const [h1, m1] = String(a.check_in).split(":").map(Number);
           const [h2, m2] = String(a.check_out).split(":").map(Number);
           const diff = (h2 * 60 + m2 - (h1 * 60 + m1)) / 60;
-          if (diff > 0) rec.totalHours += diff;
+          // Plafond 8 h/jour : les heures supplémentaires ne gonflent pas le salaire horaire
+          if (diff > 0) rec.totalHours += Math.min(diff, 8);
         }
       });
 
