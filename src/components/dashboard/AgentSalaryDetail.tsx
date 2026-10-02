@@ -301,7 +301,8 @@ export function AgentSalaryDetail({ selectedAgentId }: Props) {
             <Stat icon={PiggyBank} label="Retenues" value={fmtUSD(agentData.currentM.totalRetenues)} tone="rose" />
             <Stat icon={ReceiptText} label="Net à payer" value={fmtUSD(agentData.currentM.netProjete)} tone="primary" highlight />
             <Stat icon={Percent} label="Taux de présence" value={`${agentData.currentM.presenceRate}%`} tone="amber" />
-            <Stat icon={Activity} label="Heures travaillées" value={`${agentData.currentM.workedHours} h`} small />
+            <Stat icon={Activity} label="Heures normales (≤8h/j)" value={`${agentData.currentM.workedHours} h`} small />
+            <Stat icon={Activity} label="Heures supplémentaires" value={`${agentData.currentM.overtimeHours} h`} small />
             <Stat icon={Activity} label="Jours présents" value={`${agentData.currentM.presentDays}/${agentData.currentM.workingDays}`} small />
           </div>
 
