@@ -129,7 +129,14 @@ export function AgentSalaryDetail({ selectedAgentId }: Props) {
     const agentAtt = att.filter(
       (a) => a.employee_id === e.id && a.date >= format(mStart, "yyyy-MM-dd") && a.date <= format(mEnd, "yyyy-MM-dd"),
     );
-    const workedHours = agentAtt.reduce((s, a) => s + hoursBetween(a.check_in, a.check_out), 0);
+    // Heures normales plafonnées à 8 h/jour ; le surplus = heures supplémentaires (non comptées dans le salaire horaire)
+    let workedHours = 0;
+    let overtimeHours = 0;
+    agentAtt.forEach((a) => {
+      const h = hoursBetween(a.check_in, a.check_out);
+      workedHours += Math.min(h, 8);
+      overtimeHours += Math.max(0, h - 8);
+    });
     const presentDays = agentAtt.filter((a) => a.status === "present" || a.status === "mission" || a.status === "deplacement").length;
     const presenceRate = workingDays > 0 ? Math.min(100, Math.round((presentDays / workingDays) * 100)) : 0;
 
