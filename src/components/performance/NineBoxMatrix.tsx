@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,9 +66,9 @@ export function NineBoxMatrix() {
   useEffect(() => {
     (async () => {
       const [{ data: emps }, { data: revs }, { data: depts }] = await Promise.all([
-        supabase.from("employees").select("id,first_name,last_name,position,department_id").eq("status", "active"),
-        supabase.from("performance_reviews").select("employee_id,score,reviewed_at").order("reviewed_at", { ascending: false }),
-        supabase.from("departments").select("id,name").order("name"),
+        localDb.from("employees").select("id,first_name,last_name,position,department_id").eq("status", "active"),
+        localDb.from("performance_reviews").select("employee_id,score,reviewed_at").order("reviewed_at", { ascending: false }),
+        localDb.from("departments").select("id,name").order("name"),
       ]);
       setEmployees((emps as Emp[]) || []);
       setReviews((revs as Review[]) || []);

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { Camera, CheckCircle2, MapPin, AlertTriangle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -56,9 +56,9 @@ const PresenceScan = () => {
     try {
       const email = session?.user?.email;
       if (!email) { setNeedsLateReason(true); return; }
-      const { data: emp } = await supabase.from("employees").select("id").ilike("email", email).maybeSingle();
+      const { data: emp } = await localDb.from("employees").select("id").ilike("email", email).maybeSingle();
       if (!emp) { setNeedsLateReason(true); return; }
-      const { data: att } = await supabase
+      const { data: att } = await localDb
         .from("attendance").select("check_in")
         .eq("employee_id", emp.id).eq("date", kinshasaDate()).maybeSingle();
       setNeedsLateReason(!att?.check_in);
@@ -234,7 +234,7 @@ const PresenceScan = () => {
     }
 
     const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
-    const fresh = await Promise.race([supabase.auth.getSession(), timeout]);
+    const fresh = await Promise.race([localDb.auth.getSession(), timeout]);
     return fresh?.data?.session?.access_token || session?.access_token || null;
   };
 
@@ -247,7 +247,7 @@ const PresenceScan = () => {
       setMessage("Session expirée. Reconnectez-vous puis relancez le scan.");
       return;
     }
-    const { data, error } = await supabase.functions.invoke("attendance-scan", {
+    const { data, error } = await localDb.functions.invoke("attendance-scan", {
       headers: { Authorization: `Bearer ${accessToken}` },
       body: {
         qr_token: qrToken,

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -53,8 +53,8 @@ export function NotificationBell() {
 
   const load = async () => {
     const [{ data: ann }, { data: nt }] = await Promise.all([
-      supabase.from("announcements").select("*").order("pinned", { ascending: false }).order("created_at", { ascending: false }).limit(30),
-      supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(30),
+      localDb.from("announcements").select("*").order("pinned", { ascending: false }).order("created_at", { ascending: false }).limit(30),
+      localDb.from("notifications").select("*").order("created_at", { ascending: false }).limit(30),
     ]);
     setItems((ann as Ann[]) || []);
     setNotifs((nt as Notif[]) || []);
@@ -62,7 +62,7 @@ export function NotificationBell() {
 
   useEffect(() => {
     load();
-    const channel = supabase
+    const channel = localDb
       .channel("notif-bell")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "announcements" }, (payload) => {
         const a = payload.new as Ann;
@@ -78,7 +78,7 @@ export function NotificationBell() {
         toast.message("🔔 " + n.title, { description: n.message || undefined });
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { localDb.removeChannel(channel); };
   }, [user?.id]);
 
   const unreadAnn = items.filter((a) => a.author_id !== user?.id && (!lastSeen || a.created_at > lastSeen)).length;
@@ -91,14 +91,14 @@ export function NotificationBell() {
     try { localStorage.setItem(STORAGE_KEY, now); } catch {}
     if (notifs.some((n) => !n.read_at)) {
       const ids = notifs.filter((n) => !n.read_at).map((n) => n.id);
-      await supabase.from("notifications").update({ read_at: now }).in("id", ids);
+      await localDb.from("notifications").update({ read_at: now }).in("id", ids);
       setNotifs((prev) => prev.map((n) => (n.read_at ? n : { ...n, read_at: now })));
     }
   };
 
   const deleteNotif = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    const { error } = await supabase.from("notifications").delete().eq("id", id);
+    const { error } = await localDb.from("notifications").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     setNotifs((prev) => prev.filter((n) => n.id !== id));
   };
@@ -107,7 +107,7 @@ export function NotificationBell() {
     if (!notifs.length) return;
     if (!confirm("Supprimer toutes les notifications ?")) return;
     const ids = notifs.map((n) => n.id);
-    const { error } = await supabase.from("notifications").delete().in("id", ids);
+    const { error } = await localDb.from("notifications").delete().in("id", ids);
     if (error) { toast.error(error.message); return; }
     setNotifs([]);
     toast.success("Notifications supprimées");

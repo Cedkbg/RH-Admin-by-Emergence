@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 type RoleKey = "dg" | "dga" | "manager" | "secretaire" | "assistant_direction" | "rh";
@@ -56,10 +56,10 @@ export default function AdminCabinets() {
     if (!user) return;
     setLoading(true);
     const [{ data: roles }, { data: dirs }, { data: execs }, { data: profs }] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", user.id),
-      supabase.from("directions").select("id,code,name").order("code"),
-      supabase.from("direction_executives").select("id,role,user_id,direction_id"),
-      supabase.from("profiles").select("id,full_name,email").order("full_name"),
+      localDb.from("user_roles").select("role").eq("user_id", user.id),
+      localDb.from("directions").select("id,code,name").order("code"),
+      localDb.from("direction_executives").select("id,role,user_id,direction_id"),
+      localDb.from("profiles").select("id,full_name,email").order("full_name"),
     ]);
     setCallerRoles((roles || []).map((r: any) => r.role));
     setDirections(dirs || []);
@@ -149,7 +149,7 @@ function AssignExistingForm({ role, directions, profiles, onAssigned }: {
     if (!userId) { toast.error("Sélectionnez un utilisateur"); return; }
     if (directionRequired && !directionCode) { toast.error("Sélectionnez une direction"); return; }
     setSubmitting(true);
-    const { data, error } = await supabase.functions.invoke("assign-executive", {
+    const { data, error } = await localDb.functions.invoke("assign-executive", {
       body: { user_id: userId, role, direction_code: directionCode || undefined },
     });
     setSubmitting(false);
@@ -238,7 +238,7 @@ function CreateForm({ role, directions, onCreated }: {
       return;
     }
     setSubmitting(true);
-    const { data, error } = await supabase.functions.invoke("admin-create-user", {
+    const { data, error } = await localDb.functions.invoke("admin-create-user", {
       body: {
         email: email.trim(),
         password,
@@ -319,16 +319,16 @@ function ExistingList({ role, executives, directions, profiles, onChanged, canRe
     if (!confirm(`Retirer ${p?.full_name || "cet utilisateur"} du rôle ${label} ?\nCela libère le poste et permet d'affecter une autre personne.`)) return;
     setRemovingId(exec.id);
     try {
-      const { error: e1 } = await supabase.from("direction_executives").delete().eq("id", exec.id);
+      const { error: e1 } = await localDb.from("direction_executives").delete().eq("id", exec.id);
       if (e1) throw e1;
       // Vérifier s'il reste d'autres affectations de ce rôle pour cet utilisateur
-      const { data: remaining } = await supabase
+      const { data: remaining } = await localDb
         .from("direction_executives")
         .select("id")
         .eq("user_id", exec.user_id)
         .eq("role", role);
       if (!remaining || remaining.length === 0) {
-        const { error: e2 } = await supabase
+        const { error: e2 } = await localDb
           .from("user_roles")
           .delete()
           .eq("user_id", exec.user_id)

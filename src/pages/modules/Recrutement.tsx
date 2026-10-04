@@ -2,7 +2,7 @@ import { CrudPage } from "@/components/dashboard/CrudPage";
 import { TextField, AreaField, SelectField, FormGrid, cleanForm } from "@/lib/forms";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 
 interface JobOffer {
   id: string;
@@ -19,7 +19,7 @@ interface JobOffer {
 const Recrutement = () => {
   const [directions, setDirections] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
-    supabase.from("directions").select("id,name").order("code").then(({ data }) => setDirections(data || []));
+    localDb.from("directions").select("id,name").order("code").then(({ data }) => setDirections(data || []));
   }, []);
 
   return (

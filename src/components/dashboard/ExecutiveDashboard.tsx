@@ -7,7 +7,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { LiveStats } from "@/components/dashboard/LiveStats";
 
 
@@ -43,16 +43,16 @@ export function ExecutiveDashboard() {
   useEffect(() => {
     (async () => {
       const [emp, empActive, dir, dept, jobs, cand, leaves, docs, train, pay] = await Promise.all([
-        supabase.from("employees").select("*", { count: "exact", head: true }),
-        supabase.from("employees").select("*", { count: "exact", head: true }).eq("status", "active"),
-        supabase.from("directions").select("*", { count: "exact", head: true }),
-        supabase.from("departments").select("*", { count: "exact", head: true }),
-        supabase.from("job_offers").select("*", { count: "exact", head: true }).eq("status", "open"),
-        supabase.from("candidates").select("*", { count: "exact", head: true }),
-        supabase.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("documents").select("*", { count: "exact", head: true }),
-        supabase.from("trainings").select("*", { count: "exact", head: true }),
-        supabase.from("payroll").select("net_pay"),
+        localDb.from("employees").select("*", { count: "exact", head: true }),
+        localDb.from("employees").select("*", { count: "exact", head: true }).eq("status", "active"),
+        localDb.from("directions").select("*", { count: "exact", head: true }),
+        localDb.from("departments").select("*", { count: "exact", head: true }),
+        localDb.from("job_offers").select("*", { count: "exact", head: true }).eq("status", "open"),
+        localDb.from("candidates").select("*", { count: "exact", head: true }),
+        localDb.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        localDb.from("documents").select("*", { count: "exact", head: true }),
+        localDb.from("trainings").select("*", { count: "exact", head: true }),
+        localDb.from("payroll").select("net_pay"),
       ]);
       const total = (pay.data || []).reduce((s: number, r: any) => s + Number(r.net_pay || 0), 0);
       setStats({

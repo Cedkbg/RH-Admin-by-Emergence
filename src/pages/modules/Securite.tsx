@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -52,7 +52,7 @@ const Securite = () => {
 
   const refresh = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await localDb
       .from("audit_logs")
       .select("*")
       .order("created_at", { ascending: false })
@@ -62,7 +62,7 @@ const Securite = () => {
 
     const actorIds = Array.from(new Set(list.map((l) => l.actor_id).filter(Boolean) as string[]));
     if (actorIds.length) {
-      const { data: profs } = await supabase
+      const { data: profs } = await localDb
         .from("profiles")
         .select("id, full_name, email")
         .in("id", actorIds);
@@ -106,7 +106,7 @@ const Securite = () => {
 
   const removeOne = async (id: string) => {
     if (!confirm("Supprimer cette entrée ?")) return;
-    const { error } = await supabase.from("audit_logs").delete().eq("id", id);
+    const { error } = await localDb.from("audit_logs").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Supprimé");
     refresh();
@@ -115,7 +115,7 @@ const Securite = () => {
   const purgeOld = async () => {
     if (!confirm("Supprimer toutes les entrées de plus de 30 jours ?")) return;
     const cutoff = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
-    const { error } = await supabase.from("audit_logs").delete().lt("created_at", cutoff);
+    const { error } = await localDb.from("audit_logs").delete().lt("created_at", cutoff);
     if (error) return toast.error(error.message);
     toast.success("Anciennes entrées supprimées");
     refresh();

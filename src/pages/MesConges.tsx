@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, CheckCircle2, Clock, XCircle, Send, Search, Info, Loader2, Paperclip, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -98,7 +98,7 @@ const MesConges = () => {
         // 1) Récupérer l'email via la session OU le profil (fallback iOS)
         let email = user.email ?? null;
         if (!email) {
-          const { data: prof } = await supabase
+          const { data: prof } = await localDb
             .from("profiles")
             .select("email")
             .eq("id", user.id)
@@ -110,7 +110,7 @@ const MesConges = () => {
           return;
         }
         // 2) Trouver la fiche employé liée
-        const { data: emp } = await supabase
+        const { data: emp } = await localDb
           .from("employees")
           .select("id")
           .ilike("email", email)
@@ -121,7 +121,7 @@ const MesConges = () => {
           return;
         }
         setEmployeeId(emp.id);
-        const { data: rows } = await supabase
+        const { data: rows } = await localDb
           .from("leave_requests")
           .select("id, leave_type, start_date, end_date, reason, status, created_at, attachment_url, review_comment")
           .eq("employee_id", emp.id)
@@ -193,13 +193,13 @@ const MesConges = () => {
         }
         const safeName = file.name.replace(/[^\w.\-]+/g, "_");
         const path = `${user!.id}/leave-attachments/${Date.now()}-${safeName}`;
-        const { error: upErr } = await supabase.storage
+        const { error: upErr } = await localDb.storage
           .from("documents")
           .upload(path, file, { upsert: false, contentType: file.type || undefined });
         if (upErr) throw upErr;
         attachment_url = path;
       }
-      const { data, error } = await supabase
+      const { data, error } = await localDb
         .from("leave_requests")
         .insert({
           employee_id: employeeId,
@@ -326,7 +326,7 @@ const MesConges = () => {
                             <button
                               type="button"
                               onClick={async () => {
-                                const { data, error } = await supabase.storage
+                                const { data, error } = await localDb.storage
                                   .from("documents")
                                   .createSignedUrl(r.attachment_url!, 60);
                                 if (error || !data) { toast.error("Impossible d'ouvrir la pièce jointe"); return; }

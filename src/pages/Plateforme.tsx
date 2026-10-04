@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,7 @@ const [restoring, setRestoring] = useState(false);
 
   const handleDedupeDirections = async () => {
     setDeduping(true);
-    const { data, error } = await supabase.functions.invoke("create-organization", {
+    const { data, error } = await localDb.functions.invoke("create-organization", {
       body: { action: "dedupe_directions" },
     });
     setDeduping(false);
@@ -84,7 +84,7 @@ const [restoring, setRestoring] = useState(false);
 
   const handleRestoreDirections = async () => {
     setRestoring(true);
-    const { data, error } = await supabase.functions.invoke("create-organization", {
+    const { data, error } = await localDb.functions.invoke("create-organization", {
       body: { action: "restore_directions" },
     });
     setRestoring(false);
@@ -110,7 +110,7 @@ const handleDelete = async () => {
     // Suppression directe via la politique RLS "platform admins delete organizations".
     // Les données métier (directions, employés, paie, etc.) partent en cascade via
     // organization_id ... REFERENCES organizations(id) ON DELETE CASCADE.
-    const { error } = await supabase.from("organizations").delete().eq("id", toDelete.id);
+    const { error } = await localDb.from("organizations").delete().eq("id", toDelete.id);
     setDeleting(false);
     if (error) {
       toast.error(error.message || "Suppression échouée");
@@ -123,7 +123,7 @@ const handleDelete = async () => {
 
   const generateInvite = async (o: OrgRow) => {
     setLinking(o.id);
-    const { data, error } = await supabase.functions.invoke("create-organization", {
+    const { data, error } = await localDb.functions.invoke("create-organization", {
       body: { action: "invite_link", organization_id: o.id, origin: window.location.origin },
     });
     setLinking(null);
@@ -134,7 +134,7 @@ const handleDelete = async () => {
 
   const load = async () => {
     setFetching(true);
-    const { data, error } = await supabase.functions.invoke("create-organization", { method: "GET" });
+    const { data, error } = await localDb.functions.invoke("create-organization", { method: "GET" });
     setFetching(false);
     if (error) return;
     setOrgs(((data as any)?.organizations ?? []) as OrgRow[]);
@@ -152,7 +152,7 @@ const handleDelete = async () => {
       return;
     }
     setSaving(true);
-    const { data, error } = await supabase.functions.invoke("create-organization", {
+    const { data, error } = await localDb.functions.invoke("create-organization", {
       body: { ...form, origin: window.location.origin },
     });
     setSaving(false);

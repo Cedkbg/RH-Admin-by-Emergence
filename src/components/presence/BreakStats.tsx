@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Coffee, Clock, XCircle, CheckCircle2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 
 const kinshasaToday = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Kinshasa", year: "numeric", month: "2-digit", day: "2-digit" })
@@ -11,7 +11,7 @@ export function BreakStats() {
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
+      const { data } = await localDb
         .from("break_sessions")
         .select("status")
         .eq("date", kinshasaToday());

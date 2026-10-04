@@ -3,7 +3,7 @@ import { Coffee, Clock, XCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { toast } from "sonner";
 
 /** Heure de pause par défaut (heure locale RDC) */
@@ -45,7 +45,7 @@ export function BreakReminder({ employeeId, active }: Props) {
   const [tick, setTick] = useState(0);
 
   const load = useCallback(async () => {
-    const { data } = await supabase
+    const { data } = await localDb
       .from("break_sessions")
       .select("id,status,postponed_minutes,started_at")
       .eq("employee_id", employeeId)
@@ -83,7 +83,7 @@ export function BreakReminder({ employeeId, active }: Props) {
 
   const save = async (patch: Partial<BreakRow> & { status: BreakStatus }) => {
     setBusy(true);
-    const { error } = await supabase
+    const { error } = await localDb
       .from("break_sessions")
       .upsert(
         { employee_id: employeeId, date: kinshasaToday(), ...patch },

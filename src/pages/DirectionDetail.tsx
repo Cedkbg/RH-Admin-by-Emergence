@@ -20,7 +20,7 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { iconForCode, colorForCode } from "@/data/orgData";
@@ -92,7 +92,7 @@ export default function DirectionDetail() {
 const refresh = async () => {
     // Robustesse : s'il existe plusieurs directions avec le même code (doublons),
     // on conserve celle qui a le plus de départements (à égalité, la plus ancienne).
-    const { data: dirs, error } = await supabase
+    const { data: dirs, error } = await localDb
       .from("directions").select("*").eq("code", upperCode)
       .order("created_at", { ascending: true });
     if (error) { setDirection(null); return; }
@@ -100,7 +100,7 @@ const refresh = async () => {
 
     let dir: Direction | null = (dirs as Direction[])[0];
     if ((dirs as Direction[]).length > 1) {
-      const { data: counts } = await supabase
+      const { data: counts } = await localDb
         .from("departments").select("direction_id");
       const deptCount = new Map<string, number>();
       (counts || []).forEach((d: any) => {
@@ -115,8 +115,8 @@ const refresh = async () => {
     if (!dir) return;
 
     const [{ data: depts }, { data: emps }] = await Promise.all([
-      supabase.from("departments").select("*").eq("direction_id", dir.id).order("code"),
-      supabase.from("employees").select("id,first_name,last_name,email,position,status,matricule")
+      localDb.from("departments").select("*").eq("direction_id", dir.id).order("code"),
+      localDb.from("employees").select("id,first_name,last_name,email,position,status,matricule")
         .eq("direction_id", dir.id).order("last_name"),
     ]);
     setDepartments((depts || []) as Department[]);
@@ -160,8 +160,8 @@ const refresh = async () => {
       manager_name: form.manager_name || null,
     };
     const { error } = editingId
-      ? await supabase.from("departments").update(payload).eq("id", editingId)
-      : await supabase.from("departments").insert(payload);
+      ? await localDb.from("departments").update(payload).eq("id", editingId)
+      : await localDb.from("departments").insert(payload);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success(editingId ? "Département modifié" : "Département créé");
@@ -171,7 +171,7 @@ const refresh = async () => {
 
   const removeDept = async (id: string) => {
     if (!confirm("Supprimer ce département ?")) return;
-    const { error } = await supabase.from("departments").delete().eq("id", id);
+    const { error } = await localDb.from("departments").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Département supprimé");
     refresh();

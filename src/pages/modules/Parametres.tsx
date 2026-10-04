@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -109,7 +109,7 @@ const Parametres = () => {
   const setField = (k: string, val: Json) => setV((s) => ({ ...s, [k]: val }));
 
   const refresh = async () => {
-    const { data } = await supabase.from("app_settings").select("key,value");
+    const { data } = await localDb.from("app_settings").select("key,value");
     const next: Record<string, Json> = { ...DEFAULTS };
     let logo = "";
     (data || []).forEach((r: any) => {
@@ -124,10 +124,10 @@ const Parametres = () => {
   useEffect(() => { refresh(); }, []);
 
   const currentOrgId = async (): Promise<string | null> => {
-    const { data: auth } = await supabase.auth.getUser();
+    const { data: auth } = await localDb.auth.getUser();
     const uid = auth?.user?.id;
     if (!uid) return null;
-    const { data } = await supabase
+    const { data } = await localDb
       .from("organization_members")
       .select("organization_id")
       .eq("user_id", uid)
@@ -142,13 +142,13 @@ const Parametres = () => {
     if (!orgId) { setUploadingLogo(false); return toast.error("Aucune entreprise associée à votre compte"); }
     const ext = file.name.split(".").pop() || "png";
     const path = `${orgId}/logo-${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("branding").upload(path, file, { upsert: true, cacheControl: "3600" });
+    const { error: upErr } = await localDb.storage.from("branding").upload(path, file, { upsert: true, cacheControl: "3600" });
     if (upErr) { setUploadingLogo(false); return toast.error(upErr.message); }
-    const { data: pub } = supabase.storage.from("branding").getPublicUrl(path);
-    const { error } = await supabase
+    const { data: pub } = localDb.storage.from("branding").getPublicUrl(path);
+    const { error } = await localDb
       .from("app_settings")
       .upsert({ organization_id: orgId, key: "company_logo", value: { value: pub.publicUrl } }, { onConflict: "organization_id,key" });
-    await supabase.from("organizations").update({ logo_url: pub.publicUrl }).eq("id", orgId);
+    await localDb.from("organizations").update({ logo_url: pub.publicUrl }).eq("id", orgId);
     setUploadingLogo(false);
     if (error) return toast.error(error.message);
     setLogoUrl(pub.publicUrl);
@@ -160,9 +160,9 @@ const Parametres = () => {
     const orgId = await currentOrgId();
     if (!orgId) { setSaving(false); return toast.error("Aucune entreprise associée à votre compte"); }
     const rows = Object.entries(v).map(([key, value]) => ({ organization_id: orgId, key, value: { value } }));
-    const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "organization_id,key" });
+    const { error } = await localDb.from("app_settings").upsert(rows, { onConflict: "organization_id,key" });
     if (orgId) {
-      await supabase.from("organizations").update({
+      await localDb.from("organizations").update({
         name: (v.company_name as string) || undefined,
         legal_name: (v.company_legal_form as string) || null,
         address: (v.company_address as string) || null,

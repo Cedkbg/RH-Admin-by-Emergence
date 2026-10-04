@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { MapPin, Clock, AlertTriangle } from "lucide-react";
 
 /**
@@ -26,7 +26,7 @@ const PresenceKiosk = () => {
     if (!locationId) return;
     let cancelled = false;
     const generate = async () => {
-      const { data, error: e } = await supabase.functions.invoke("attendance-qr-token", {
+      const { data, error: e } = await localDb.functions.invoke("attendance-qr-token", {
         body: { location_id: locationId },
       });
       if (cancelled) return;

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { AgentHoursStats } from "@/components/dashboard/AgentHoursStats";
@@ -41,14 +41,14 @@ const Admin = () => {
   const refresh = async () => {
     setLoading(true);
     // On reste strictement dans l'entreprise de l'utilisateur connecté
-    const { data: member } = await supabase
+    const { data: member } = await localDb
       .from("organization_members")
       .select("organization_id")
       .eq("user_id", user?.id ?? "")
       .maybeSingle();
     const orgId = (member as any)?.organization_id ?? null;
 
-    let query = supabase.from("profiles").select("*").order("created_at", { ascending: false });
+    let query = localDb.from("profiles").select("*").order("created_at", { ascending: false });
     if (orgId) query = query.eq("organization_id", orgId);
     const { data: profs } = await query;
     const rows = (profs as ProfileRow[]) || [];
@@ -57,7 +57,7 @@ const Admin = () => {
     const ids = rows.map((r) => r.id);
     const map: Record<string, string[]> = {};
     if (ids.length) {
-      const { data: roles } = await supabase.from("user_roles").select("user_id,role").in("user_id", ids);
+      const { data: roles } = await localDb.from("user_roles").select("user_id,role").in("user_id", ids);
       (roles || []).forEach((r: any) => {
         map[r.user_id] = [...(map[r.user_id] || []), r.role];
       });
@@ -72,7 +72,7 @@ const Admin = () => {
 
   const loadAudit = async () => {
     setAuditLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await localDb
       .from("role_audit_log" as any)
       .select("*")
       .order("performed_at", { ascending: false })
@@ -85,7 +85,7 @@ const Admin = () => {
     ]));
     let profMap = new Map<string, any>();
     if (userIds.length) {
-      const { data: profs } = await supabase.from("profiles").select("id,full_name,email").in("id", userIds);
+      const { data: profs } = await localDb.from("profiles").select("id,full_name,email").in("id", userIds);
       (profs || []).forEach((p: any) => profMap.set(p.id, p));
     }
     setAuditLogs(logs.map(l => ({
@@ -101,7 +101,7 @@ const Admin = () => {
   const rejected = useMemo(() => profiles.filter((p) => p.approval_status === "rejected"), [profiles]);
 
   const setStatus = async (userId: string, status: "approved" | "rejected" | "pending") => {
-    const { error } = await supabase.from("profiles").update({ approval_status: status }).eq("id", userId);
+    const { error } = await localDb.from("profiles").update({ approval_status: status }).eq("id", userId);
     if (error) { toast.error(error.message); return; }
     toast.success(status === "approved" ? "Compte approuvé" : status === "rejected" ? "Compte refusé" : "Statut réinitialisé");
     refresh();
@@ -114,11 +114,11 @@ const Admin = () => {
     }
     const isAdminUser = adminIds.has(userId);
     if (isAdminUser) {
-      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
+      const { error } = await localDb.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
       if (error) { toast.error(error.message); return; }
       toast.success("Privilèges admin retirés");
     } else {
-      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "admin" });
+      const { error } = await localDb.from("user_roles").insert({ user_id: userId, role: "admin" });
       if (error) { toast.error(error.message); return; }
       toast.success("Promu administrateur");
     }

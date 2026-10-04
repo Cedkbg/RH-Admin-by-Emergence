@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { Award, Minus, AlertTriangle, AlertOctagon, Clock, FileText, Activity } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,11 +57,11 @@ export function MyAttendanceCard({ employeeId }: { employeeId: string }) {
     const monthEnd = new Date(y, m, 0).toISOString().slice(0, 10);
 
     const [{ data: att }, { data: justs }] = await Promise.all([
-      supabase.from("attendance")
+      localDb.from("attendance")
         .select("date,status,check_in,check_out")
         .eq("employee_id", employeeId)
         .gte("date", monthStart).lte("date", monthEnd),
-      supabase.from("absence_justifications")
+      localDb.from("absence_justifications")
         .select("id,period,reason,status,created_at")
         .eq("employee_id", employeeId)
         .order("created_at", { ascending: false }),
@@ -85,7 +85,7 @@ export function MyAttendanceCard({ employeeId }: { employeeId: string }) {
   const submit = async () => {
     if (!reason.trim()) { toast.error("Veuillez expliquer le motif."); return; }
     setSaving(true);
-    const { error } = await supabase.from("absence_justifications").insert({
+    const { error } = await localDb.from("absence_justifications").insert({
       employee_id: employeeId, period, reason: reason.trim(),
     });
     setSaving(false);

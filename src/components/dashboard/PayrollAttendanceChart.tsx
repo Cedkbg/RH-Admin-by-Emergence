@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell,
 } from "recharts";
@@ -70,9 +70,9 @@ export function PayrollAttendanceChart() {
       const periods = periodsCovered(from, to);
 
       const [{ data: emps }, { data: att }, { data: pay }] = await Promise.all([
-        supabase.from("employees").select("id,first_name,last_name,matricule,status").eq("status", "active").order("last_name"),
-        supabase.from("attendance").select("employee_id,date,status").gte("date", fromStr).lte("date", toStr),
-        supabase.from("payroll").select("employee_id,net_pay,period").in("period", periods),
+        localDb.from("employees").select("id,first_name,last_name,matricule,status").eq("status", "active").order("last_name"),
+        localDb.from("attendance").select("employee_id,date,status").gte("date", fromStr).lte("date", toStr),
+        localDb.from("payroll").select("employee_id,net_pay,period").in("period", periods),
       ]);
 
       const expected = workingDaysIn(from, to);
@@ -132,12 +132,12 @@ export function PayrollAttendanceChart() {
 
   // Realtime : recharge dès qu'un pointage ou un bulletin change
   useEffect(() => {
-    const ch = supabase.channel("payroll-attendance-chart");
+    const ch = localDb.channel("payroll-attendance-chart");
     ["attendance", "payroll"].forEach((t) => {
       ch.on("postgres_changes", { event: "*", schema: "public", table: t }, () => setRefreshKey((k) => k + 1));
     });
     ch.subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { localDb.removeChannel(ch); };
   }, []);
 
   const totals = useMemo(() => {

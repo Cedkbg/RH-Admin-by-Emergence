@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 
 type Moment = "morning" | "evening";
 
@@ -47,7 +47,7 @@ export function WellbeingSurveyForm({ fullName, doneMorning, doneEvening, onSucc
       return;
     }
     setSubmitting(true);
-    const { error } = await supabase.from("wellbeing_surveys").insert({
+    const { error } = await localDb.from("wellbeing_surveys").insert({
       mood_score: mood,
       energy_score: energy,
       stress_score: stress,

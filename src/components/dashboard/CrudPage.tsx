@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -47,7 +47,7 @@ export function CrudPage<T extends { id: string }>({
 
   const refresh = async () => {
     setLoading(true);
-    const q = (supabase as any).from(table).select("*");
+    const q = (localDb as any).from(table).select("*");
     if (orderBy) q.order(orderBy.column, { ascending: orderBy.ascending ?? false });
     const { data, error } = await q;
     if (error) toast.error(error.message);
@@ -78,9 +78,9 @@ export function CrudPage<T extends { id: string }>({
     const payload = prepare ? prepare(form) : form;
     let error;
     if (editingId) {
-      ({ error } = await (supabase as any).from(table).update(payload).eq("id", editingId));
+      ({ error } = await (localDb as any).from(table).update(payload).eq("id", editingId));
     } else {
-      ({ error } = await (supabase as any).from(table).insert(payload));
+      ({ error } = await (localDb as any).from(table).insert(payload));
     }
     setSaving(false);
     if (error) { toast.error(error.message); return; }
@@ -91,7 +91,7 @@ export function CrudPage<T extends { id: string }>({
 
   const handleDelete = async (id: string) => {
     if (!confirm("Supprimer cet élément ?")) return;
-    const { error } = await (supabase as any).from(table).delete().eq("id", id);
+    const { error } = await (localDb as any).from(table).delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Supprimé");
     refresh();

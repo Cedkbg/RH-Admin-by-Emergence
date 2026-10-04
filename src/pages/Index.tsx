@@ -6,7 +6,7 @@ import { ModuleGrid } from "@/components/dashboard/ModuleGrid";
 import { RecentActivities } from "@/components/dashboard/RecentActivities";
 import { AlertsPanel } from "@/components/dashboard/AlertsPanel";
 import { MonthStats } from "@/components/dashboard/MonthStats";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import AgentDashboard from "./AgentDashboard";
 
@@ -21,10 +21,10 @@ const Index = () => {
     if (authLoading || rolesLoading || !isStaff) return;
     (async () => {
       const [emp, dir, jobs, docs] = await Promise.all([
-        supabase.from("employees").select("*", { count: "exact", head: true }),
-        supabase.from("directions").select("*", { count: "exact", head: true }),
-        supabase.from("job_offers").select("*", { count: "exact", head: true }).eq("status", "open"),
-        supabase.from("documents").select("*", { count: "exact", head: true }),
+        localDb.from("employees").select("*", { count: "exact", head: true }),
+        localDb.from("directions").select("*", { count: "exact", head: true }),
+        localDb.from("job_offers").select("*", { count: "exact", head: true }).eq("status", "open"),
+        localDb.from("documents").select("*", { count: "exact", head: true }),
       ]);
       setStats({
         employees: emp.count ?? 0,

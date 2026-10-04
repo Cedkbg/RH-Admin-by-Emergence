@@ -126,7 +126,7 @@ export const SelectField = ({
   </div>
 );
 
-/** Retire les champs vides ('' ou null) avant un upsert/insert Supabase. */
+/** Retire les champs vides avant une insertion ou mise à jour. */
 export const cleanForm = (form: Record<string, any>): any => {
   const out: Record<string, any> = {};
   for (const [k, v] of Object.entries(form)) {

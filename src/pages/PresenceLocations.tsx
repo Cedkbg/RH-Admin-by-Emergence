@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -43,7 +43,7 @@ const PresenceLocations = () => {
 
   const refresh = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("attendance_locations_public" as any).select("*").order("name");
+    const { data, error } = await localDb.from("attendance_locations_public" as any).select("*").order("name");
     if (error) toast.error(error.message);
     setRows(((data as unknown) as Loc[]) || []);
     setLoading(false);
@@ -110,7 +110,7 @@ const PresenceLocations = () => {
     if (!form.name.trim()) { toast.error("Nom du site requis"); return; }
     if (!form.latitude || !form.longitude) { toast.error("Position GPS requise — cliquez « Utiliser ma position »"); return; }
     setSaving(true);
-    const { data, error } = await supabase.from("attendance_locations").insert({
+    const { data, error } = await localDb.from("attendance_locations").insert({
       name: form.name.trim(),
       address: form.address.trim() || null,
       latitude: Number(form.latitude),
@@ -132,7 +132,7 @@ const PresenceLocations = () => {
 
   const remove = async (id: string) => {
     if (!confirm("Supprimer ce site ?")) return;
-    const { error } = await supabase.from("attendance_locations").delete().eq("id", id);
+    const { error } = await localDb.from("attendance_locations").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Supprimé");
     refresh();

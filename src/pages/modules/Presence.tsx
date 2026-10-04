@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TextField, SelectField, AreaField, FormGrid, cleanForm } from "@/lib/forms";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { LiveStats } from "@/components/dashboard/LiveStats";
@@ -57,11 +57,11 @@ const Presence = () => {
 
   const refresh = async () => {
     const [e, a, l, d, dep] = await Promise.all([
-      supabase.from("employees").select("id,first_name,last_name,matricule,direction_id,department_id,position,hourly_rate,base_salary").order("last_name"),
-      supabase.from("attendance").select("*").order("date", { ascending: false }).limit(200),
-      supabase.from("leave_requests").select("*").order("created_at", { ascending: false }),
-      supabase.from("directions").select("id,name"),
-      supabase.from("departments").select("id,name"),
+      localDb.from("employees").select("id,first_name,last_name,matricule,direction_id,department_id,position,hourly_rate,base_salary").order("last_name"),
+      localDb.from("attendance").select("*").order("date", { ascending: false }).limit(200),
+      localDb.from("leave_requests").select("*").order("created_at", { ascending: false }),
+      localDb.from("directions").select("id,name"),
+      localDb.from("departments").select("id,name"),
     ]);
     setEmployees((e.data as Emp[]) || []);
     setAttendance((a.data as AttRow[]) || []);
@@ -88,7 +88,7 @@ const Presence = () => {
   const addAtt = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!att.employee_id) { toast.error("Agent requis"); return; }
-    const { error } = await supabase.from("attendance").insert(cleanForm(att));
+    const { error } = await localDb.from("attendance").insert(cleanForm(att));
     if (error) { toast.error(error.message); return; }
     toast.success("Pointage enregistré");
     setOpenAtt(false); refresh();
@@ -97,14 +97,14 @@ const Presence = () => {
   const addLeave = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!leave.employee_id || !leave.start_date || !leave.end_date) { toast.error("Champs requis manquants"); return; }
-    const { error } = await supabase.from("leave_requests").insert(cleanForm(leave));
+    const { error } = await localDb.from("leave_requests").insert(cleanForm(leave));
     if (error) { toast.error(error.message); return; }
     toast.success("Demande créée");
     setOpenLeave(false); refresh();
   };
 
   const updateLeaveStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from("leave_requests").update({ status }).eq("id", id);
+    const { error } = await localDb.from("leave_requests").update({ status }).eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success(status === "approved" ? "Approuvée" : "Refusée");
     refresh();
@@ -112,7 +112,7 @@ const Presence = () => {
 
   const deleteAttendance = async (id: string) => {
     if (!confirm("Supprimer ce pointage ?")) return;
-    const { error } = await supabase.from("attendance").delete().eq("id", id);
+    const { error } = await localDb.from("attendance").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Pointage supprimé"); refresh();
   };
@@ -120,7 +120,7 @@ const Presence = () => {
 
   const deleteLeave = async (id: string) => {
     if (!confirm("Supprimer cette demande de congé ?")) return;
-    const { error } = await supabase.from("leave_requests").delete().eq("id", id);
+    const { error } = await localDb.from("leave_requests").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Demande supprimée"); refresh();
   };

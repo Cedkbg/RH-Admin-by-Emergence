@@ -9,7 +9,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import {
   DollarSign, Users, Clock, TrendingUp, TrendingDown,
   AlertTriangle, CheckCircle2, XCircle, ChevronDown, ChevronUp,
@@ -94,12 +94,12 @@ export function PrePaieProjection() {
 
       // Fetch employees, attendance, and payroll for the period
       const [{ data: employees }, { data: attendance }, { data: payroll }] = await Promise.all([
-        supabase.from("employees").select("id,first_name,last_name,matricule,position,base_salary,hourly_rate"),
-        supabase.from("attendance")
+        localDb.from("employees").select("id,first_name,last_name,matricule,position,base_salary,hourly_rate"),
+        localDb.from("attendance")
           .select("employee_id,date,check_in,check_out,status")
           .gte("date", startDate)
           .lte("date", endDate),
-        supabase.from("payroll")
+        localDb.from("payroll")
           .select("id,employee_id,period,base_salary,net_pay,cnss,ipr,inpp,onem,bonus,deductions,status")
           .eq("period", period),
       ]);
@@ -194,12 +194,12 @@ export function PrePaieProjection() {
 
   // Real-time subscription
   useEffect(() => {
-    const channel = supabase
+    const channel = localDb
       .channel("prepaie-projection")
       .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, () => loadProjection())
       .on("postgres_changes", { event: "*", schema: "public", table: "payroll" }, () => loadProjection())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { localDb.removeChannel(channel); };
   }, [period]);
 
   // Auto-refresh every 60s

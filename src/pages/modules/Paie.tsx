@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Lock, Printer, Plus, Trash2, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { toast } from "sonner";
 import { LiveStats } from "@/components/dashboard/LiveStats";
 import { PaieOverview } from "@/components/paie/PaieOverview";
@@ -169,7 +169,7 @@ const PaieForm = ({
       const start = `${period}-01`;
       const [y, m] = period.split("-").map(Number);
       const endDate = new Date(y, m, 0).toISOString().slice(0, 10);
-      const { data, error } = await supabase
+      const { data, error } = await localDb
         .from("attendance")
         .select("check_in,check_out,date")
         .eq("employee_id", empId)
@@ -569,9 +569,9 @@ const Paie = () => {
     if (!isAdmin) return;
     (async () => {
       const [{ data: emp }, { data: dir }, { data: dep }] = await Promise.all([
-        supabase.from("employees").select("id,first_name,last_name,matricule,gender,position,contract_type,hourly_rate,base_salary,direction_id,department_id,email,hire_date").order("last_name"),
-        supabase.from("directions").select("id,name"),
-        supabase.from("departments").select("id,name"),
+        localDb.from("employees").select("id,first_name,last_name,matricule,gender,position,contract_type,hourly_rate,base_salary,direction_id,department_id,email,hire_date").order("last_name"),
+        localDb.from("directions").select("id,name"),
+        localDb.from("departments").select("id,name"),
       ]);
       setEmployees((emp as Employee[]) || []);
       const dm = new Map<string, Direction>();

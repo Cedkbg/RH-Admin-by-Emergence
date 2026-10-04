@@ -4,7 +4,7 @@ import { User, UserCog, Briefcase, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { colorClasses } from "@/data/modules";
 import { iconForCode, colorForCode } from "@/data/orgData";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 
 interface DirectionRow {
   id: string;
@@ -108,8 +108,8 @@ export function OrgChart() {
       // Uniquement les directions/départements de l'entreprise de l'utilisateur
       // (isolation multi-entreprise assurée par les règles d'accès).
 const [{ data: dirs }, { data: depts }] = await Promise.all([
-        supabase.from("directions").select("id,code,name,manager_name").order("code", { ascending: true }),
-        supabase.from("departments").select("id,name,direction_id").order("name", { ascending: true }),
+        localDb.from("directions").select("id,code,name,manager_name").order("code", { ascending: true }),
+        localDb.from("departments").select("id,name,direction_id").order("name", { ascending: true }),
       ]);
       setDirections((dirs || []) as DirectionRow[]);
       setDepartments((depts || []) as DepartmentRow[]);

@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { Award, Minus, AlertTriangle, AlertOctagon, Users, FileText, Clock } from "lucide-react";
 
 interface Employee { id: string; first_name: string; last_name: string; matricule: string | null; }
@@ -64,10 +64,10 @@ export function AgentSalarySummary({ selectedAgentId, onSelectAgent }: Props) {
       const monthEnd = new Date(y, m, 0).toISOString().slice(0, 10);
 
       const [{ data: emps }, { data: pays }, { data: att }, { data: justs }] = await Promise.all([
-        supabase.from("employees").select("id,first_name,last_name,matricule").eq("status", "active").order("last_name"),
-        supabase.from("payroll").select("employee_id,net_pay,period").eq("period", p),
-        supabase.from("attendance").select("employee_id,date,status,check_in,check_out").gte("date", monthStart).lte("date", monthEnd),
-        supabase.from("absence_justifications").select("id,employee_id,period,reason,status,created_at").eq("period", p),
+        localDb.from("employees").select("id,first_name,last_name,matricule").eq("status", "active").order("last_name"),
+        localDb.from("payroll").select("employee_id,net_pay,period").eq("period", p),
+        localDb.from("attendance").select("employee_id,date,status,check_in,check_out").gte("date", monthStart).lte("date", monthEnd),
+        localDb.from("absence_justifications").select("id,employee_id,period,reason,status,created_at").eq("period", p),
       ]);
 
       const payMap = new Map<string, number>();

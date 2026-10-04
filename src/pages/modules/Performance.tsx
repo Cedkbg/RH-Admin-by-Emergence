@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageSquare, Send, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { AgentSalarySummary } from "@/components/dashboard/AgentSalarySummary";
 import { PerformanceTimeChart } from "@/components/dashboard/PerformanceTimeChart";
 import { AgentSalaryDetail } from "@/components/dashboard/AgentSalaryDetail";
@@ -45,16 +45,16 @@ const Performance = () => {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    supabase.from("employees").select("id,first_name,last_name,email").order("last_name").then(({ data }) => setEmployees((data as any) || []));
+    localDb.from("employees").select("id,first_name,last_name,email").order("last_name").then(({ data }) => setEmployees((data as any) || []));
   }, []);
 
   // Charger les messages + realtime de l'évaluation ouverte
   useEffect(() => {
     if (!discussReview) { setMessages([]); return; }
     const rid = discussReview.id;
-    supabase.from("performance_review_comments").select("*").eq("review_id", rid).order("created_at", { ascending: true })
+    localDb.from("performance_review_comments").select("*").eq("review_id", rid).order("created_at", { ascending: true })
       .then(({ data }) => setMessages((data as PerfComment[]) || []));
-    const ch = supabase
+    const ch = localDb
       .channel(`perf-comments-${rid}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "performance_review_comments", filter: `review_id=eq.${rid}` }, (payload) => {
         if (payload.eventType === "INSERT") {
@@ -64,7 +64,7 @@ const Performance = () => {
         }
       })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { localDb.removeChannel(ch); };
   }, [discussReview?.id]);
 
   const myEmployee = useMemo(() => {
@@ -76,7 +76,7 @@ const Performance = () => {
     if (!draft.trim() || !discussReview || !user) return;
     setSending(true);
     const authorName = myEmployee ? `${myEmployee.first_name} ${myEmployee.last_name}` : (user.email || "Moi");
-    const { error } = await supabase.from("performance_review_comments").insert({
+    const { error } = await localDb.from("performance_review_comments").insert({
       review_id: discussReview.id,
       author_id: user.id,
       author_name: authorName,
@@ -88,7 +88,7 @@ const Performance = () => {
   };
 
   const deleteMessage = async (id: string) => {
-    const { error } = await supabase.from("performance_review_comments").delete().eq("id", id);
+    const { error } = await localDb.from("performance_review_comments").delete().eq("id", id);
     if (error) toast.error(error.message);
   };
 

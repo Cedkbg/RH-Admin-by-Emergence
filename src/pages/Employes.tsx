@@ -57,7 +57,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -140,9 +140,9 @@ const Employes = () => {
 
   const refresh = async () => {
     const [d, dep, e] = await Promise.all([
-      supabase.from("directions").select("id,name,code,manager_name").order("code"),
-      supabase.from("departments").select("id,name,direction_id").order("name"),
-      supabase.from("employees").select("*").order("created_at", { ascending: false }),
+      localDb.from("directions").select("id,name,code,manager_name").order("code"),
+      localDb.from("departments").select("id,name,direction_id").order("name"),
+      localDb.from("employees").select("*").order("created_at", { ascending: false }),
     ]);
     setDirections(((d.data as DirectionRow[]) || []));
     setDepartments((dep.data as DepartmentRow[]) || []);
@@ -208,7 +208,7 @@ const Employes = () => {
       if (existing) {
         departmentId = existing.id;
       } else {
-        const { data: newDept, error: deptErr } = await supabase
+        const { data: newDept, error: deptErr } = await localDb
           .from("departments")
           .insert({ name: deptName, direction_id: form.direction_id })
           .select("id,name,direction_id")
@@ -239,8 +239,8 @@ const Employes = () => {
       hire_date: form.hire_date || null,
     };
     const { data: saved, error } = editingId
-      ? await supabase.from("employees").update(payload).eq("id", editingId).select("id, email, first_name, last_name").maybeSingle()
-      : await supabase.from("employees").insert(payload).select("id, email, first_name, last_name").maybeSingle();
+      ? await localDb.from("employees").update(payload).eq("id", editingId).select("id, email, first_name, last_name").maybeSingle()
+      : await localDb.from("employees").insert(payload).select("id, email, first_name, last_name").maybeSingle();
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success(editingId ? "Agent modifié" : "Agent ajouté (matricule auto-généré)");
@@ -260,7 +260,7 @@ const Employes = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Supprimer cet agent ?")) return;
-    const { error } = await supabase.from("employees").delete().eq("id", id);
+    const { error } = await localDb.from("employees").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Agent supprimé");
     refresh();
@@ -270,7 +270,7 @@ const Employes = () => {
     if (!e.email) { toast.error("Cet agent n'a pas d'email."); return; }
     const fullName = `${e.first_name} ${e.last_name}`.trim();
     const t = toast.loading(`Création du compte pour ${e.email}…`);
-    const { data, error } = await supabase.functions.invoke("invite-employee", {
+    const { data, error } = await localDb.functions.invoke("invite-employee", {
       body: {
         email: e.email,
         full_name: fullName,

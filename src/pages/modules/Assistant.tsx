@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Record {
@@ -42,7 +42,7 @@ const Assistant = () => {
   const [tab, setTab] = useState("dossier");
 
   const refresh = async () => {
-    const { data } = await supabase.from("assistant_records" as any).select("*").order("created_at", { ascending: false });
+    const { data } = await localDb.from("assistant_records" as any).select("*").order("created_at", { ascending: false });
     setRecords((data as any) || []);
   };
   useEffect(() => { refresh(); }, []);
@@ -73,8 +73,8 @@ const Assistant = () => {
       due_date: form.due_date || null,
     };
     const { error } = editingId
-      ? await supabase.from("assistant_records" as any).update(payload).eq("id", editingId)
-      : await supabase.from("assistant_records" as any).insert(payload);
+      ? await localDb.from("assistant_records" as any).update(payload).eq("id", editingId)
+      : await localDb.from("assistant_records" as any).insert(payload);
     if (error) { toast.error(error.message); return; }
     toast.success(editingId ? "Modifié" : "Créé");
     setOpen(false);
@@ -83,7 +83,7 @@ const Assistant = () => {
 
   const remove = async (id: string) => {
     if (!confirm("Supprimer ?")) return;
-    const { error } = await supabase.from("assistant_records" as any).delete().eq("id", id);
+    const { error } = await localDb.from("assistant_records" as any).delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     refresh();
   };

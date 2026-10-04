@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
@@ -40,7 +40,7 @@ export function useOnboarding() {
 
     (async () => {
       try {
-        const { data: settings } = await supabase
+        const { data: settings } = await localDb
           .from("app_settings")
           .select("value")
           .eq("key", "company_onboarded")

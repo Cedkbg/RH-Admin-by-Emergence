@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import {
   HeartHandshake, Zap, Activity, Sparkles,
   Sunrise, Sunset, TrendingUp, Trash2, Smile, Frown, Meh,
@@ -106,7 +106,7 @@ export function AgentWellbeingHistory({
       try {
         const now = new Date();
         const startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1).toISOString().slice(0, 10);
-        const { data, error } = await supabase
+        const { data, error } = await localDb
           .from("wellbeing_surveys")
           .select("id,mood_score,energy_score,stress_score,comments,highlight,moment,submitted_at")
           .eq("employee_id", agentId)
@@ -182,7 +182,7 @@ export function AgentWellbeingHistory({
 
   const handleDelete = async (id: string) => {
     if (!confirm("Supprimer cette entrée ?")) return;
-    const { error } = await supabase.from("wellbeing_surveys").delete().eq("id", id);
+    const { error } = await localDb.from("wellbeing_surveys").delete().eq("id", id);
     if (error) {
       toast.error(error.message);
       return;

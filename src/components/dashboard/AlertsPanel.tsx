@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, Calendar, UserCheck, Briefcase, Scale } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 
 type Alert = {
   id: string;
@@ -21,10 +21,10 @@ export function AlertsPanel() {
         const in30 = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
 
         const [pendingLeaves, pendingProfiles, openJobs, legalDue] = await Promise.all([
-          supabase.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
-          supabase.from("profiles").select("*", { count: "exact", head: true }).eq("approval_status", "pending"),
-          supabase.from("job_offers").select("*", { count: "exact", head: true }).eq("status", "open"),
-          supabase.from("legal_records").select("*", { count: "exact", head: true }).gte("due_date", today).lte("due_date", in30),
+          localDb.from("leave_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
+          localDb.from("profiles").select("*", { count: "exact", head: true }).eq("approval_status", "pending"),
+          localDb.from("job_offers").select("*", { count: "exact", head: true }).eq("status", "open"),
+          localDb.from("legal_records").select("*", { count: "exact", head: true }).gte("due_date", today).lte("due_date", in30),
         ]);
 
         const list: Alert[] = [];

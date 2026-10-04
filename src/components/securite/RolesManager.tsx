@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,9 +59,9 @@ export function RolesManager() {
   const refresh = async () => {
     setLoading(true);
     const [{ data: profs }, { data: roles }, { data: principalAdmin }] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, email, approval_status").order("created_at", { ascending: false }),
-      supabase.from("user_roles").select("user_id, role"),
-      supabase.from("app_settings").select("value").eq("key", "principal_admin_id").limit(1).maybeSingle(),
+      localDb.from("profiles").select("id, full_name, email, approval_status").order("created_at", { ascending: false }),
+      localDb.from("user_roles").select("user_id, role"),
+      localDb.from("app_settings").select("value").eq("key", "principal_admin_id").limit(1).maybeSingle(),
     ]);
     setProfiles((profs as Profile[]) || []);
     const principalValue = principalAdmin?.value;
@@ -85,7 +85,7 @@ export function RolesManager() {
   }, [profiles, search]);
 
   const addRole = async (userId: string, role: AppRole) => {
-    const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
+    const { error } = await localDb.from("user_roles").insert({ user_id: userId, role });
     if (error) return toast.error(error.message);
     toast.success(`Rôle ${ROLE_LABEL[role]} attribué`);
     setAddingFor(null);
@@ -100,7 +100,7 @@ export function RolesManager() {
     if (userId === user?.id && role === "admin") {
       if (!confirm("⚠️ Vous êtes sur le point de retirer votre propre rôle admin. Continuer ?")) return;
     } else if (!confirm(`Retirer le rôle ${ROLE_LABEL[role]} ?`)) return;
-    const { error } = await supabase
+    const { error } = await localDb
       .from("user_roles")
       .delete()
       .eq("user_id", userId)

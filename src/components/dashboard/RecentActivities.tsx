@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { UserPlus, Calendar, FileText, Mail, Briefcase } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -21,11 +21,11 @@ export function RecentActivities() {
     (async () => {
       try {
         const [emps, leaves, docs, mails, jobs] = await Promise.all([
-          supabase.from("employees").select("id,first_name,last_name,created_at").order("created_at", { ascending: false }).limit(5),
-          supabase.from("leave_requests").select("id,employee_id,leave_type,status,created_at").order("created_at", { ascending: false }).limit(5),
-          supabase.from("documents").select("id,title,created_at").order("created_at", { ascending: false }).limit(5),
-          supabase.from("mail_register").select("id,subject,direction,created_at").order("created_at", { ascending: false }).limit(5),
-          supabase.from("job_offers").select("id,title,created_at").order("created_at", { ascending: false }).limit(5),
+          localDb.from("employees").select("id,first_name,last_name,created_at").order("created_at", { ascending: false }).limit(5),
+          localDb.from("leave_requests").select("id,employee_id,leave_type,status,created_at").order("created_at", { ascending: false }).limit(5),
+          localDb.from("documents").select("id,title,created_at").order("created_at", { ascending: false }).limit(5),
+          localDb.from("mail_register").select("id,subject,direction,created_at").order("created_at", { ascending: false }).limit(5),
+          localDb.from("job_offers").select("id,title,created_at").order("created_at", { ascending: false }).limit(5),
         ]);
 
         const acts: Activity[] = [];

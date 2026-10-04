@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,8 +89,8 @@ const Taches = () => {
   const loadAll = async () => {
     setLoading(true);
     const [{ data: t }, { data: e }] = await Promise.all([
-      supabase.from("tasks").select("*").order("created_at", { ascending: false }),
-      supabase.from("employees").select("id,first_name,last_name,email").order("last_name"),
+      localDb.from("tasks").select("*").order("created_at", { ascending: false }),
+      localDb.from("employees").select("id,first_name,last_name,email").order("last_name"),
     ]);
     setTasks((t as Task[]) || []);
     setEmployees((e as Employee[]) || []);
@@ -106,11 +106,11 @@ const Taches = () => {
 
   useEffect(() => {
     loadAll();
-    const ch = supabase
+    const ch = localDb
       .channel("tasks-kanban")
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => loadAll())
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { localDb.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email]);
 
@@ -118,23 +118,23 @@ const Taches = () => {
   useEffect(() => {
     if (!editing) { setComments([]); return; }
     const taskId = editing.id;
-    supabase.from("task_comments").select("*").eq("task_id", taskId).order("created_at", { ascending: true })
+    localDb.from("task_comments").select("*").eq("task_id", taskId).order("created_at", { ascending: true })
       .then(({ data }) => setComments((data as Comment[]) || []));
-    const ch = supabase
+    const ch = localDb
       .channel(`task-comments-${taskId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "task_comments", filter: `task_id=eq.${taskId}` }, (payload) => {
         if (payload.eventType === "INSERT") setComments((cur) => [...cur, payload.new as Comment]);
         else if (payload.eventType === "DELETE") setComments((cur) => cur.filter((c) => c.id !== (payload.old as Comment).id));
       })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { localDb.removeChannel(ch); };
   }, [editing?.id]);
 
   // Chat d'équipe global (module)
   useEffect(() => {
-    supabase.from("task_chat_messages").select("*").order("created_at", { ascending: true }).limit(200)
+    localDb.from("task_chat_messages").select("*").order("created_at", { ascending: true }).limit(200)
       .then(({ data }) => setChatMessages((data as ChatMessage[]) || []));
-    const ch = supabase
+    const ch = localDb
       .channel("task-chat-global")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "task_chat_messages" }, (payload) => {
         const msg = payload.new as ChatMessage;
@@ -145,7 +145,7 @@ const Taches = () => {
         setChatMessages((cur) => cur.filter((m) => m.id !== (payload.old as ChatMessage).id));
       })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { localDb.removeChannel(ch); };
   }, [user?.id]);
 
   useEffect(() => { if (chatOpen) setChatUnread(0); }, [chatOpen, chatMessages.length]);
@@ -155,7 +155,7 @@ const Taches = () => {
     setChatSending(true);
     const me = employees.find((e) => e.id === myEmployeeId);
     const authorName = me ? `${me.first_name} ${me.last_name}` : (user.email || "Moi");
-    const { error } = await supabase.from("task_chat_messages").insert({
+    const { error } = await localDb.from("task_chat_messages").insert({
       author_id: user.id, author_name: authorName, content: chatInput.trim(),
     });
     setChatSending(false);
@@ -164,7 +164,7 @@ const Taches = () => {
   };
 
   const handleDeleteChat = async (id: string) => {
-    const { error } = await supabase.from("task_chat_messages").delete().eq("id", id);
+    const { error } = await localDb.from("task_chat_messages").delete().eq("id", id);
     if (error) toast.error(error.message);
   };
 
@@ -197,7 +197,7 @@ const Taches = () => {
     const newStatus = destination.droppableId;
     const prev = tasks;
     setTasks((cur) => cur.map((t) => (t.id === draggableId ? { ...t, status: newStatus } : t)));
-    const { error } = await supabase.from("tasks").update({ status: newStatus }).eq("id", draggableId);
+    const { error } = await localDb.from("tasks").update({ status: newStatus }).eq("id", draggableId);
     if (error) { setTasks(prev); toast.error("Impossible de déplacer la tâche", { description: error.message }); }
     else toast.success("Statut mis à jour");
   };
@@ -235,8 +235,8 @@ const Taches = () => {
       due_date: form.due_date || null,
     };
     const { error } = editing
-      ? await supabase.from("tasks").update(payload).eq("id", editing.id)
-      : await supabase.from("tasks").insert(payload);
+      ? await localDb.from("tasks").update(payload).eq("id", editing.id)
+      : await localDb.from("tasks").insert(payload);
     if (error) { toast.error("Échec", { description: error.message }); return; }
     toast.success(editing ? "Tâche mise à jour" : "Tâche créée");
     setDialogOpen(false);
@@ -246,7 +246,7 @@ const Taches = () => {
   const handleDelete = async (id: string) => {
     if (!canManage) return;
     if (!confirm("Supprimer cette tâche ?")) return;
-    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    const { error } = await localDb.from("tasks").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Tâche supprimée");
     loadAll();
@@ -257,7 +257,7 @@ const Taches = () => {
     setCommentLoading(true);
     const me = employees.find((e) => e.id === myEmployeeId);
     const authorName = me ? `${me.first_name} ${me.last_name}` : (user.email || "Moi");
-    const { error } = await supabase.from("task_comments").insert({
+    const { error } = await localDb.from("task_comments").insert({
       task_id: editing.id,
       author_id: user.id,
       author_name: authorName,
@@ -269,7 +269,7 @@ const Taches = () => {
   };
 
   const handleDeleteComment = async (id: string) => {
-    const { error } = await supabase.from("task_comments").delete().eq("id", id);
+    const { error } = await localDb.from("task_comments").delete().eq("id", id);
     if (error) toast.error(error.message);
   };
 
@@ -512,7 +512,7 @@ const Taches = () => {
             )}
             {!canManage && editing && canEditTask(editing) && (
               <Button onClick={async () => {
-                const { error } = await supabase.from("tasks").update({ status: form.status }).eq("id", editing.id);
+                const { error } = await localDb.from("tasks").update({ status: form.status }).eq("id", editing.id);
                 if (error) toast.error(error.message); else { toast.success("Statut mis à jour"); setDialogOpen(false); loadAll(); }
               }}>Mettre à jour le statut</Button>
             )}

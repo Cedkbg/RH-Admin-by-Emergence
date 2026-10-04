@@ -3,7 +3,7 @@ import {
   CheckCircle2, XCircle, Loader2, Paperclip, Search,
   Calendar, Clock, FileText,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,10 +71,10 @@ const ValidationConges = () => {
   const load = async () => {
     setLoading(true);
     const [{ data: lr }, { data: ee }] = await Promise.all([
-      supabase.from("leave_requests")
+      localDb.from("leave_requests")
         .select("id, employee_id, leave_type, start_date, end_date, reason, status, attachment_url, review_comment, reviewed_at, created_at")
         .order("created_at", { ascending: false }),
-      supabase.from("employees").select("id, first_name, last_name, matricule, direction_id, position"),
+      localDb.from("employees").select("id, first_name, last_name, matricule, direction_id, position"),
     ]);
     setRows((lr as LeaveRow[]) || []);
     const m = new Map<string, Emp>();
@@ -112,7 +112,7 @@ const ValidationConges = () => {
   }, [rows, emps, tab, search]);
 
   const openAttachment = async (path: string) => {
-    const { data, error } = await supabase.storage.from("documents").createSignedUrl(path, 60);
+    const { data, error } = await localDb.storage.from("documents").createSignedUrl(path, 60);
     if (error || !data) { toast.error("Impossible d'ouvrir la pièce jointe"); return; }
     window.open(data.signedUrl, "_blank");
   };
@@ -124,7 +124,7 @@ const ValidationConges = () => {
   const submit = async () => {
     if (!target || !decision) return;
     setSaving(true);
-    const { error } = await supabase.from("leave_requests")
+    const { error } = await localDb.from("leave_requests")
       .update({
         status: decision,
         review_comment: comment || null,

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -75,14 +75,14 @@ const BienEtre = () => {
     const load = async () => {
       try {
         const [surveysRes, empsRes, dirsRes, depsRes] = await Promise.all([
-          supabase
+          localDb
             .from("wellbeing_surveys")
             .select("*, employees(first_name, last_name)")
             .order("submitted_at", { ascending: false })
             .limit(200),
-          supabase.from("employees").select("id,first_name,last_name,matricule,direction_id,department_id,position"),
-          supabase.from("directions").select("id,name"),
-          supabase.from("departments").select("id,name"),
+          localDb.from("employees").select("id,first_name,last_name,matricule,direction_id,department_id,position"),
+          localDb.from("directions").select("id,name"),
+          localDb.from("departments").select("id,name"),
         ]);
         setItems((surveysRes.data as unknown as Survey[]) || []);
         setEmployees((empsRes.data as any[]) || []);
@@ -102,7 +102,7 @@ const BienEtre = () => {
   // Load profile full name
   useEffect(() => {
     if (!user?.id) return;
-    supabase
+    localDb
       .from("profiles")
       .select("full_name")
       .eq("id", user.id)
@@ -115,7 +115,7 @@ const BienEtre = () => {
   // Find employee ID from email
   useEffect(() => {
     if (!user?.email) return;
-    supabase
+    localDb
       .from("employees")
       .select("id")
       .ilike("email", user.email)
@@ -155,7 +155,7 @@ const BienEtre = () => {
 
   const removeSurvey = async (id: string) => {
     if (!confirm("Supprimer cette entrée ?")) return;
-    const { error } = await supabase.from("wellbeing_surveys").delete().eq("id", id);
+    const { error } = await localDb.from("wellbeing_surveys").delete().eq("id", id);
     if (error) {
       toast.error(error.message);
       return;

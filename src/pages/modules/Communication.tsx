@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -22,12 +22,12 @@ const Communication = () => {
   const [form, setForm] = useState({ title: "", content: "", pinned: false });
 
   const refresh = async () => {
-    const { data } = await supabase.from("announcements").select("*").order("pinned", { ascending: false }).order("created_at", { ascending: false });
+    const { data } = await localDb.from("announcements").select("*").order("pinned", { ascending: false }).order("created_at", { ascending: false });
     setItems((data as Ann[]) || []);
   };
   useEffect(() => {
     refresh();
-    const channel = supabase
+    const channel = localDb
       .channel("announcements-feed")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "announcements" }, (payload) => {
         const a = payload.new as Ann;
@@ -40,20 +40,20 @@ const Communication = () => {
         setItems((prev) => prev.filter((p) => p.id !== (payload.old as Ann).id));
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { localDb.removeChannel(channel); };
   }, [user?.id]);
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.content) { toast.error("Titre et contenu requis"); return; }
-    const { error } = await supabase.from("announcements").insert({ ...form, author_id: user?.id });
+    const { error } = await localDb.from("announcements").insert({ ...form, author_id: user?.id });
     if (error) { toast.error(error.message); return; }
     toast.success("Annonce publiée"); setOpen(false); setForm({ title: "", content: "", pinned: false }); refresh();
   };
 
   const remove = async (id: string) => {
     if (!confirm("Supprimer cette annonce ?")) return;
-    const { error } = await supabase.from("announcements").delete().eq("id", id);
+    const { error } = await localDb.from("announcements").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Supprimée"); refresh();
   };

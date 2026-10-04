@@ -1,7 +1,0 @@
-project_id = "fjinuubbglswajfbommv"
-
-[functions.complete-onboarding]
-verify_jwt = false
-
-[functions.attendance-qr-token]
-verify_jwt = false

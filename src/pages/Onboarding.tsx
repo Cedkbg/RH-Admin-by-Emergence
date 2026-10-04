@@ -5,9 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, UserCog, Check } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { getSetupStatus } from "@/lib/setupStatus";
-import { markInteractiveAuthSession } from "@/lib/interactiveAuthSession";
 
 type CompleteOnboardingResponse = {
   ok?: boolean;
@@ -76,7 +75,7 @@ export default function Onboarding() {
     }
     setSaving(true);
 
-    const { data, error } = await supabase.functions.invoke("complete-onboarding", {
+    const { data, error } = await localDb.functions.invoke("complete-onboarding", {
       body: {
         company: { name: "Mon entreprise" },
         admin: {
@@ -94,7 +93,7 @@ export default function Onboarding() {
       return;
     }
 
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error: signInError } = await localDb.auth.signInWithPassword({
       email: admin.email.trim(),
       password: admin.password,
     });
@@ -107,7 +106,6 @@ export default function Onboarding() {
       navigate("/auth", { replace: true });
       return;
     }
-    markInteractiveAuthSession(signInData.user?.id);
     toast.success("Compte administrateur créé — bienvenue !");
     navigate("/", { replace: true });
   };

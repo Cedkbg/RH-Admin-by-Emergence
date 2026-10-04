@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -103,10 +103,10 @@ export default function Talents() {
   const load = async () => {
     setLoading(true);
     const [t, e, r, tk] = await Promise.all([
-      supabase.from("talents").select("*").order("created_at", { ascending: false }),
-      supabase.from("employees").select("id,first_name,last_name,position,direction_id").order("last_name"),
-      supabase.from("talent_rewards" as any).select("*").order("awarded_at", { ascending: false }),
-      supabase.from("tasks").select("assignee_id,status,updated_at,priority"),
+      localDb.from("talents").select("*").order("created_at", { ascending: false }),
+      localDb.from("employees").select("id,first_name,last_name,position,direction_id").order("last_name"),
+      localDb.from("talent_rewards" as any).select("*").order("awarded_at", { ascending: false }),
+      localDb.from("tasks").select("assignee_id,status,updated_at,priority"),
     ]);
     setTalents((t.data as any) || []);
     setEmployees((e.data as any) || []);
@@ -184,8 +184,8 @@ export default function Talents() {
       last_review_at: editing.last_review_at || new Date().toISOString().slice(0, 10),
     };
     const { error } = editing.id
-      ? await supabase.from("talents").update(payload).eq("id", editing.id)
-      : await supabase.from("talents").insert(payload);
+      ? await localDb.from("talents").update(payload).eq("id", editing.id)
+      : await localDb.from("talents").insert(payload);
     if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
     toast({ title: editing.id ? "Talent mis à jour" : "Talent ajouté" });
     setDialogOpen(false); setEditing(null); load();
@@ -193,7 +193,7 @@ export default function Talents() {
 
   const remove = async (id: string) => {
     if (!confirm("Supprimer ce profil talent ?")) return;
-    const { error } = await supabase.from("talents").delete().eq("id", id);
+    const { error } = await localDb.from("talents").delete().eq("id", id);
     if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Supprimé" }); load();
   };
@@ -218,8 +218,8 @@ export default function Talents() {
       awarded_at: editingReward.awarded_at || new Date().toISOString().slice(0, 10),
     };
     const { error } = editingReward.id
-      ? await supabase.from("talent_rewards" as any).update(payload).eq("id", editingReward.id)
-      : await supabase.from("talent_rewards" as any).insert(payload);
+      ? await localDb.from("talent_rewards" as any).update(payload).eq("id", editingReward.id)
+      : await localDb.from("talent_rewards" as any).insert(payload);
     if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
     toast({ title: editingReward.id ? "Récompense mise à jour" : "Récompense ajoutée" });
     setRewardDialogOpen(false); setEditingReward(null); load();
@@ -227,7 +227,7 @@ export default function Talents() {
 
   const removeReward = async (id: string) => {
     if (!confirm("Supprimer cette récompense ?")) return;
-    const { error } = await supabase.from("talent_rewards" as any).delete().eq("id", id);
+    const { error } = await localDb.from("talent_rewards" as any).delete().eq("id", id);
     if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Supprimé" }); load();
   };

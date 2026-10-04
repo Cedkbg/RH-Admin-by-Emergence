@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import {
   Award, Minus, AlertTriangle, AlertOctagon,
   Clock, CalendarDays, FileText, TrendingUp, DollarSign, ChevronDown,
@@ -126,7 +126,7 @@ export function AgentPresenceHistory({
       const startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1).toISOString().slice(0, 10);
 
       // Load attendance for the last 12 months
-      const { data: attData, error: attErr } = await supabase
+      const { data: attData, error: attErr } = await localDb
         .from("attendance")
         .select("id,date,check_in,check_out,status")
         .eq("employee_id", agentId)
@@ -136,7 +136,7 @@ export function AgentPresenceHistory({
       if (attErr) throw attErr;
 
       // Load justifications
-      const { data: justData, error: justErr } = await supabase
+      const { data: justData, error: justErr } = await localDb
         .from("absence_justifications")
         .select("id,period,reason,status,created_at")
         .eq("employee_id", agentId)
@@ -211,7 +211,7 @@ export function AgentPresenceHistory({
     setClosing(rec.id);
     try {
       const checkOut = t.length === 5 ? `${t}:00` : t;
-      const { error } = await supabase
+      const { error } = await localDb
         .from("attendance")
         .update({ check_out: checkOut })
         .eq("id", rec.id);

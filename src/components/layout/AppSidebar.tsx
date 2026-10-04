@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { Building2, ChevronDown, Shield, Users2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import companyLogo from "@/assets/company-logo.jpeg";
 
 type NavEntry =
@@ -81,7 +81,7 @@ const AGENT_ALLOWED_PATHS = new Set(["/", "/presence", "/bien-etre", "/communica
 export function AppSidebar() {
   const location = useLocation();
   const { isAdmin, user, roles, rolesLoading } = useAuth();
-  const [logoUrl, setLogoUrl] = useState<string>(companyLogo);
+  const [logoUrl, setLogoUrl] = useState<string>(companyLogo.src);
   const [companyName, setCompanyName] = useState<string>("EMERGENCE DRC");
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const canManageCabinets = roles.some((r) => CABINET_ROLES.has(r));
@@ -99,12 +99,12 @@ export function AppSidebar() {
     (async () => {
       // 0) Statut super-admin plateforme
       if (user?.id) {
-        const { data: pa } = await supabase
+        const { data: pa } = await localDb
           .from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();
         setIsPlatformAdmin(Boolean(pa));
       }
       // 1) Profil de l'entreprise (tenant) — source de vérité
-      const { data: member } = await supabase
+      const { data: member } = await localDb
         .from("organization_members")
         .select("organization_id")
         .eq("user_id", user?.id ?? "")
@@ -112,7 +112,7 @@ export function AppSidebar() {
 
       const orgId = (member as any)?.organization_id;
       if (orgId) {
-        const { data: org } = await supabase
+        const { data: org } = await localDb
           .from("organizations")
           .select("name,logo_url")
           .eq("id", orgId)
@@ -121,7 +121,7 @@ export function AppSidebar() {
         if ((org as any)?.logo_url) setLogoUrl((org as any).logo_url);
       }
       // 2) Repli sur les paramètres de l'espace
-      const { data } = await supabase
+      const { data } = await localDb
         .from("app_settings")
         .select("key,value")
         .in("key", ["company_logo", "company_name"]);

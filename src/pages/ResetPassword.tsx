@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { readPendingAuthTokens, clearPendingAuthTokens } from "@/lib/preBootAuthScrub";
-import { markInteractiveAuthSession } from "@/lib/interactiveAuthSession";
+import { localDb } from "@/lib/localDb/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,16 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { KeyRound, Loader2 } from "lucide-react";
 
-/**
- * Page utilisée pour :
- *  - les invitations Supabase (nouvel agent qui définit son mot de passe)
- *  - les réinitialisations de mot de passe
- *  - les magic links
- *
- * Elle accepte les deux formats de tokens Supabase :
- *  - Hash : #access_token=...&refresh_token=...&type=invite|recovery
- *  - Query (PKCE) : ?code=xxx
- */
+/** Password reset page for the application's local one-time reset code. */
 export default function ResetPassword() {
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
@@ -32,42 +21,10 @@ export default function ResetPassword() {
     let alive = true;
 
     const init = async () => {
-      // Les jetons sont stockés par preBootAuthScrub AVANT que Supabase
-      // ait pu les consommer depuis l'URL. C'est la source autorisée.
-      const pending = readPendingAuthTokens();
-
-      if (pending?.kind === "code") {
-        const { error } = await supabase.auth.exchangeCodeForSession(pending.code);
-        clearPendingAuthTokens();
-        if (!alive) return;
-        if (error) {
-          setErrorMsg("Lien invalide ou expiré. Demandez un nouveau lien à votre RH.");
-          return;
-        }
-        setReady(true);
-        return;
-      }
-
-      if (pending?.kind === "hash") {
-        const { error } = await supabase.auth.setSession({
-          access_token: pending.access_token,
-          refresh_token: pending.refresh_token,
-        });
-        clearPendingAuthTokens();
-        if (!alive) return;
-        if (error) {
-          setErrorMsg("Lien invalide ou expiré. Demandez un nouveau lien à votre RH.");
-          return;
-        }
-        setReady(true);
-        return;
-      }
-
-      // Compat : si un hash/code a survécu au scrub, on l'accepte aussi.
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
       if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        const { error } = await localDb.auth.exchangeCodeForSession(code);
         if (!alive) return;
         if (!error) {
           window.history.replaceState({}, "", window.location.pathname);
@@ -75,29 +32,15 @@ export default function ResetPassword() {
           return;
         }
       }
-      const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
-      const params = new URLSearchParams(hash);
-      const access_token = params.get("access_token");
-      const refresh_token = params.get("refresh_token");
-      if (access_token && refresh_token) {
-        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-        if (!alive) return;
-        if (!error) {
-          window.history.replaceState({}, "", window.location.pathname);
-          setReady(true);
-          return;
-        }
-      }
-
-      // Pas de lien : autoriser si déjà connecté, sinon inviter à redemander.
-      const { data } = await supabase.auth.getSession();
+      // Sans code : autoriser si une session locale existe déjà.
+      const { data } = await localDb.auth.getSession();
       if (!alive) return;
       if (data.session) setReady(true);
       else setErrorMsg("Aucun lien valide détecté. Vérifiez le lien reçu par email.");
     };
 
-    // Écoute aussi l'événement (au cas où Supabase traite le hash automatiquement)
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+    // L'écoute locale garde l'écran synchronisé après validation du lien.
+    const { data: sub } = localDb.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") setReady(true);
     });
 
@@ -110,15 +53,14 @@ export default function ResetPassword() {
     if (password !== confirm) { toast.error("Les mots de passe ne correspondent pas"); return; }
     if (password.length < 6) { toast.error("Minimum 6 caractères"); return; }
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
+    const { error } = await localDb.auth.updateUser({ password });
     if (error) { setLoading(false); toast.error(error.message); return; }
 
     // Marquer l'onboarding utilisateur comme terminé pour éviter la boucle de redirection
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await localDb.auth.getUser();
       if (user) {
-        markInteractiveAuthSession(user.id);
-        await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
+        await localDb.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
       }
     } catch (e) {
       console.warn("Impossible de marquer onboarding_completed:", e);

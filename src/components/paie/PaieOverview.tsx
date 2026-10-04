@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import {
   CalendarDays, Play, CheckCircle2, Download, ShieldCheck, TrendingUp,
   AlertTriangle, Wallet, History, Award, Minus, AlertOctagon,
@@ -83,10 +83,10 @@ export function PaieOverview() {
     const now = new Date();
     const cutoff = new Date(now.getFullYear(), now.getMonth() - 23, 1).toISOString().slice(0, 7);
     const [{ data: cur }, { data: prev }, { data: emps }, { data: hist }] = await Promise.all([
-      supabase.from("payroll").select("id,net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,updated_at,period,base_salary,bonus,deductions,total_avantages,transport,communication,loyer,allocation_familiale,other_deductions").eq("period", period),
-      supabase.from("payroll").select("net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,updated_at,period").eq("period", prevPeriod),
-      supabase.from("employees").select("id,first_name,last_name,matricule,position,contract_type,base_salary,hourly_rate").order("last_name"),
-      supabase.from("payroll").select("period,net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,base_salary").gte("period", cutoff),
+      localDb.from("payroll").select("id,net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,updated_at,period,base_salary,bonus,deductions,total_avantages,transport,communication,loyer,allocation_familiale,other_deductions").eq("period", period),
+      localDb.from("payroll").select("net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,updated_at,period").eq("period", prevPeriod),
+      localDb.from("employees").select("id,first_name,last_name,matricule,position,contract_type,base_salary,hourly_rate").order("last_name"),
+      localDb.from("payroll").select("period,net_pay,cnss,cnss_patronal,ipr,inpp,onem,employee_id,status,base_salary").gte("period", cutoff),
     ]);
     setRows((cur as Row[]) || []);
     setPrevRows((prev as Row[]) || []);
@@ -98,11 +98,11 @@ export function PaieOverview() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [period]);
 
   useEffect(() => {
-    const ch = supabase
+    const ch = localDb
       .channel("paie-overview")
       .on("postgres_changes", { event: "*", schema: "public", table: "payroll" }, () => load())
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { localDb.removeChannel(ch); };
     // eslint-disable-next-line
   }, [period]);
 
@@ -149,10 +149,10 @@ export function PaieOverview() {
     setProgress(0);
     const t = setInterval(() => setProgress((p) => (p < 95 ? p + 5 : p)), 120);
     try {
-      const { data: ids2 } = await supabase.from("payroll").select("id").eq("period", period);
+      const { data: ids2 } = await localDb.from("payroll").select("id").eq("period", period);
       const allIds = (ids2 || []).map((r: any) => r.id);
       for (const id of allIds) {
-        await supabase.from("payroll").update({ updated_at: new Date().toISOString() } as any).eq("id", id);
+        await localDb.from("payroll").update({ updated_at: new Date().toISOString() } as any).eq("id", id);
       }
       setProgress(100);
       toast.success(`Calcul terminé pour ${allIds.length} bulletin(s).`);
@@ -166,7 +166,7 @@ export function PaieOverview() {
   };
 
   const validerPaieGlobale = async () => {
-    const { error } = await supabase.from("payroll").update({ status: "valide" }).eq("period", period).eq("status", "en_attente");
+    const { error } = await localDb.from("payroll").update({ status: "valide" }).eq("period", period).eq("status", "en_attente");
     if (error) return toast.error(error.message);
     toast.success("Paie globale validée");
     load();
@@ -447,7 +447,7 @@ function AgentDetailDialog({ agent, history, onClose }: { agent: BrutAgent | nul
       setLoading(true);
       const now = new Date();
       const start = new Date(now.getFullYear(), now.getMonth() - 11, 1).toISOString().slice(0, 10);
-      const { data } = await supabase
+      const { data } = await localDb
         .from("attendance")
         .select("date,status")
         .eq("employee_id", agent.id)

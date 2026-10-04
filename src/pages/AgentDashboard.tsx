@@ -4,7 +4,7 @@ import { Building2, Users, QrCode, CalendarDays, Mail, ChevronDown, Network, Che
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { MyAttendanceCard } from "@/components/dashboard/MyAttendanceCard";
@@ -64,7 +64,7 @@ const AgentDashboard = () => {
     const today = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Africa/Kinshasa", year: "numeric", month: "2-digit", day: "2-digit",
     }).format(new Date());
-    const { data } = await supabase
+    const { data } = await localDb
       .from("attendance")
       .select("id,date,check_in,check_out,status")
       .eq("employee_id", employeeId)
@@ -108,7 +108,7 @@ const AgentDashboard = () => {
     const fetchData = async () => {
       try {
         const empResult = await withTimeout(
-          supabase
+          localDb
             .from("employees")
             .select("id, first_name, last_name, position, email, direction_id")
             .ilike("email", user.email!)
@@ -119,7 +119,7 @@ const AgentDashboard = () => {
         setMe(emp as Employee | null);
 
         const allDirsResult = await withTimeout(
-          supabase
+          localDb
             .from("directions")
             .select("id, name, code, manager_name, description")
             .order("code"),
@@ -131,8 +131,8 @@ const AgentDashboard = () => {
         if (emp?.direction_id) {
           const detailResult = await withTimeout(
             Promise.all([
-              supabase.from("directions").select("id, name, code, manager_name, description").eq("id", emp.direction_id).maybeSingle(),
-              supabase.from("employees").select("id, first_name, last_name, position, email, direction_id").eq("direction_id", emp.direction_id).order("last_name"),
+              localDb.from("directions").select("id, name, code, manager_name, description").eq("id", emp.direction_id).maybeSingle(),
+              localDb.from("employees").select("id, first_name, last_name, position, email, direction_id").eq("direction_id", emp.direction_id).order("last_name"),
             ]),
             2200
           );
@@ -142,7 +142,7 @@ const AgentDashboard = () => {
         if (emp?.id) {
           await loadAttendance(emp.id).catch(() => null);
           const psResult = await withTimeout(
-            supabase.from("payroll").select("*").eq("employee_id", emp.id).order("period", { ascending: false }).limit(12),
+            localDb.from("payroll").select("*").eq("employee_id", emp.id).order("period", { ascending: false }).limit(12),
             1800
           );
           const ps = psResult?.data;

@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 
 export type SetupStatus = {
   companyConfigured: boolean;
@@ -6,7 +6,7 @@ export type SetupStatus = {
 };
 
 export async function getSetupStatus(): Promise<SetupStatus> {
-  const { data, error } = await supabase.functions.invoke("complete-onboarding", {
+  const { data, error } = await localDb.functions.invoke("complete-onboarding", {
     method: "GET",
   });
 

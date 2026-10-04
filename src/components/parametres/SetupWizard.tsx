@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -56,10 +56,10 @@ export default function SetupWizard({ open, onClose, initial, initialLogo, onSav
   const monthlyHours = ((Number(v.work_hours_per_day) || 0) * (Number(v.work_days_per_week) || 0) * 52) / 12;
 
   const currentOrgId = async (): Promise<string | null> => {
-    const { data: auth } = await supabase.auth.getUser();
+    const { data: auth } = await localDb.auth.getUser();
     const uid = auth?.user?.id;
     if (!uid) return null;
-    const { data } = await supabase
+    const { data } = await localDb
       .from("organization_members")
       .select("organization_id")
       .eq("user_id", uid)
@@ -74,14 +74,14 @@ export default function SetupWizard({ open, onClose, initial, initialLogo, onSav
     if (!orgId) { setUploading(false); return toast.error("Aucune entreprise associée à votre compte"); }
     const ext = file.name.split(".").pop() || "png";
     const path = `${orgId}/logo-${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("branding").upload(path, file, { upsert: true, cacheControl: "3600" });
+    const { error: upErr } = await localDb.storage.from("branding").upload(path, file, { upsert: true, cacheControl: "3600" });
     if (upErr) { setUploading(false); return toast.error(upErr.message); }
-    const { data: pub } = supabase.storage.from("branding").getPublicUrl(path);
-    const { error: setErr } = await supabase.from("app_settings").upsert(
+    const { data: pub } = localDb.storage.from("branding").getPublicUrl(path);
+    const { error: setErr } = await localDb.from("app_settings").upsert(
       { organization_id: orgId, key: "company_logo", value: { value: pub.publicUrl } },
       { onConflict: "organization_id,key" },
     );
-    await supabase.from("organizations").update({ logo_url: pub.publicUrl }).eq("id", orgId);
+    await localDb.from("organizations").update({ logo_url: pub.publicUrl }).eq("id", orgId);
     setUploading(false);
     if (setErr) return toast.error(setErr.message);
     setLogoUrl(pub.publicUrl);
@@ -93,9 +93,9 @@ export default function SetupWizard({ open, onClose, initial, initialLogo, onSav
     const orgId = await currentOrgId();
     if (!orgId) { setSaving(false); return toast.error("Aucune entreprise associée à votre compte"); }
     const rows = Object.entries(v).map(([key, value]) => ({ organization_id: orgId, key, value: { value } }));
-    const { error } = await supabase.from("app_settings").upsert(rows, { onConflict: "organization_id,key" });
+    const { error } = await localDb.from("app_settings").upsert(rows, { onConflict: "organization_id,key" });
     if (v.company_name) {
-      await supabase.from("organizations").update({ name: String(v.company_name) }).eq("id", orgId);
+      await localDb.from("organizations").update({ name: String(v.company_name) }).eq("id", orgId);
     }
     setSaving(false);
     if (error) return toast.error(error.message);

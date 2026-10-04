@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { Activity, Clock, RefreshCw, TrendingUp } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -45,7 +45,7 @@ export function AgentHoursStats() {
   }, [mode]);
 
   useEffect(() => {
-    supabase.from("employees")
+    localDb.from("employees")
       .select("id,first_name,last_name,matricule")
       .eq("status", "active")
       .order("last_name")
@@ -56,7 +56,7 @@ export function AgentHoursStats() {
     setLoading(true);
     const fromStr = format(from, "yyyy-MM-dd");
     const toStr = format(to, "yyyy-MM-dd");
-    supabase.from("attendance")
+    localDb.from("attendance")
       .select("employee_id,date,check_in,check_out")
       .gte("date", fromStr)
       .lte("date", toStr)
@@ -65,10 +65,10 @@ export function AgentHoursStats() {
 
   // Realtime
   useEffect(() => {
-    const ch = supabase.channel("agent-hours-stats")
+    const ch = localDb.channel("agent-hours-stats")
       .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, () => setRefresh((k) => k + 1))
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { localDb.removeChannel(ch); };
   }, []);
 
   const filtered = useMemo(

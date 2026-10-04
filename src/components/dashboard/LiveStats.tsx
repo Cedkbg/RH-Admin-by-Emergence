@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import {
   Users, UserCheck, UserX, Clock, TrendingUp, TrendingDown,
   Wallet, Calendar, AlertCircle, Activity, DollarSign, Briefcase,
@@ -59,7 +59,7 @@ const currentPeriod = () => {
 };
 
 /**
- * Tableau de bord statistiques pro avec mise à jour temps réel (Supabase Realtime).
+ * Tableau de bord statistiques avec actualisation des données.
  * Trois variantes : présence (jour), paie (période courante), global (consolidé).
  */
 export function LiveStats({ variant, period: periodProp }: Props) {
@@ -76,9 +76,9 @@ export function LiveStats({ variant, period: periodProp }: Props) {
     try {
       if (variant === "presence") {
         const [att, emp, leaves] = await Promise.all([
-          supabase.from("attendance").select("id,employee_id,check_in,check_out,status,date").eq("date", today),
-          supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
-          supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+          localDb.from("attendance").select("id,employee_id,check_in,check_out,status,date").eq("date", today),
+          localDb.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
+          localDb.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
         ]);
         const rows = att.data || [];
         const totalActifs = emp.count ?? 0;
@@ -97,10 +97,10 @@ export function LiveStats({ variant, period: periodProp }: Props) {
         const end = endDate.toISOString().slice(0, 10);
 
         const [pay, emp, empAll, att] = await Promise.all([
-          supabase.from("payroll").select("net_pay,base_salary,total_avantages,deductions,cnss_patronal,status,period,employee_id"),
-          supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
-          supabase.from("employees").select("id,base_salary,hourly_rate,contract_type,first_name,last_name,matricule").eq("status", "active"),
-          supabase.from("attendance").select("employee_id,date,check_in,check_out,status").gte("date", start).lte("date", end),
+          localDb.from("payroll").select("net_pay,base_salary,total_avantages,deductions,cnss_patronal,status,period,employee_id"),
+          localDb.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
+          localDb.from("employees").select("id,base_salary,hourly_rate,contract_type,first_name,last_name,matricule").eq("status", "active"),
+          localDb.from("attendance").select("employee_id,date,check_in,check_out,status").gte("date", start).lte("date", end),
         ]);
         const all = pay.data || [];
         const current = all.filter((p: any) => p.period === period);
@@ -210,14 +210,14 @@ export function LiveStats({ variant, period: periodProp }: Props) {
         });
       } else {
         const [emp, empActive, att, leaves, jobs, cand, train, pay] = await Promise.all([
-          supabase.from("employees").select("id", { count: "exact", head: true }),
-          supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
-          supabase.from("attendance").select("id", { count: "exact", head: true }).eq("date", today).eq("status", "present"),
-          supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
-          supabase.from("job_offers").select("id", { count: "exact", head: true }).eq("status", "open"),
-          supabase.from("candidates").select("id", { count: "exact", head: true }),
-          supabase.from("trainings").select("id", { count: "exact", head: true }),
-          supabase.from("payroll").select("net_pay").eq("period", period),
+          localDb.from("employees").select("id", { count: "exact", head: true }),
+          localDb.from("employees").select("id", { count: "exact", head: true }).eq("status", "active"),
+          localDb.from("attendance").select("id", { count: "exact", head: true }).eq("date", today).eq("status", "present"),
+          localDb.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+          localDb.from("job_offers").select("id", { count: "exact", head: true }).eq("status", "open"),
+          localDb.from("candidates").select("id", { count: "exact", head: true }),
+          localDb.from("trainings").select("id", { count: "exact", head: true }),
+          localDb.from("payroll").select("net_pay").eq("period", period),
         ]);
         const masse = (pay.data || []).reduce((s: number, r: any) => s + Number(r.net_pay || 0), 0);
         const totalActifs = empActive.count ?? 0;
@@ -241,7 +241,7 @@ export function LiveStats({ variant, period: periodProp }: Props) {
       : variant === "paie" ? ["payroll", "employees", "attendance"]
       : ["employees", "attendance", "leave_requests", "payroll", "job_offers", "candidates", "trainings"];
 
-    const ch = supabase.channel(`live-stats-${variant}`);
+    const ch = localDb.channel(`live-stats-${variant}`);
     tables.forEach((t) => {
       ch.on("postgres_changes", { event: "*", schema: "public", table: t }, () => {
         setPulse({ key: t, ts: Date.now() });
@@ -250,7 +250,7 @@ export function LiveStats({ variant, period: periodProp }: Props) {
     });
     ch.subscribe();
     const interval = setInterval(reload, 60_000);
-    return () => { supabase.removeChannel(ch); clearInterval(interval); };
+    return () => { localDb.removeChannel(ch); clearInterval(interval); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [variant, period]);
 

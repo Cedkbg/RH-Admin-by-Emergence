@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { cn } from "@/lib/utils";
 import { iconForCode, colorForCode } from "@/data/orgData";
 import { colorClasses, modules } from "@/data/modules";
@@ -64,8 +64,8 @@ const Organigramme = () => {
 
   const refresh = async () => {
     const [d, emp] = await Promise.all([
-      supabase.from("directions").select("*").order("code"),
-      supabase.from("employees").select("id,first_name,last_name,position,direction_id"),
+      localDb.from("directions").select("*").order("code"),
+      localDb.from("employees").select("id,first_name,last_name,position,direction_id"),
     ]);
     setDirections(d.data || []);
     setEmployees(emp.data || []);
@@ -101,8 +101,8 @@ const Organigramme = () => {
       description: form.description || null,
     };
     const { error } = editingId
-      ? await supabase.from("directions").update(payload).eq("id", editingId)
-      : await supabase.from("directions").insert(payload);
+      ? await localDb.from("directions").update(payload).eq("id", editingId)
+      : await localDb.from("directions").insert(payload);
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success(editingId ? "Direction modifiée" : "Direction créée");
@@ -112,7 +112,7 @@ const Organigramme = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Supprimer cette direction ?")) return;
-    const { error } = await supabase.from("directions").delete().eq("id", id);
+    const { error } = await localDb.from("directions").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Direction supprimée");
     refresh();
@@ -304,7 +304,7 @@ const Organigramme = () => {
                 const emp = employees.find((e) => e.id === selectedManagerId);
                 if (!emp || !managerDialog) return;
                 const fullName = `${emp.first_name} ${emp.last_name}`.trim();
-                const { error } = await supabase.from("directions").update({ manager_name: fullName }).eq("id", managerDialog.id);
+                const { error } = await localDb.from("directions").update({ manager_name: fullName }).eq("id", managerDialog.id);
                 if (error) { toast.error(error.message); return; }
                 toast.success("Manager direct défini");
                 setManagerDialog(null);

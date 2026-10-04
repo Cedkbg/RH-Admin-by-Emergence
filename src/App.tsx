@@ -10,6 +10,7 @@ import { Protected } from "@/components/Protected";
 import { RoleGuard } from "@/components/RoleGuard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
+import "@/lib/preBootAuthScrub";
 
 // Pages d'auth chargées tout de suite (entrée de l'app)
 import Index from "./pages/Index";
@@ -47,7 +48,6 @@ const PresenceScan = lazy(() => import("./pages/PresenceScan"));
 const PresenceLocations = lazy(() => import("./pages/PresenceLocations"));
 const Install = lazy(() => import("./pages/Install"));
 const MesConges = lazy(() => import("./pages/MesConges"));
-const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const Plateforme = lazy(() => import("./pages/Plateforme"));
 
 const queryClient = new QueryClient({
@@ -72,15 +72,9 @@ const AuthRedirectGuard = () => {
   const location = useLocation();
   useEffect(() => {
     if (location.pathname === "/reset-password") return;
-    const hash = window.location.hash || "";
     const search = window.location.search || "";
-    const isAuthHash =
-      /access_token=/.test(hash) ||
-      /type=(recovery|invite|signup|magiclink|email_change)/.test(hash) ||
-      /type=(recovery|invite|signup|magiclink|email_change)/.test(search) ||
-      /code=[\w-]+/.test(search);
-    if (isAuthHash) {
-      navigate(`/reset-password${search}${hash}`, { replace: true });
+    if (new URLSearchParams(search).has("code")) {
+      navigate(`/reset-password${search}`, { replace: true });
     }
   }, [location.pathname, navigate]);
   return null;
@@ -118,7 +112,6 @@ const App = () => (
                 <Route path="/agent/login" element={<AgentAuth />} />
                 <Route path="/login" element={<AgentAuth />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/presence/kiosk/:locationId" element={<PresenceKiosk />} />
                 <Route element={<Protected><AppLayout /></Protected>}>

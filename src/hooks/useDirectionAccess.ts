@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
@@ -18,7 +18,7 @@ export function useDirectionAccess(directionCode: string | undefined) {
     if (isAdmin) { setAllowed(true); return; }
 
     (async () => {
-      const { data, error } = await supabase.rpc("can_access_direction", {
+      const { data, error } = await localDb.rpc("can_access_direction", {
         _user_id: user.id,
         _direction_code: directionCode,
       });

@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import {
   ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
@@ -50,12 +50,12 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
 
   useEffect(() => {
     if (!selectedAgentId) { setEmployee(null); return; }
-    supabase.from("employees").select("id,first_name,last_name").eq("id", selectedAgentId).maybeSingle()
+    localDb.from("employees").select("id,first_name,last_name").eq("id", selectedAgentId).maybeSingle()
       .then(({ data }) => setEmployee(data as Employee | null));
   }, [selectedAgentId]);
 
   useEffect(() => {
-    supabase.from("employees").select("id", { count: "exact", head: true }).eq("status", "active")
+    localDb.from("employees").select("id", { count: "exact", head: true }).eq("status", "active")
       .then(({ count }) => setTotalActive(count ?? 0));
   }, [refresh]);
 
@@ -63,7 +63,7 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
     setLoading(true);
     const fromStr = format(from, "yyyy-MM-dd");
     const toStr = format(to, "yyyy-MM-dd");
-    let q = supabase.from("attendance")
+    let q = localDb.from("attendance")
       .select("employee_id,date,status,check_in,check_out")
       .gte("date", fromStr).lte("date", toStr);
     if (selectedAgentId) q = q.eq("employee_id", selectedAgentId);
@@ -71,10 +71,10 @@ export function PerformanceTimeChart({ selectedAgentId }: Props) {
   }, [from, to, selectedAgentId, refresh]);
 
   useEffect(() => {
-    const ch = supabase.channel("perf-time-chart")
+    const ch = localDb.channel("perf-time-chart")
       .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, () => setRefresh((k) => k + 1))
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { localDb.removeChannel(ch); };
   }, []);
 
   const chartData = useMemo(() => {

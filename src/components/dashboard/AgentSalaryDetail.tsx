@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import {
   Wallet, TrendingUp, Users, Activity, Percent, ReceiptText, Gift, PiggyBank, User as UserIcon, CalendarRange,
 } from "lucide-react";
@@ -91,15 +91,15 @@ export function AgentSalaryDetail({ selectedAgentId }: Props) {
     (async () => {
       setLoading(true);
       const [{ data: emps }, { data: allPays }, { data: allAtt }] = await Promise.all([
-        supabase
+        localDb
           .from("employees")
           .select("id,first_name,last_name,matricule,position,contract_type,base_salary,hourly_rate,status")
           .order("last_name"),
-        supabase
+        localDb
           .from("payroll")
           .select("employee_id,period,net_pay,base_salary,total_avantages,deductions,cnss,ipr,inpp,onem,other_deductions,transport,communication,loyer,allocation_familiale,bonus,status")
           .gte("period", `${now.getFullYear()}-01`),
-        supabase
+        localDb
           .from("attendance")
           .select("employee_id,date,status,check_in,check_out")
           .gte("date", format(yearStart, "yyyy-MM-dd")),

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { HeartHandshake, Smile, Frown, Meh, Zap, Activity, Sparkles, Sunrise, Sunset, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 type Moment = "morning" | "evening";
@@ -41,7 +41,7 @@ export function WellbeingGate({ children }: { children: ReactNode }) {
       try {
         const today = new Date().toISOString().slice(0, 10);
         // RLS limite déjà aux entrées de l'agent connecté (sinon admin → tout passe)
-        const { data, error } = await supabase
+        const { data, error } = await localDb
           .from("wellbeing_surveys")
           .select("id, moment, submitted_at")
           .eq("submitted_at", today)
@@ -72,7 +72,7 @@ export function WellbeingGate({ children }: { children: ReactNode }) {
       return;
     }
     setSubmitting(true);
-    const { error } = await supabase.from("wellbeing_surveys").insert({
+    const { error } = await localDb.from("wellbeing_surveys").insert({
       mood_score: mood,
       energy_score: energy,
       stress_score: stress,

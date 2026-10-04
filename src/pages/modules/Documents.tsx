@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -32,7 +32,7 @@ const Documents = () => {
   const [uploading, setUploading] = useState(false);
 
   const refresh = async () => {
-    const { data } = await supabase.from("documents").select("*").order("created_at", { ascending: false });
+    const { data } = await localDb.from("documents").select("*").order("created_at", { ascending: false });
     setDocs((data as Doc[]) || []);
   };
   useEffect(() => { refresh(); }, []);
@@ -42,9 +42,9 @@ const Documents = () => {
     if (!title || !file) { toast.error("Titre et fichier requis"); return; }
     setUploading(true);
     const path = `${user?.id}/${Date.now()}_${file.name}`;
-    const { error: upErr } = await supabase.storage.from("documents").upload(path, file);
+    const { error: upErr } = await localDb.storage.from("documents").upload(path, file);
     if (upErr) { toast.error(upErr.message); setUploading(false); return; }
-    const { error } = await supabase.from("documents").insert({
+    const { error } = await localDb.from("documents").insert({
       title, category: category || null, file_url: path, uploaded_by: user?.id,
     });
     setUploading(false);
@@ -55,15 +55,15 @@ const Documents = () => {
   };
 
   const download = async (path: string) => {
-    const { data, error } = await supabase.storage.from("documents").createSignedUrl(path, 60);
+    const { data, error } = await localDb.storage.from("documents").createSignedUrl(path, 60);
     if (error) { toast.error(error.message); return; }
     window.open(data.signedUrl, "_blank");
   };
 
   const remove = async (d: Doc) => {
     if (!confirm("Supprimer ce document ?")) return;
-    if (d.file_url) await supabase.storage.from("documents").remove([d.file_url]);
-    const { error } = await supabase.from("documents").delete().eq("id", d.id);
+    if (d.file_url) await localDb.storage.from("documents").remove([d.file_url]);
+    const { error } = await localDb.from("documents").delete().eq("id", d.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Supprimé"); refresh();
   };

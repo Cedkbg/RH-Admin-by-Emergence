@@ -23,7 +23,7 @@ import {
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from "recharts";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -140,11 +140,11 @@ const Rapports = () => {
 
   const loadAll = async () => {
     const [dirRes, depRes, repRes, empMineRes] = await Promise.all([
-      supabase.from("directions").select("id,name"),
-      supabase.from("departments").select("id,name").order("name"),
-      (supabase as any).from("agent_reports").select("*").order("created_at", { ascending: false }).limit(500),
+      localDb.from("directions").select("id,name"),
+      localDb.from("departments").select("id,name").order("name"),
+      (localDb as any).from("agent_reports").select("*").order("created_at", { ascending: false }).limit(500),
       user?.email
-        ? supabase.from("employees").select("id,direction_id").ilike("email", user.email).maybeSingle()
+        ? localDb.from("employees").select("id,direction_id").ilike("email", user.email).maybeSingle()
         : Promise.resolve({ data: null } as any),
     ]);
 
@@ -156,7 +156,7 @@ const Rapports = () => {
     const empIds = Array.from(new Set(list.map(r => r.employee_id)));
     const depMap = new Map(((depRes.data as any) || []).map((d: any) => [d.id, d.name]));
     if (empIds.length) {
-      const { data: emps } = await supabase
+      const { data: emps } = await localDb
         .from("employees").select("id,first_name,last_name,direction_id").in("id", empIds);
       const dirMap = new Map(((dirRes.data as any) || []).map((d: any) => [d.id, d.name]));
       const map = new Map((emps || []).map((e: any) => [e.id, e]));
@@ -307,10 +307,10 @@ const Rapports = () => {
     };
     let error;
     if (editing) {
-      ({ error } = await (supabase as any).from("agent_reports").update(payload).eq("id", editing.id));
+      ({ error } = await (localDb as any).from("agent_reports").update(payload).eq("id", editing.id));
     } else {
       payload.employee_id = myEmployeeId; payload.author_id = user.id;
-      ({ error } = await (supabase as any).from("agent_reports").insert(payload));
+      ({ error } = await (localDb as any).from("agent_reports").insert(payload));
     }
     setSaving(false);
     if (error) { toast.error(error.message); return; }
@@ -320,14 +320,14 @@ const Rapports = () => {
 
   const remove = async (id: string) => {
     if (!confirm("Supprimer ce rapport ?")) return;
-    const { error } = await (supabase as any).from("agent_reports").delete().eq("id", id);
+    const { error } = await (localDb as any).from("agent_reports").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Rapport supprimé"); loadAll();
   };
 
   const review = async (status: "approved" | "rejected") => {
     if (!reviewing || !user) return;
-    const { error } = await (supabase as any).from("agent_reports").update({
+    const { error } = await (localDb as any).from("agent_reports").update({
       status, review_comment: reviewComment || null,
       reviewed_by: user.id, reviewed_at: new Date().toISOString(),
     }).eq("id", reviewing.id);

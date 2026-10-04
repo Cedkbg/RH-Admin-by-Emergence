@@ -47,8 +47,8 @@ export default function AgentAuth() {
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { supabase } = await import("@/integrations/supabase/client");
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+    const { localDb } = await import("@/lib/localDb/client");
+    const { error } = await localDb.auth.resetPasswordForEmail(forgotEmail, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setLoading(false);

@@ -17,7 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Appointment {
@@ -72,10 +72,10 @@ const Secretariat = () => {
 
   const refresh = async () => {
     const [a, m, mi, c] = await Promise.all([
-      supabase.from("appointments").select("*").order("scheduled_at", { ascending: false }),
-      supabase.from("mail_register").select("*").order("mail_date", { ascending: false }),
-      supabase.from("meeting_minutes").select("*").order("meeting_date", { ascending: false }),
-      supabase.from("contacts").select("*").order("full_name"),
+      localDb.from("appointments").select("*").order("scheduled_at", { ascending: false }),
+      localDb.from("mail_register").select("*").order("mail_date", { ascending: false }),
+      localDb.from("meeting_minutes").select("*").order("meeting_date", { ascending: false }),
+      localDb.from("contacts").select("*").order("full_name"),
     ]);
     setAppointments((a.data as Appointment[]) || []);
     setMails((m.data as Mail[]) || []);
@@ -90,8 +90,8 @@ const Secretariat = () => {
     if (!appt.title || !appt.scheduled_at) { toast.error("Titre et date requis"); return; }
     const payload = { ...appt, duration_minutes: Number(appt.duration_minutes) || null };
     const { error } = apptId
-      ? await supabase.from("appointments").update(payload).eq("id", apptId)
-      : await supabase.from("appointments").insert(payload);
+      ? await localDb.from("appointments").update(payload).eq("id", apptId)
+      : await localDb.from("appointments").insert(payload);
     if (error) { toast.error(error.message); return; }
     toast.success(apptId ? "Rendez-vous mis à jour" : "Rendez-vous créé");
     setApptOpen(false); setApptId(null); setAppt(blankAppt); refresh();
@@ -100,8 +100,8 @@ const Secretariat = () => {
     e.preventDefault();
     if (!mail.subject) { toast.error("Objet requis"); return; }
     const { error } = mailId
-      ? await supabase.from("mail_register").update(mail).eq("id", mailId)
-      : await supabase.from("mail_register").insert(mail);
+      ? await localDb.from("mail_register").update(mail).eq("id", mailId)
+      : await localDb.from("mail_register").insert(mail);
     if (error) { toast.error(error.message); return; }
     toast.success(mailId ? "Courrier mis à jour" : "Courrier enregistré");
     setMailOpen(false); setMailId(null); setMail(blankMail); refresh();
@@ -110,8 +110,8 @@ const Secretariat = () => {
     e.preventDefault();
     if (!minutesForm.title) { toast.error("Titre requis"); return; }
     const { error } = minId
-      ? await supabase.from("meeting_minutes").update(minutesForm).eq("id", minId)
-      : await supabase.from("meeting_minutes").insert(minutesForm);
+      ? await localDb.from("meeting_minutes").update(minutesForm).eq("id", minId)
+      : await localDb.from("meeting_minutes").insert(minutesForm);
     if (error) { toast.error(error.message); return; }
     toast.success(minId ? "Compte-rendu mis à jour" : "Compte-rendu enregistré");
     setMinOpen(false); setMinId(null); setMinutesForm(blankMin); refresh();
@@ -120,15 +120,15 @@ const Secretariat = () => {
     e.preventDefault();
     if (!contact.full_name) { toast.error("Nom requis"); return; }
     const { error } = contactId
-      ? await supabase.from("contacts").update(contact).eq("id", contactId)
-      : await supabase.from("contacts").insert(contact);
+      ? await localDb.from("contacts").update(contact).eq("id", contactId)
+      : await localDb.from("contacts").insert(contact);
     if (error) { toast.error(error.message); return; }
     toast.success(contactId ? "Contact mis à jour" : "Contact ajouté");
     setContactOpen(false); setContactId(null); setContact(blankContact); refresh();
   };
   const removeRow = async (table: "appointments" | "mail_register" | "meeting_minutes" | "contacts", id: string) => {
     if (!confirm("Supprimer cet élément ?")) return;
-    const { error } = await supabase.from(table).delete().eq("id", id);
+    const { error } = await localDb.from(table).delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Supprimé"); refresh();
   };

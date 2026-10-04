@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export type Organization = {
@@ -39,14 +39,14 @@ export function useOrganization() {
     }
     try {
       const [{ data: member }, { data: platform }] = await Promise.all([
-        supabase.from("organization_members").select("organization_id").eq("user_id", user.id).maybeSingle(),
-        supabase.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle(),
+        localDb.from("organization_members").select("organization_id").eq("user_id", user.id).maybeSingle(),
+        localDb.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle(),
       ]);
       setIsPlatformAdmin(Boolean(platform));
 
       const orgId = (member as any)?.organization_id;
       if (orgId) {
-        const { data: org } = await supabase.from("organizations").select("*").eq("id", orgId).maybeSingle();
+        const { data: org } = await localDb.from("organizations").select("*").eq("id", orgId).maybeSingle();
         setOrganization((org as any) ?? null);
       } else {
         setOrganization(null);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { localDb } from "@/lib/localDb/client";
 
 type Slice = { label: string; value: number; count: number; color: string };
 
@@ -54,9 +54,9 @@ export function MonthStats() {
       try {
         const today = new Date().toISOString().slice(0, 10);
         const [{ data: dirs }, { data: emps }, { count: pres }] = await Promise.all([
-          supabase.from("directions").select("id,code,name"),
-          supabase.from("employees").select("direction_id").eq("status", "active"),
-          supabase.from("attendance").select("*", { count: "exact", head: true }).eq("date", today),
+          localDb.from("directions").select("id,code,name"),
+          localDb.from("employees").select("direction_id").eq("status", "active"),
+          localDb.from("attendance").select("*", { count: "exact", head: true }).eq("date", today),
         ]);
         const dirMap = new Map((dirs || []).map((d: any) => [d.id, d]));
         const counts = new Map<string, number>();

@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { clearInteractiveAuthSession, markInteractiveAuthSession } from "@/lib/interactiveAuthSession";
-import type { Session, User } from "@supabase/supabase-js";
+import { localDb } from "@/lib/localDb/client";
+import type { Session, User } from "@/lib/localDb/client";
 
 interface AuthContextValue {
   session: Session | null;
@@ -26,31 +25,7 @@ const withTimeout = async <T,>(promise: PromiseLike<T>, ms: number): Promise<T |
   return Promise.race([promise, sleep(ms)]) as Promise<T | null>;
 };
 
-/**
- * Lecture directe de la session depuis localStorage — contourne le
- * "navigator lock" de Supabase qui se bloque sur iOS Safari (Strict Mode +
- * onglets multiples). On évite ainsi tout appel à getSession() au boot.
- */
-const readStoredSession = (): Session | null => {
-  try {
-    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-    const key = `sb-${projectId}-auth-token`;
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    const candidate = parsed?.access_token && parsed?.user ? parsed : parsed?.currentSession;
-    const expiresAt = Number(candidate?.expires_at ?? 0);
-    if (!candidate?.access_token || !candidate?.user) return null;
-    if (expiresAt && expiresAt * 1000 < Date.now() + 30_000) return null;
-    // Format Supabase v2 : { access_token, refresh_token, expires_at, user, ... }
-    if (parsed?.access_token && parsed?.user) return parsed as Session;
-    // Format wrapper { currentSession: {...} }
-    if (parsed?.currentSession?.access_token) return parsed.currentSession as Session;
-    return null;
-  } catch {
-    return null;
-  }
-};
+const readStoredSession = (): Session | null => null;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const initial = readStoredSession();
@@ -82,8 +57,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const result = await withTimeout(
         Promise.all([
-          supabase.from("user_roles").select("role").eq("user_id", uid),
-          supabase.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
+          localDb.from("user_roles").select("role").eq("user_id", uid),
+          localDb.from("profiles").select("approval_status").eq("id", uid).maybeSingle(),
         ]),
         6000
       );
@@ -151,15 +126,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Valider la session au démarrage avant de rendre l'accueil.
     // Timeout court: si le navigateur bloque la restauration, on garde la session cache valide.
     const restoreSession = async () => {
-      const result = await withTimeout(supabase.auth.getSession(), 2500);
+      const result = await withTimeout<{ data: { session: Session | null } }>(localDb.auth.getSession(), 2500);
       if (!mountedRef.current) return;
       sessionRestoredRef.current = true;
       applySession(result?.data?.session ?? initial ?? null);
     };
     restoreSession();
 
-    // Listener : ne JAMAIS await ici (deadlock Supabase)
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    // L'écouteur ne doit pas bloquer la restauration initiale de session.
+    const { data: sub } = localDb.auth.onAuthStateChange((_event, newSession) => {
       if (!sessionRestoredRef.current && !newSession && initial?.user?.id) return;
       applySession(newSession);
     });
@@ -174,15 +149,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (!error) markInteractiveAuthSession(data.user?.id);
+    const { data, error } = await localDb.auth.signInWithPassword({ email, password });
     if (error) setLoading(false);
     return { error: error?.message ?? null };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    const { error } = await supabase.auth.signUp({
+    const { error } = await localDb.auth.signUp({
       email, password,
       options: { emailRedirectTo: redirectUrl, data: { full_name: fullName } },
     });
@@ -190,9 +164,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    clearInteractiveAuthSession();
-    const { error } = await supabase.auth.signOut();
-    if (error) await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+    const { error } = await localDb.auth.signOut();
+    if (error) await localDb.auth.signOut({ scope: "local" }).catch(() => {});
     clearAuthState();
   };
 
